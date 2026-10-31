@@ -73,7 +73,7 @@
 </section>
 
 <nav class="secnav" aria-label="本篇小节">
-  <div class="wrap"><a href="#extract">提取记忆</a><a href="#format">存储格式</a><a href="#mem0">冲突处理</a><a href="#rag">检索</a><a href="#organize">知识组织</a><a href="#update">知识更新</a><a href="#agentic">智能体化 RAG</a></div>
+  <div class="wrap"><a href="#extract">提取记忆</a><a href="#format">存储格式</a><a href="#code">代码记忆</a><a href="#mem0">冲突处理</a><a href="#tidy">压缩整理</a><a href="#rag">检索</a><a href="#organize">知识组织</a><a href="#update">知识更新</a><a href="#agentic">智能体化 RAG</a><a href="#deep">深度知识</a><a href="#mm">多模态记忆</a></div>
 </nav>
 <div class="wrap">
 <section class="part" id="extract">
@@ -133,6 +133,23 @@
   <div class="notes" id="n-format"></div>
 </section>
 
+<section class="part" id="code">
+  <div class="part-head"><h2>第五种存法：把记忆写成可执行代码</h2><span class="meta">原书 3.1 节 · 进阶知识表示形态：可执行代码</span></div>
+  <div class="sec-lede">
+    <p>上一节的四种格式本质上都是文本：召回单条事实很拿手，可一旦要<strong>聚合</strong>（今年出了几次国）、<strong>找冲突</strong>（正在吃的药和过敏史有没有冲突）、<strong>守约束</strong>（护照离出发日不足 180 天要提醒），就只能交给 LLM“读一遍再心算”，既慢又容易错。</p>
+    <p>原书作者的 User as Code 把思路反过来：用户状态写成<strong>带类型的对象</strong>（护照、行程、用药都有明确字段），规则写成<strong>普通函数</strong>，让“表示”和“推理”用同一种可验证的介质。存储上借鉴数据库的<strong>预写日志 + 检查点</strong>：会话结束先把新事实追加到只增的日志，再定期从完整日志重建类型化状态。原始证据不丢，派生状态可查询、可执行。</p>
+    <p class="go">切换三种操作，对比文本记忆和代码记忆各怎么做。</p>
+  </div>
+  <div class="lab">
+    <p class="lab-t">同一个问题，两种记忆</p>
+    <div class="seg" id="cdS"><button data-v="agg" aria-pressed="true">聚合统计</button><button data-v="conf">冲突发现</button><button data-v="rule">约束执行</button></div>
+    <div class="cmp2" id="cdB"></div>
+    <pre class="codeb" id="cdC"></pre>
+    <p class="cap">代码片段改写自原书的简化示例。</p>
+  </div>
+  <div class="notes" id="n-code"></div>
+</section>
+
 <section class="part" id="mem0">
   <div class="part-head"><h2>冲突在写入时解决，还是读取时解决</h2><span class="meta">原书 3.1 节 · 记忆框架案例</span></div>
   <div class="sec-lede">
@@ -151,6 +168,28 @@
     <div id="mStep2"></div>
   </div>
   <div class="notes" id="n-mem0"></div>
+</section>
+
+<section class="part" id="tidy">
+  <div class="part-head"><h2>记忆越存越多：三层压缩</h2><span class="meta">原书 3.1 节 · 记忆压缩与整理机制</span></div>
+  <div class="sec-lede">
+    <p>只往里加、从不整理的记忆会“爆炸”：既占空间，又让检索越来越不准，因为相关的那条被一堆过时、重复的条目淹没了。原书给了三层压缩。</p>
+    <p><strong>第一层，重要性评分。</strong>综合四个因素：访问频率（常被检索的更重要）、时间衰减（越久远越容易遗忘）、情感强度（带强烈情感标记的更易保留）、信息独特性（和别的条目重复的价值低）。低于阈值的标记为可压缩或可删除。<strong>第二层，聚类摘要。</strong>相似的记忆归成一组，生成代表性摘要，比如多次问天气压成“用户常问天气，特别关心降雨”，原始记录存到二级存储。<strong>第三层，抽象泛化。</strong>从具体的情景记忆里提炼出一般规律，变成语义记忆或程序记忆，比如从多次购物对话里学到“偏好性价比高的产品，重视用户评价”。</p>
+    <p class="go">原书只给了四个因素，没给公式。下面用一个等权的示意公式，拖动看一条记忆会被保留还是压缩；两个预设是原书举的例子。</p>
+  </div>
+  <div class="lab">
+    <p class="lab-t">重要性评分（公式与阈值为示意）</p>
+    <div class="btnrow"><button class="btn" type="button" id="tdA">原书例一：常用的新记忆</button><button class="btn" type="button" id="tdB">原书例二：冷门的旧记忆</button></div>
+    <div class="ctl-grid">
+      <label class="ctl"><span>被访问次数 <output id="tdFv">5</output></span><input type="range" id="tdF" min="0" max="10" step="1" value="5"></label>
+      <label class="ctl"><span>创建于几天前 <output id="tdDv">3</output></span><input type="range" id="tdD" min="0" max="180" step="1" value="3"></label>
+      <label class="ctl"><span>情感强度 <output id="tdEv">强</output></span><input type="range" id="tdE" min="0" max="1" step="1" value="1"></label>
+      <label class="ctl"><span>与之重复的条数 <output id="tdRv">0</output></span><input type="range" id="tdR" min="0" max="5" step="1" value="0"></label>
+    </div>
+    <div class="read" id="tdO"></div>
+    <p class="cap">示意公式：0.3 × min(访问次数 / 5, 1) + 0.3 × e<sup>−天数/60</sup> + 0.2 × 情感 + 0.2 / (1 + 重复条数)，低于 0.4 进入压缩。</p>
+  </div>
+  <div class="notes" id="n-tidy"></div>
 </section>
 
 <section class="part" id="rag">
@@ -263,6 +302,38 @@
     <p><strong>多模态记忆还在前沿。</strong>原书列了三种思路：存原图加文字描述再按描述检索；把人脸或声纹的嵌入存进上下文的一块区域，每个只占约 1 个 token；把嵌入写进 Engram 类模型的哈希槽位（User as Engram），扩展性更强但要模型本身支持。</p>
   </div>
   <div class="notes" id="n-agentic"></div>
+</section>
+
+<section class="part" id="deep">
+  <div class="part-head"><h2>从判例里挖出“判决经验”</h2><span class="meta">原书 3.3 节 · 从数据集中提取深度知识（实验 3-12）</span></div>
+  <div class="sec-lede">
+    <p>前面的 RAG 都默认知识写在文档里。但很多领域的知识是隐性的、分散在海量案例中：决定判决的不只是法条，更是成千上万份判例里法官如何权衡动机、伤害程度、自首、社会影响这些因素，就像老医生的直觉来自无数病例。原书把这叫从<strong>信息检索</strong>到<strong>知识发现</strong>：不是去搜文本，而是先把数据“读懂”，提炼出结构化的决策逻辑。</p>
+    <p>做法分两阶段。<strong>知识提取与结构化</strong>：用 LLM 把每份判决的案情描述转成标准化 JSON。实验 3-12（CAIL2018 中文刑事判决数据集）没有预先定死字段，而是让 LLM 分析几百个样本、自由列出可能影响判决的因素，<strong>自下而上</strong>得到模式：所有案件共用的核心模式（自首、赔偿等），加上按罪名区分的扩展模式（涉案金额、伤害等级等）。<strong>因子分析</strong>：不直接让模型预测刑期（那是个说不清理由的黑箱），而是先把案件变成数字，再用聚类找出“案件原型”，比如“轻微口角引发的徒手斗殴致人轻伤”，由此得到因子重要性层次模型。</p>
+    <p>最后这个模型驱动 Agent 的<strong>对话式信息收集</strong>：用户描述案情时，Agent 按因子重要性依次追问，补全关键信息，再找到最相似的原型，用它的统计数据（如典型刑期范围）给出有判例支撑的分析。</p>
+    <p class="go">数字化有个小陷阱：类别字段该怎么编码？选两种罪名，比较“编号”和“独热编码”算出的距离。</p>
+  </div>
+  <div class="lab">
+    <p class="lab-t">为什么类别要用独热编码</p>
+    <div class="selrow"><span>案件 A</span><div class="seg" id="ohA"><button data-v="0" aria-pressed="true">盗窃</button><button data-v="1">抢劫</button><button data-v="2">诈骗</button></div></div>
+    <div class="selrow"><span>案件 B</span><div class="seg" id="ohB"><button data-v="0">盗窃</button><button data-v="1">抢劫</button><button data-v="2" aria-pressed="true">诈骗</button></div></div>
+    <div class="cmp2" id="ohO"></div>
+  </div>
+  <div class="notes" id="n-deep"></div>
+</section>
+
+<section class="part" id="mm">
+  <div class="part-head"><h2>多模态记忆：脸和声音怎么记</h2><span class="meta">原书 3.3 节 · 前沿探索：多模态记忆</span></div>
+  <div class="sec-lede">
+    <p>一张脸的样子、一个人的嗓音，很难用文字描述清楚，前面的文本记忆存不下。原书说这仍是学术前沿，给了三条思路，各有取舍。</p>
+    <p>思路一存<strong>原图加文字描述</strong>：裁出人脸存成图片，用文字描述并建索引，检索时先按描述找到图，再读原图比对。思路二把<strong>嵌入存进上下文</strong>：计算人脸或声纹的嵌入，在上下文里专门留一块区域，每张脸只占 1 个 token 的位置，1000 token 就能放 1000 张脸，检索直接靠注意力。思路三把<strong>嵌入写进模型参数</strong>：为每个用户训练一个 LoRA 看似自然，但这样的“事实 LoRA”被直接提问时能复述，一到需要在事实上做间接推理就失灵，因为冻结的主干从没学过去查一个临时挂上的适配器。原书作者的 User as Engram 不训练 LoRA，而是把嵌入写进 Engram 预训练模型空闲的哈希 N-gram 槽位，模型在预训练时就学会了查表，由门控决定何时调取。</p>
+    <p class="go">切换三条思路，看存的是什么、怎么取、代价在哪。</p>
+  </div>
+  <div class="lab">
+    <p class="lab-t">三条思路对照</p>
+    <div class="seg" id="mmS"><button data-v="0" aria-pressed="true">原图 + 文字描述</button><button data-v="1">嵌入存进上下文</button><button data-v="2">嵌入写进参数</button></div>
+    <div class="cmp2" id="mmO"></div>
+  </div>
+  <div class="notes" id="n-mm"></div>
 </section>
 <nav class="pager" aria-label="翻页"><a href="../2026-10-16-agent-2/"><small>上一篇</small><span>02 · 上下文工程</span></a><a class="nx" href="../2026-10-16-agent-4/"><small>下一篇</small><span>04 · 工具</span></a></nav>
 </div>
@@ -562,6 +633,203 @@ S.notes($('#n-agentic'), {
     ['检索（索引期加法）≠ 压缩（运行期减法）', '别把第 3 篇的上下文感知检索和第 2 篇的上下文感知压缩混为一谈。'],
     ['主动服务需要概览 + 细节', '只靠常驻上下文会丢细节，只靠检索会缺全局视野。'],
     ['RAG 安全两层', '检索内容做来源标记；不让检索内容直接触发高风险操作。']
+  ]
+});
+
+/* ---------- 可执行代码记忆 ---------- */
+(function () {
+  var D = {
+    agg: { q: '用户今年出了几次国？', t: '检索出所有和旅行有关的记忆条目，交给 LLM 逐条判断是不是国际行程、是不是今年，再数一遍。条目一多就容易漏数。',
+      c: '用 trips 列表直接过滤计数，结果确定，可以复查。', code: 'count(\n    trip for trip in state.trips\n    if trip.is_international and year(trip.departure_date) == 2025\n)\n# => 2' },
+    conf: { q: '正在吃的药和过敏史有没有冲突？', t: '用药和过敏写在不同的记忆里，只有在某次对话恰好同时检索到两者、LLM 又恰好想到去比对时，冲突才会被发现。',
+      c: '每次状态更新后跑一遍交叉比对，冲突主动冒出来。', code: 'def check_drug_allergy(profile):\n    for medication in profile.current_medications:\n        for allergy in profile.allergies:\n            if medication.drug_class == allergy.drug_class:\n                emit_conflict(medication, allergy)' },
+    rule: { q: '护照会不会在出发前过期？', t: '要等用户哪天问起，Agent 检索到护照和行程两条记忆，再算一下日期差。用户不问，就没人发现。',
+      c: '规则在状态更新后自动检查，不必等用户再次检索。', code: 'def check():\n    for trip in state.trips:\n        if trip.is_international:\n            days = date_difference(state.passport.expiry_date,\n                                   trip.departure_date)\n            if days < 180:\n                alert("passport expires too soon", trip, days)' }
+  };
+  function show(v) {
+    var d = D[v];
+    $('#cdB').innerHTML = '<div><h4>文本记忆：' + d.q + '</h4><p>' + d.t + '</p></div><div><h4>代码记忆</h4><p>' + d.c + '</p></div>';
+    $('#cdC').textContent = d.code;
+  }
+  S.seg($('#cdS'), show); show('agg');
+})();
+S.notes($('#n-code'), {
+  "c": [
+    [
+      "User as Code",
+      "用户状态写成带类型的对象，规则写成普通函数，表示和推理用同一种可验证介质。"
+    ],
+    [
+      "预写日志 + 检查点",
+      "新事实先追加到只增日志，再定期从完整日志重建类型化状态。"
+    ],
+    [
+      "派生状态",
+      "从日志重建出来、可查询可执行的当前状态；原始日志作为证据保留。"
+    ]
+  ],
+  "p": [
+    [
+      "文本擅长召回单条事实",
+      "聚合、冲突检测、约束执行要 LLM 心算，又慢又容易错。"
+    ],
+    [
+      "三种操作交给确定性函数",
+      "聚合统计、冲突发现、约束执行。"
+    ],
+    [
+      "规则可以主动触发",
+      "状态一更新就检查，不必等用户问起。"
+    ]
+  ]
+});
+
+/* ---------- 记忆重要性评分（示意） ---------- */
+(function () {
+  function td() {
+    var f = +$('#tdF').value, d = +$('#tdD').value, e = +$('#tdE').value, r = +$('#tdR').value;
+    $('#tdFv').textContent = f; $('#tdDv').textContent = d; $('#tdEv').textContent = e ? '强' : '无'; $('#tdRv').textContent = r;
+    var parts = [0.3 * Math.min(f / 5, 1), 0.3 * Math.exp(-d / 60), 0.2 * e, 0.2 / (1 + r)], sc = parts.reduce(function (a, b) { return a + b; }, 0);
+    var keep = sc >= 0.4;
+    $('#tdO').innerHTML = '<div><span class="v">' + S.f(sc, 2) + '</span><br><small>重要性得分</small></div><div><span class="v" style="color:var(' + (keep ? '--ok' : '--alert') + ')">' + (keep ? '保留' : '可压缩') + '</span><br><small>阈值 0.4</small></div>' +
+      '<div><small>频率 ' + S.f(parts[0], 2) + ' · 新近 ' + S.f(parts[1], 2) + ' · 情感 ' + S.f(parts[2], 2) + ' · 独特 ' + S.f(parts[3], 2) + '</small></div>';
+  }
+  function set(v) { $('#tdF').value = v[0]; $('#tdD').value = v[1]; $('#tdE').value = v[2]; $('#tdR').value = v[3]; td(); }
+  ['tdF', 'tdD', 'tdE', 'tdR'].forEach(function (id) { $('#' + id).addEventListener('input', td); });
+  $('#tdA').addEventListener('click', function () { set([5, 3, 1, 0]); });
+  $('#tdB').addEventListener('click', function () { set([1, 90, 0, 3]); });
+  td();
+})();
+S.notes($('#n-tidy'), {
+  "c": [
+    [
+      "记忆爆炸",
+      "只存不整理，空间越占越多，检索也越来越不准。"
+    ],
+    [
+      "重要性评分",
+      "访问频率、时间衰减、情感强度、信息独特性四个因素。"
+    ],
+    [
+      "聚类摘要",
+      "相似记忆归组生成代表性摘要，原始记录移到二级存储。"
+    ],
+    [
+      "抽象泛化",
+      "从具体情景提炼一般规律，转成语义记忆或程序记忆。"
+    ]
+  ],
+  "p": [
+    [
+      "三层由浅到深",
+      "筛掉低价值 → 合并相似 → 提炼规律。"
+    ],
+    [
+      "原文不丢",
+      "聚类后的原始记录存档，需要时还能回溯。"
+    ],
+    [
+      "示意公式不是原书的",
+      "原书只给了四个因素，权重和阈值要按业务调。"
+    ]
+  ]
+});
+
+/* ---------- 独热编码 ---------- */
+(function () {
+  var N = ['盗窃', '抢劫', '诈骗'], a = 0, b = 2;
+  function vec(i) { return N.map(function (_, j) { return j === i ? 1 : 0; }); }
+  function oh() {
+    var va = vec(a), vb = vec(b), d = Math.sqrt(va.reduce(function (s, x, i) { return s + (x - vb[i]) * (x - vb[i]); }, 0));
+    $('#ohO').innerHTML = '<div><h4>编号：盗窃 = 1，抢劫 = 2，诈骗 = 3</h4><p>' + N[a] + ' = ' + (a + 1) + '，' + N[b] + ' = ' + (b + 1) + '，距离 <b>' + Math.abs(a - b) + '</b>。' +
+      (Math.abs(a - b) === 2 ? '算法会以为盗窃和诈骗的差别是盗窃和抢劫的两倍，可编号的大小本来没有含义。' : a === b ? '同一类，距离为 0。' : '相邻编号距离为 1，看起来比别的组合更“近”，其实只是排列顺序造成的。') + '</p></div>' +
+      '<div><h4>独热编码：每类一个开关位</h4><p>' + N[a] + ' = [' + va + ']，' + N[b] + ' = [' + vb + ']，距离 <b>' + S.f(d, 2) + '</b>。' + (a === b ? '同一类，距离为 0。' : '任意两种不同罪名的距离都是 √2，只表示“是哪一类”，不暗示大小关系。') + '</p></div>';
+  }
+  S.seg($('#ohA'), function (v) { a = +v; oh(); });
+  S.seg($('#ohB'), function (v) { b = +v; oh(); });
+  oh();
+})();
+S.notes($('#n-deep'), {
+  "c": [
+    [
+      "知识发现",
+      "不检索文本，而是从大量结构化案例里统计出隐性的决策规律。"
+    ],
+    [
+      "自下而上因子发现",
+      "让 LLM 分析样本、自由列出影响因素，再归纳成数据模式。"
+    ],
+    [
+      "核心模式 + 扩展模式",
+      "所有案件共用的字段，加上按罪名区分的字段。"
+    ],
+    [
+      "案件原型",
+      "聚类得到的典型案件组，带有典型刑期等统计。"
+    ],
+    [
+      "独热编码",
+      "类别字段每个取值一个开关位，避免编号大小带来虚假的远近关系。"
+    ]
+  ],
+  "p": [
+    [
+      "两阶段",
+      "知识提取与结构化 → 因子分析与重要性建模。"
+    ],
+    [
+      "不直接预测刑期",
+      "黑箱给得出答案说不清理由；原型加统计可以解释。"
+    ],
+    [
+      "模型驱动追问",
+      "按因子重要性顺序向用户补问关键信息。"
+    ]
+  ]
+});
+
+/* ---------- 多模态记忆三思路 ---------- */
+(function () {
+  var D = [
+    ['存什么', '裁出的人脸图片，加一段文字描述作为索引。', '怎么取', '先按文字描述检索到图片，再读原图判断是不是同一个人。', '占多少', '一张图加一段描述，按需读取。', '局限', '检索仍依赖文字描述，而有些特征本来就说不清。'],
+    ['存什么', '人脸或声纹的嵌入，放在上下文里专门的一块区域。', '怎么取', '所有嵌入始终在上下文里，靠注意力直接找到最相近的那个。', '占多少', '每张脸约 1 个 token，1000 token 能放 1000 张脸。', '局限', '受上下文长度限制，规模有上限。'],
+    ['存什么', '嵌入写进 Engram 模型空闲的哈希 N-gram 槽位（User as Engram），不做梯度更新。', '怎么取', '模型在预训练时就学会了查表，由感知上下文的门控决定何时调取。', '占多少', '不占上下文，扩展性最强。', '局限', '要求预训练模型本身支持 Engram，查准率可能不如思路二。每用户训练 LoRA 不行：能复述，不能做间接推理。']
+  ];
+  function show(v) { var d = D[+v], h = ''; for (var i = 0; i < d.length; i += 2) h += '<div><h4>' + d[i] + '</h4><p>' + d[i + 1] + '</p></div>'; $('#mmO').innerHTML = h; }
+  S.seg($('#mmS'), show); show(0);
+})();
+S.notes($('#n-mm'), {
+  "c": [
+    [
+      "多模态记忆",
+      "脸、声音这类难以用文字描述的信息的记忆。"
+    ],
+    [
+      "嵌入存进上下文",
+      "每个多模态对象一个嵌入，约占 1 个 token，靠注意力检索。"
+    ],
+    [
+      "事实 LoRA 的问题",
+      "能复述事实，但冻结主干没学过去查适配器，间接推理失灵。"
+    ],
+    [
+      "User as Engram",
+      "把嵌入写进 Engram 模型空闲的哈希 N-gram 槽位，不做梯度更新。"
+    ]
+  ],
+  "p": [
+    [
+      "三条思路",
+      "原图 + 描述 → 嵌入进上下文 → 嵌入进参数。"
+    ],
+    [
+      "存进去不等于会用",
+      "让模型知道何时取用，比把事实写进去更难。"
+    ],
+    [
+      "仍是前沿",
+      "原书明确说这部分还没有成熟方案。"
+    ]
   ]
 });
 })();
