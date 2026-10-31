@@ -8,9 +8,9 @@
 index.html              首页（文章列表）
 assets/site.css         公共配色、字体、页眉页脚（含深色模式）
 assets/site.js          深浅色切换
-posts/*-shared/         系列文章共用的样式和脚本（LLM、Agent 系列各一套；study-shared 供之后的学习系列共用）
+posts/study-shared/     所有系列共用的样式和脚本（series.css / series.js），以及各系列专用组件
 posts/<slug>/index.html 每篇文章一个文件夹，自包含
-src/agent-series/       Agent 系列的正文片段和拼装脚本（改片段后运行 build.py 重新生成）
+src/agent-series/       深入理解 AI Agent 系列（2026-10-31 起改用 study_build.py）
 src/study_build.py      通用系列构建脚本：python3 study_build.py <系列目录> all（或 0 1 2 …）
 src/adp-series/         智能体设计模式系列（series.py 为配置，chN.html 为片段）
 src/infra-series/       AI Infra 系列

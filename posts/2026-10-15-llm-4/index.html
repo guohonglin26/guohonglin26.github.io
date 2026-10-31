@@ -7,9 +7,10 @@
 <meta name="description" content="动手拆一个大语言模型（四）：梯度下降、Softmax 的“预测减答案”、反向传播、梯度消失与残差、归一化、过拟合，全部可以拖、可以点。">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='5' y='2' width='14' height='20' rx='3' fill='none' stroke='%2313171C' stroke-width='2'/%3E%3Crect x='7' y='9' width='10' height='11' rx='1.5' fill='%232340D6'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="../../assets/site.css">
-<link rel="stylesheet" href="../2026-10-15-llm-shared/series.css">
+<link rel="stylesheet" href="../study-shared/series.css">
+<style>.series { grid-template-columns: repeat(7, minmax(0, 1fr)); } .series a:nth-child(6n+1) { padding-left: 12px; border-left: 1px solid var(--rule); } .series a:first-child { padding-left: 0; border-left: 0; }</style>
 <script src="../../assets/site.js"></script>
-<script src="../2026-10-15-llm-shared/series.js"></script>
+<script src="../study-shared/series.js"></script>
 <style>
 .legend { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 15px; color: var(--ink-2); margin: 4px 0 6px; }
 .legend span { display: inline-flex; align-items: center; gap: 7px; }
@@ -29,7 +30,7 @@ table.t tr.truth td:first-child { color: var(--ok); font-weight: 650; }
 .bp-desc { font-size: 16px; color: var(--ink); min-height: 3.4em; margin: 10px 0 0; }
 </style>
 </head>
-<body data-part="4">
+<body data-series="llm-series" data-part="4" data-rail>
 
 <header class="site-head">
   <div class="wrap">

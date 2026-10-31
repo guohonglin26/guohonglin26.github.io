@@ -7,9 +7,10 @@
 <meta name="description" content="动手拆一个大语言模型（一）：token 怎么切、一段话怎么一个 token 一个 token 地接出来，以及为什么“猜得准”会逼出知识和推理。">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='5' y='2' width='14' height='20' rx='3' fill='none' stroke='%2313171C' stroke-width='2'/%3E%3Crect x='7' y='9' width='10' height='11' rx='1.5' fill='%232340D6'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="../../assets/site.css">
-<link rel="stylesheet" href="../2026-10-15-llm-shared/series.css">
+<link rel="stylesheet" href="../study-shared/series.css">
+<style>.series { grid-template-columns: repeat(7, minmax(0, 1fr)); } .series a:nth-child(6n+1) { padding-left: 12px; border-left: 1px solid var(--rule); } .series a:first-child { padding-left: 0; border-left: 0; }</style>
 <script src="../../assets/site.js"></script>
-<script src="../2026-10-15-llm-shared/series.js"></script>
+<script src="../study-shared/series.js"></script>
 <style>
 .typed { font-size: clamp(20px, 2.6vw, 26px); line-height: 1.6; margin: 6px 0 12px; color: var(--ink); min-height: 1.6em; }
 .typed .new { color: var(--s1); border-bottom: 2px solid var(--s1); }
@@ -22,7 +23,7 @@
 .ability { display: inline-block; font-size: 15px; border-radius: 5px; padding: 0 8px; margin-left: 6px; background: var(--s1-soft); color: var(--s1); }
 </style>
 </head>
-<body data-part="1">
+<body data-series="llm-series" data-part="1" data-rail>
 
 <header class="site-head">
   <div class="wrap">

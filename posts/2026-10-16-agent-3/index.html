@@ -7,9 +7,10 @@
 <meta name="description" content="深入理解 AI Agent 学习笔记（三）：用户记忆的提取、三层评估框架、四种存储格式、Mem0 的写入时与检索时消歧、RAG 分块与稠密/稀疏/混合检索、结构化索引、知识更新流水线、智能体化 RAG 与上下文感知检索。">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='5' y='2' width='14' height='20' rx='3' fill='none' stroke='%2313171C' stroke-width='2'/%3E%3Crect x='7' y='9' width='10' height='11' rx='1.5' fill='%232340D6'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="../../assets/site.css">
-<link rel="stylesheet" href="../2026-10-16-agent-shared/series.css">
+<link rel="stylesheet" href="../study-shared/series.css">
 <script src="../../assets/site.js"></script>
-<script src="../2026-10-16-agent-shared/series.js"></script>
+<script src="../study-shared/series.js"></script>
+<script src="../study-shared/agentevo.js"></script>
 <style>
 .facts2 { list-style: none; margin: 8px 0 0; padding: 0; }
 .facts2 li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--hair); font-size: 16px; }
@@ -35,7 +36,7 @@
 .chunk em { font-style: normal; color: var(--s1); }
 </style>
 </head>
-<body data-part="3">
+<body data-series="agent-series" data-part="3" data-rail>
 
 <header class="site-head">
   <div class="wrap">

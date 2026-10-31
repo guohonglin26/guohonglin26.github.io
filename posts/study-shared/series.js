@@ -661,10 +661,10 @@
     }
     // 彩色拆解公式
     S.$$('.eqx').forEach(S.eqx);
-    // 演进链：篇首位置卡（插在三问前）与全链纵览
+    // 演进链：篇首位置卡（插在三问前；没有三问就插在第一节前）与全链纵览
     var E = window.EVO, skey = document.body.getAttribute('data-series');
     if (E) {
-      var card = me && S.evoCard(E, skey, me), anchor = S.$('.q3, .ask3');
+      var card = me && S.evoCard(E, skey, me), anchor = S.$('.q3, .ask3') || S.$('main .part');
       if (card && anchor) anchor.parentNode.insertBefore(card, anchor);
       S.$$('.evo-full').forEach(function (b) { S.evoFull(E, b, skey); });
     }

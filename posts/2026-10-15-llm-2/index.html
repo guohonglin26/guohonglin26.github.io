@@ -7,9 +7,10 @@
 <meta name="description" content="动手拆一个大语言模型（二）：用猜数字、彩票、抛硬币和天气预报，把信息量、熵、交叉熵和困惑度一个个摸清楚。">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='5' y='2' width='14' height='20' rx='3' fill='none' stroke='%2313171C' stroke-width='2'/%3E%3Crect x='7' y='9' width='10' height='11' rx='1.5' fill='%232340D6'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="../../assets/site.css">
-<link rel="stylesheet" href="../2026-10-15-llm-shared/series.css">
+<link rel="stylesheet" href="../study-shared/series.css">
+<style>.series { grid-template-columns: repeat(7, minmax(0, 1fr)); } .series a:nth-child(6n+1) { padding-left: 12px; border-left: 1px solid var(--rule); } .series a:first-child { padding-left: 0; border-left: 0; }</style>
 <script src="../../assets/site.js"></script>
-<script src="../2026-10-15-llm-shared/series.js"></script>
+<script src="../study-shared/series.js"></script>
 <style>
 .grid-n { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 5px; max-width: 460px; margin: 10px 0; }
 .grid-n button { font: inherit; font-family: var(--f-num); font-size: 15px; padding: 5px 0; border-radius: 5px; border: 1px solid var(--rule); background: var(--bg); color: var(--ink); cursor: pointer; }
@@ -41,7 +42,7 @@ table.code input[type=range] { width: 100%; min-width: 80px; accent-color: var(-
 .record { font-family: var(--f-num); font-size: 18px; letter-spacing: .12em; color: var(--ink); min-height: 1.5em; }
 </style>
 </head>
-<body data-part="2">
+<body data-series="llm-series" data-part="2" data-rail>
 
 <header class="site-head">
   <div class="wrap">

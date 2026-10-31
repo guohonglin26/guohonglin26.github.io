@@ -7,9 +7,10 @@
 <meta name="description" content="深入理解 AI Agent 学习笔记（四）：五类工具、专用工具与 Skill 的取舍、工具描述与参数保真、MCP 与 Skill Hub 的安全风险、工具太多时的按需加载与主动发现、执行工具的安全层次、Sidecar、幂等性与协作工具。">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='5' y='2' width='14' height='20' rx='3' fill='none' stroke='%2313171C' stroke-width='2'/%3E%3Crect x='7' y='9' width='10' height='11' rx='1.5' fill='%232340D6'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="../../assets/site.css">
-<link rel="stylesheet" href="../2026-10-16-agent-shared/series.css">
+<link rel="stylesheet" href="../study-shared/series.css">
 <script src="../../assets/site.js"></script>
-<script src="../2026-10-16-agent-shared/series.js"></script>
+<script src="../study-shared/series.js"></script>
+<script src="../study-shared/agentevo.js"></script>
 <style>
 .dim4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 20px; }
 .dim4 > div { font-size: 15px; }
@@ -37,7 +38,7 @@
 @media (max-width: 640px) { .sandbox { grid-template-columns: minmax(0, 1fr); } }
 </style>
 </head>
-<body data-part="4">
+<body data-series="agent-series" data-part="4" data-rail>
 
 <header class="site-head">
   <div class="wrap">
