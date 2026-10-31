@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>可信框架：八组要求、四个主题、三层主张</title>
+<meta name="description" content="可信递归自我改进学习笔记（二）：原文从 NIST、TrustLLM、欧盟 AI HLEG 等框架综合出八组可信要求，归入四个主题和三个分析角色（改进有效性、约束保持、有效监督）；可信主张分单次更新、后继、元改进三个层级，各需不同证据；本综述与已有综述的区别。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 4a8 8 0 1 1-7.4 5' fill='none' stroke='%2313171C' stroke-width='2.2' stroke-linecap='round'/%3E%3Cpath d='M2 6l2.6 3 3-2.4' fill='none' stroke='%2313171C' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='12' cy='12' r='3.2' fill='%232340D6'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../assets/site.css">
+<link rel="stylesheet" href="../study-shared/series.css">
+<script src="../../assets/site.js"></script>
+<script src="../study-shared/series.js"></script>
+<script src="../study-shared/agentevo.js"></script>
+<link rel="stylesheet" href="../study-shared/rsi.css">
+<script src="../study-shared/rsi.js"></script>
+<style>
+.reqmap { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 4fr); gap: 16px; margin-top: 10px; }
+.reqlist { display: grid; gap: 6px; }
+.reqlist button { text-align: left; font: inherit; font-size: 15px; padding: 7px 10px; border: 1px solid var(--hair); border-radius: 6px; background: var(--bg); color: var(--ink); cursor: pointer; }
+.reqlist button[aria-pressed="true"] { border-color: var(--s1); background: var(--s1-soft); }
+.reqlist button b { font-family: var(--f-num); color: var(--ink-3); margin-right: 6px; }
+.thbox { display: grid; gap: 8px; }
+.thbox .th { border: 1px solid var(--hair); border-radius: 8px; padding: 8px 12px; background: var(--bg); transition: opacity .2s; }
+.thbox .th.dim { opacity: .35; }
+.thbox .th.on { border-color: var(--s1); box-shadow: 0 0 0 2px var(--s1-soft); }
+.thbox .th small { display: block; font-size: 13px; color: var(--ink-3); }
+.thbox .th b { font-size: 16px; }
+.thbox .th span { display: block; font-size: 14px; color: var(--ink-2); margin-top: 2px; }
+.reqdef { margin-top: 12px; font-size: 15px; color: var(--ink-2); line-height: 1.75; border-top: 1px solid var(--hair); padding-top: 10px; }
+@media (max-width: 760px) { .reqmap { grid-template-columns: minmax(0, 1fr); } }
+.axes3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+.axes3 > div { border: 1px solid var(--hair); border-radius: 8px; padding: 10px 12px; background: var(--bg); }
+.axes3 h5 { margin: 0 0 6px; font-size: 15px; color: var(--ink-3); font-weight: 500; }
+.axes3 .seg { display: flex; }
+.axes3 .seg button { flex: 1 1 auto; font-size: 14px; padding: 4px 8px; }
+@media (max-width: 760px) { .axes3 { grid-template-columns: minmax(0, 1fr); } }
+.axq { margin-top: 12px; padding: 10px 14px; border-left: 4px solid var(--s1); background: var(--panel); border-radius: 0 8px 8px 0; font-size: 16px; line-height: 1.75; }
+</style>
+</head>
+<body data-series="rsi-series" data-part="2" data-rail>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="../../">
+      <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><rect x="7" y="9" width="10" height="11" rx="1.5" fill="var(--s1)"/></svg>
+      AI 观察笔记
+    </a>
+    <nav class="site-nav">
+      <a href="../../">全部文章</a>
+      <button class="theme-btn" type="button">深色</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+<section class="hero wrap">
+  <p class="kicker"><span>技术学习</span><span>可信 RSI · 02</span><span>对应原文第 1.3、2.2、2.3 节（p.6–15）</span><span>约 18 分钟</span></p>
+  <h1>八组要求、四个主题、<em>三层主张</em></h1>
+  <p class="lead">有了 h、B、U 和 S1–S4，下一步是说清楚“可信”到底要检查什么、在哪一层检查。原文的框架有三根坐标轴：四个主题回答“查什么”，S1–S4 / RI 回答“在哪里出问题”，三个主张层级回答“证据管多大范围”。这一篇把三根轴分别立起来，后面四篇（第 3–6 篇）就是在这三根轴张成的空间里逐格填内容。</p>
+  <p class="credit">本系列是综述论文《<a href="https://arxiv.org/abs/2610.35193" rel="noopener">Trustworthy Recursive Self-Improvement in the Era of Large Models: Foundation, Risks, Evaluation and Open Challenges</a>》（Jiayue Pu、Ang Gao 等，中国人民大学高瓴人工智能学院，2026 年 10 月 26 日 v1）的学习笔记。原文正文 56 页，另有约 25 页参考文献和附录。这里按原文第 2–8 节重排成八篇，用自己的话重讲：定义和框架做成可以动手的分类、分步演示，风险和保障按 S1–S4 / RI 做成可切换的对照，评估设计配真实计算。每节标出原文页码；原文数字标“原文数据”，演示数值标“示意”。原文把证据分成“RSI 中直接观察到的”和“相关系统中的”，本笔记沿用这个区分。</p>
+<nav class="series" aria-label="系列目录">
+  <a href="../2026-10-30-rsi/"><b>总览</b>复习台</a>
+  <a href="../2026-10-30-rsi-1/" data-part="1"><b>01</b>什么是 RSI</a>
+  <a href="../2026-10-30-rsi-2/" aria-current="page" data-part="2"><b>02</b>可信框架</a>
+  <a href="../2026-10-30-rsi-3/" data-part="3"><b>03</b>真实提升</a>
+  <a href="../2026-10-30-rsi-4/" data-part="4"><b>04</b>约束与对齐</a>
+  <a href="../2026-10-30-rsi-5/" data-part="5"><b>05</b>安全与隐私</a>
+  <a href="../2026-10-30-rsi-6/" data-part="6"><b>06</b>透明与可控</a>
+  <a href="../2026-10-30-rsi-7/" data-part="7"><b>07</b>怎么评估</a>
+  <a href="../2026-10-30-rsi-8/" data-part="8"><b>08</b>应用与难题</a>
+</nav>
+</section>
+
+<nav class="secnav" aria-label="本篇小节">
+  <div class="wrap"><a href="#req">八组要求</a><a href="#theme">四主题三角色</a><a href="#level">三层主张</a><a href="#axes">三根轴</a><a href="#survey">与其他综述</a><a href="#recap">回扣三问</a></div>
+</nav>
+<div class="wrap">
+<div class="ask3">
+  <h3>读完这一篇，你应该能回答</h3>
+  <ol>
+    <li>八组可信要求怎样归进四个主题？三个“分析角色”是不是三个先后阶段？</li>
+    <li>同一个“提升”，单次更新、后继、元改进三个层级的主张分别需要什么证据？</li>
+    <li>为什么“后继系统表现更好”不能证明“修订后的更新器更好”？</li>
+  </ol>
+</div>
+
+<section class="part" id="req">
+  <div class="part-head"><h2>八组可信要求</h2><span class="meta">原文 §2.2，p.13–14</span></div>
+  <div class="sec-lede">
+    <p>原文给“可信”的定义是：对一个 AI 系统的依赖，在其预期用途下是否有正当理由。已有框架说法不一：Li 等人分技术要求和伦理要求；NIST 列了七个特征，包括有效与可靠、安全与韧性、问责与透明；TrustLLM 列了八个维度（真实性、安全、公平、稳健、隐私、机器伦理、透明、问责）；欧盟 AI HLEG 的指南还把人的能动性与监督列为要求。</p>
+    <p>原文把这些框架综合成<strong>八组要求</strong>，做了三处调整：把相关的性能要求归为一组；把<strong>行为安全</strong>（输出或动作造成的伤害）和<strong>系统安全</strong>（对抗未授权访问和干扰）分开；把可解释性、人类控制、问责分开处理。机器伦理主要通过行为安全和价值对齐来处理，公平和治理各自成组。原文也说明这些组在实践中并不互斥。</p>
+    <p class="go">点一组要求，看它的定义，以及它被归到哪个主题、哪个分析角色。</p>
+  </div>
+  <div class="lab">
+    <div class="reqmap">
+      <div>
+        <div class="reqlist" id="reqL"></div>
+        <div class="reqdef" id="reqD" aria-live="polite"></div>
+      </div>
+      <div class="thbox" id="thB"></div>
+    </div>
+  </div>
+  <div class="confuse">
+    <h4>易混辨析：数据治理 vs 治理</h4>
+    <p><b>数据治理</b>（第 v 组）规定什么数据可以收集、谁能访问、怎么用、何时必须删除；即使是授权的数据处理也可能带来隐私风险。<b>治理</b>（第 viii 组）指授权变更、审查决策、开展审计、提供补救的组织安排，关心的是对整个系统的责任和权力。</p>
+    <p>另一对：<b>人类控制</b>要求有实际手段去检查、重定向、中断、纠正系统；<b>可纠正性（corrigibility）</b>关心系统是否配合授权的纠正（包括修改或关停），而不是抵抗或操纵监督。前者是“有没有开关”，后者是“系统会不会配合开关”。</p>
+  </div>
+  <div class="notes" id="n-req"></div>
+</section>
+
+<section class="part" id="theme">
+  <div class="part-head"><h2>四个主题，三个分析角色</h2><span class="meta">原文表 3，p.14–15</span></div>
+  <div class="sec-lede">
+    <p>八组要求进一步归成四个主题，每个主题有一个 RSI 特有的问题：</p>
+    <p><strong>真实且持续的提升</strong>（第 3 篇）：提升是不是真的、能不能持续，包括在更新机制被修订之后？<strong>行为约束、对齐与公平</strong>（第 4 篇）：行为要求在连续修订中是否一直满足？<strong>系统安全、韧性、隐私与数据治理</strong>（第 5 篇）：被继承的组件和信息在后续使用中是否受到保护？<strong>透明与可控</strong>（第 6 篇）：包括对更新机制的修改在内，修订能否被审查和纠正？</p>
+    <p>四个主题再挂到三个<strong>分析角色</strong>下：第一个主题属于<strong>改进有效性</strong>（Improvement Validity），中间两个属于<strong>约束保持</strong>（Constraint Preservation），最后一个属于<strong>有效监督</strong>（Effective Oversight）。原文特别强调：这三个角色是<strong>互补的分析视角，不是改进流程的不同阶段</strong>。同一次修订可能同时影响多个主题，例如改了接受测试，既关系改进有效性，也关系有效监督。</p>
+  </div>
+  <div class="tblw"><table class="cmpt">
+    <thead><tr><th>分析角色</th><th>主题</th><th>包含的要求组</th><th>RSI 特有的问题</th></tr></thead>
+    <tbody>
+      <tr><td>改进有效性</td><td>真实且持续的提升</td><td>(i) 有效、可靠、稳健、真实</td><td>提升是否真实且持续，包括更新机制修订之后？</td></tr>
+      <tr><td>约束保持</td><td>行为约束、对齐与公平</td><td>(ii) 行为安全与价值对齐；(iii) 公平</td><td>行为要求在连续修订中是否仍满足？</td></tr>
+      <tr><td>约束保持</td><td>系统安全、韧性、隐私与数据治理</td><td>(iv) 系统安全与韧性；(v) 隐私与数据治理</td><td>继承的组件和信息在后续使用中是否受保护？</td></tr>
+      <tr><td>有效监督</td><td>透明与可控</td><td>(vi) 透明与可解释；(vii) 人类控制与可纠正性；(viii) 问责与治理</td><td>修订（含对更新机制的修改）能否被审查和纠正？</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">表格整理自原文表 3（p.15）。</p>
+  <div class="notes" id="n-theme"></div>
+</section>
+
+<section class="part" id="level">
+  <div class="part-head"><h2>三层主张：证据管多大范围</h2><span class="meta">原文 §2.3，p.14；§3.1.2 等各节的“Claims”小节</span></div>
+  <div class="sec-lede">
+    <p>原文认为，评估 RSI 不能只看一次修订：一个被接受的改动会影响后面的版本，修订 U<sub>t</sub> 又会改变以后的更新怎么产生、怎么评估。所以它区分三个层级的可信主张：</p>
+    <p><span class="lv u">单次更新</span> 一个被提出并被接受的修订，是否满足适用的要求？证据是在声明的评估条件下做修改前后对比，而且要看有效、可靠、稳健、真实等标准，不能只看一个代理分数。</p>
+    <p><span class="lv s">后继</span> 被接受的改动被继承、在之后的循环中被使用时，这些要求是否继续成立？在单次更新的证据之外，还要证明改动<strong>确实被继承并且确实被用到了</strong>，然后在得到的系统上重新评估。跟踪多个后继，可以测出提升持续多久、迁移多远。</p>
+    <p><span class="lv m">元改进</span> 修订 U<sub>t</sub> 如何影响后续更新的质量，以及施加在这些更新上的检查和控制？需要观察到 U<sub>t</sub> → U<sub>t+1</sub> 的修订、修订后机制的后续复用、以及对它产出的更新的评估。要声称“更好”，还需要<strong>受控比较</strong>：在可比条件下，U<sub>t+1</sub> 产出的后续更新优于不变的 U<sub>t</sub>，并且把修订的作用和额外资源、继承起点不同的作用分离开。</p>
+    <p class="go">下面每条证据描述，最多能支撑到哪一层主张？</p>
+  </div>
+  <div class="lab"><div id="lvQ"></div></div>
+  <div class="quote">
+    <p>原文在结论里把这一点说得最直白：不同层级的证据支撑的是不同的主张；成功的后继本身不能证明修订后的更新器改进了产生它们的过程。</p>
+    <p class="en">“Evidence at one level supports a different claim from evidence at another: successful successors alone do not establish that a revised updater improves the process that generates them.”（p.56）</p>
+  </div>
+  <div class="notes" id="n-level"></div>
+</section>
+
+<section class="part" id="axes">
+  <div class="part-head"><h2>三根轴：查什么、在哪、管多大</h2><span class="meta">原文 §2.3 末段，p.15</span></div>
+  <div class="sec-lede">
+    <p>原文在 §2.3 末尾交代了全文的组织方式：主题指出要评估或保护什么；S1–S4 和 RI 提供一个过程框架，用来定位要求可能在哪里被违反、保障可以加在哪里；主张层级规定证据的范围。第 3–6 篇每篇都按同样的结构写：先定义主题和边界，再按 S1–S4 / RI 讲风险和失败证据，然后讲已有保障和局限，最后综合证据、指出研究空白。</p>
+    <p class="go">三根轴各选一个值，看原文在这个格子里关心的典型问题（取自各主题章节的原文表述）。</p>
+  </div>
+  <div class="lab">
+    <div class="axes3">
+      <div><h5>主题（查什么）</h5><div class="seg" id="axT"><button data-v="0" aria-pressed="true">真实提升</button><button data-v="1">行为约束</button><button data-v="2">安全隐私</button><button data-v="3">透明可控</button></div></div>
+      <div><h5>阶段（在哪）</h5><div class="seg" id="axS"><button data-v="0" aria-pressed="true">S1</button><button data-v="1">S2</button><button data-v="2">S3</button><button data-v="3">S4</button><button data-v="4">RI</button></div></div>
+      <div><h5>层级（管多大）</h5><div class="seg" id="axL"><button data-v="0" aria-pressed="true">单次更新</button><button data-v="1">后继</button><button data-v="2">元改进</button></div></div>
+    </div>
+    <div class="axq" id="axOut" aria-live="polite"></div>
+    <p class="note">“阶段”格子的内容来自原文第 3–6 节对应小节；“层级”给出该主题下这一层主张需要补充的证据。两者组合是本笔记的整理方式，原文没有把三根轴做成一张完整的表。</p>
+  </div>
+  <div class="notes" id="n-axes"></div>
+</section>
+
+<section class="part" id="survey">
+  <div class="part-head"><h2>这篇综述和已有综述有什么不同</h2><span class="meta">原文 §1.3–1.4，表 1，p.6–8</span></div>
+  <div class="sec-lede">
+    <p>原文把已有综述分三类。<strong>可信 AI 综述</strong>（面向一般 AI、LLM、智能体及智能体工作流）定义可信属性、回顾评估方法，主要从系统属性和工作流的角度看。<strong>自我进化与 RSI 综述</strong>分类可变组件和反馈机制；其中 Wang 等（2026d）区分了自我进化的五个层级，把每个更新边界和外部证据、晋升标准、恢复控制联系起来，并呼吁对后继系统做纵向评估，原文说这种“层级审计视角”和自己的“主张层级联合证据分析”互补。<strong>演化安全综述</strong>里，Gong 等（2026）按变化领域组织演化安全；Chen 等（2026a）用 SAVER 追踪可复用状态转换中的安全失效，发现把原本合法的状态在持久性、权限或范围上扩展，就可能引入安全风险，而后继系统中“修复”的证据仍然有限。</p>
+    <p>原文用五个维度比较：多维可信（MT）、改进循环分析（IL）、机制修订（MR）、纵向保证（LA）、联合证据分析（JE）。它对自己的定位是“<strong>主张层级的联合证据审计</strong>”：在对齐的系统版本或更新轨迹上，把能力、约束和监督的证据放在一起看。综述的一个观察是：在所选文献里，对“复用的改进机制”的评估，更多直接关注能力提升，而不是对约束保持和干预有效性的联合评估。</p>
+    <p>原文自述三项贡献：一是基于 Mitchell 定义的 RSI 操作性定义和过程框架（第 1 篇）；二是统一的分类法和面向证据的综合，包括区分“研究层面的覆盖”和“对齐轨迹上的联合证据”的版本化证据图，并把 RSI 中直接展示的发现与相关系统证据、尚未经实证的潜在风险和建议保障分开；三是纵向评估和开放问题，包括用“成对续跑”评估更新器修订、把机制效应和总成本效率分开（第 7 篇）。</p>
+  </div>
+  <div class="lab">
+    <p class="lab-t">本系列沿用的证据标记</p>
+    <p class="lab-s">原文反复强调要区分证据来源。后面各篇在引用一项研究时会标出：</p>
+    <ul class="pts">
+      <li><span class="evt rsi">RSI 直接</span> 在会修订并复用改进机制、或在原文明确作为 RSI 研究讨论的系统里观察到的结果（如 Hyperagents、DGM、Evo2、SICA）。</li>
+      <li><span class="evt rel">相关系统</span> 来自持久更新的相关系统（微调、记忆智能体、技能库、自训练等），原文用它们说明某种风险或保障的机制。</li>
+      <li><span class="evt arg">原文推论</span> 原文从已观察机制推出的设计要求或建议，原文自己注明尚待实证（例如“把最终批准权放在候选者能修改的范围之外”）。</li>
+    </ul>
+    <p class="note">分类是本笔记按原文表述所做的标注，个别研究的归属可能与原作者看法不同。</p>
+  </div>
+  <div class="notes" id="n-survey"></div>
+</section>
+
+<section class="part" id="recap">
+  <div class="part-head"><h2>回扣开头的三个问题</h2><span class="meta">先自己答，再点开</span></div>
+  <div class="ask3" style="margin-top:0">
+    <details><summary>1. 八组要求怎样归进四个主题？三个分析角色是三个阶段吗？</summary><p class="ans">(i) → 真实且持续的提升（改进有效性）；(ii)(iii) → 行为约束、对齐与公平，(iv)(v) → 系统安全、韧性、隐私与数据治理（都属约束保持）；(vi)(vii)(viii) → 透明与可控（有效监督）。三个角色是互补的分析视角，不是流程阶段；同一次修订可能同时触及几个主题。</p></details>
+    <details><summary>2. 三个层级的主张分别需要什么证据？</summary><p class="ans">单次更新：声明条件下的前后对比，看多项标准而非单一代理分数。后继：另外证明改动被继承且被实际使用，并在得到的系统上重新评估，跟踪多个后继看持续和迁移。元改进：观察到 U 的修订和复用，评估它产出的更新；声称“更好”还要与不变的 U 在可比条件下受控比较，排除额外资源和起点差异。</p></details>
+    <details><summary>3. 为什么后继表现更好不能证明更新器更好？</summary><p class="ans">后继的提升可能来自额外的计算、继承的记忆或其他同时发生的改动，而不是 U 的修订本身。只有从同一起点、用同样预算、分别固定 U<sub>t</sub> 和 U<sub>t+1</sub> 续跑并比较，才能把提升归因到更新器（第 7 篇的“成对续跑”）。</p></details>
+  </div>
+</section>
+<nav class="pager" aria-label="翻页"><a href="../2026-10-30-rsi-1/"><small>上一篇</small><span>01 · RSI 的定义：h、B、U 三层与 S1–S4 循环</span></a><a class="nx" href="../2026-10-30-rsi-3/"><small>下一篇</small><span>03 · 真实且持续的提升</span></a></nav>
+</div>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <span>AI 观察笔记</span>
+    <span>学习笔记 · 原书：<a href="https://arxiv.org/abs/2610.35193" rel="noopener">arXiv:2610.35193</a></span>
+  </div>
+</footer>
+<script>
+(function () {
+'use strict';
+var $ = S.$, $$ = S.$$, h = S.h;
+/* ---------- 八组要求 ---------- */
+var TH = [
+  { r: '改进有效性', t: '真实且持续的提升', n: '第 3 篇' },
+  { r: '约束保持', t: '行为约束、对齐与公平', n: '第 4 篇' },
+  { r: '约束保持', t: '系统安全、韧性、隐私与数据治理', n: '第 5 篇' },
+  { r: '有效监督', t: '透明与可控', n: '第 6 篇' }
+];
+var REQ = [
+  ['i', '有效、可靠、稳健、真实', 0, '<b>有效</b>：是否满足预期用途的要求。<b>可靠</b>：在规定条件下表现可依赖。<b>稳健</b>：在相关扰动或分布偏移下保持表现。<b>真实</b>：输出和报告在事实上准确。'],
+  ['ii', '行为安全与价值对齐', 1, '<b>行为安全</b>：防止系统输出或动作造成不可接受的伤害。<b>价值对齐</b>：系统的目标和行为尊重相关的人类目标、价值和约束，而不只是最大化一个给定的奖励。'],
+  ['iii', '公平', 1, '个人或群体之间在待遇、机会、收益和伤害上的不合理差异。合适的公平标准取决于任务和情境；高总体准确率或数值上的均等都不能单独证明公平。'],
+  ['iv', '系统安全与韧性', 2, '<b>安全</b>：保护系统和信息的机密性、完整性、可用性，防止未授权访问或干扰。<b>韧性</b>：在攻击、故障或其他不利条件下维持基本功能并恢复。'],
+  ['v', '隐私与数据治理', 2, '<b>隐私</b>：保护个人免受不当的信息收集、推断、使用和披露。<b>数据治理</b>：规定什么数据可以收集、谁能访问、怎么用、何时必须删除；授权的处理也可能带来隐私风险。'],
+  ['vi', '透明与可解释', 3, '<b>透明</b>：让系统数据、设计、运行和局限的相关信息可获得。<b>可解释</b>：帮助用户和审查者理解输出以及产生输出的过程。'],
+  ['vii', '人类控制与可纠正性', 3, '<b>人类控制</b>：有实际手段检查、重定向、中断或纠正系统。<b>可纠正性</b>：系统配合授权的纠正（包括修改或关停），而不是抵抗或操纵监督。'],
+  ['viii', '问责与治理', 3, '<b>问责</b>：对决策及其后果有明确分配的责任，并能解释和证明这些决策。<b>治理</b>：授权变更、审查决策、开展审计、提供补救的组织安排。']
+];
+var thEls = TH.map(function (t) {
+  return S.h('div', { class: 'th', html: '<small>' + t.r + '</small><b>' + t.t + '</b><span>' + t.n + '</span>' }, $('#thB'));
+});
+var reqBtns = REQ.map(function (r, i) {
+  var b = S.h('button', { type: 'button', 'aria-pressed': 'false', html: '<b>(' + r[0] + ')</b>' + r[1] }, $('#reqL'));
+  b.addEventListener('click', function () { req(i); });
+  return b;
+});
+function req(i) {
+  reqBtns.forEach(function (b, j) { b.setAttribute('aria-pressed', String(i === j)); });
+  thEls.forEach(function (e, j) { e.className = 'th ' + (j === REQ[i][2] ? 'on' : 'dim'); });
+  $('#reqD').innerHTML = REQ[i][3];
+}
+req(0);
+
+/* ---------- 三层主张小测 ---------- */
+S.quiz($('#lvQ'), [
+  { q: '某次接受的提示词修订，在声明的留出任务上前后对比，正确率提高，回归测试也通过。', o: ['单次更新', '后继', '元改进'], a: 0, why: '这是对一个指定改动的前后对比，最多支撑单次更新层的主张。' },
+  { q: 'SICA：初始智能体在 50 个 SWE-bench 任务上从 17% 提升到峰值 53%，后面的修改由前面改过的智能体自己写，但没有“固定更新器”的消融。', o: ['单次更新', '后继', '元改进'], a: 1, why: '原文 p.21–22：SICA 复用修改后的智能体做后续修改，但没有单独固定更新器，所以能说明后继的能力变化，不能把提升归因到更新器的修订。' },
+  { q: 'Hyperagents：在共同的迭代额度下，比较“可编辑元智能体”和“固定元智能体”产出的任务智能体。', o: ['单次更新', '后继', '元改进'], a: 2, why: '原文 p.21 认为这类“固定元智能体对照”是隔离更新器贡献的最强证据之一，指向元改进层。' },
+  { q: '某个技能被写进技能库后，三个版本之后再测，发现它从来没被检索调用过，但总分仍在上升。', o: ['可以支撑后继层的“这个技能带来了提升”', '不能支撑：没有证明改动被实际使用', '可以支撑元改进'], a: 1, why: '后继主张要求证明改动被继承并且被实际使用。原文 §3.2.4 还提到，智能体可能生成了有用的改动却因为没调用或没遵循而收益很小。' }
+]);
+
+/* ---------- 三根轴 ---------- */
+var AX = [
+  [
+    '诊断依据的经验是否有偏：用生成样本替换旧数据会让稀有模式消失，诊断就看不见涉及这些模式的失败。反馈是否把失败描述错了。',
+    '搜索会不会找到高分捷径：利用代理奖励或可执行测试的漏洞，而真正的弱点没解决；更多尝试是否只是让“选出最好的”看起来更有效。',
+    '接受分数能否反映真实能力：自评奖励依赖识别错误的能力，共享错误会互相强化，自写测试会奖励部署中失败的行为，评分者可能变宽松。',
+    '新能力是否干扰旧技能：遗忘、共享提示词互相干扰、技能变多反而妨碍检索；系统是否真的调用并遵循了更新后的指令。',
+    '改 U 是否只是换了改进的方式而没有提高未来改进的能力；提升是不是来自额外计算或别处同时发生的改动。'
+  ],
+  [
+    '反馈是否代表了不完整的行为规则、某一方利益相关者的偏好，或漏掉了下一轮训练中缺席的群体；成功执行不等于恰当行为。',
+    '优化的代理是否不完整地代表人的要求：目标误泛化、代理过优化、奖励篡改；编辑参数可能削弱拒答，编辑 harness 可能改变工具权限或安全记忆。',
+    '测试是否漏掉依赖上下文的伤害、或奖励过度拒绝；评估器在优化中可能被利用或被修改；聚合的公平分数可能掩盖个别群体的损失。',
+    '装进后继的改动是否在行为、目标或群体结果上持续，与继承的组件互相作用；微调会削弱安全行为，保留的经验会改变之后的执行和拒答。',
+    '修订后的机制可能采用不同偏好、探索原先排除的修改、放宽接受标准；对 U<sub>t</sub> 建立的保证都要对 U<sub>t+1</sub> 重新检查。'
+  ],
+  [
+    '记忆投毒让低可信输入持续影响诊断；隐私问题在存储之前就可能发生（超出任务需要的获取）。',
+    '方案生成把被污染的经验转成保留下来的资产（技能）；派生资产即使不逐字复制原始记录，也可能保留敏感信息。',
+    '候选者能改动评估它的证据（例如删掉隐藏检测器所需的日志）时，接受决策就不可靠；对候选或其记忆的反复查询可能成为泄露通道。',
+    'S4 保留的改动在源头被删后仍可活跃；删除主张必须说明覆盖了哪些派生资产、哪些可访问的历史版本。',
+    '对 U<sub>t</sub> 的修改可能改变管着后续更新的证据、权限和检查；对收集、脱敏、发布规则的修改会让之前的隐私结论失效。'
+  ],
+  [
+    '诊断定位的是哪类失败：最初的错误、第一个不可恢复的点、还是被忽视的恢复机会；自我报告和推理痕迹是否忠实。',
+    '一个提案给出的理由看似有信息量，却未必真正解释了要修订的行为；干预可能达不到预期的行为效果。',
+    '审查证据是否彼此依赖：多加几个评审者，错误相关时价值有限；惩罚被检测到的推理可能只压制了可见证据。',
+    '实际运行的系统是否就是被批准的配置（含非权重状态）；干预能否到达受影响的进程和状态。',
+    '改了搜索或证据选择可能让审查条件失效；改了批准或停止权限可能挪动控制边界；之前的解释、评估、监督流程都要重新检查。'
+  ]
+];
+var LV = [
+  ['在声明条件下的前后对比，看有效、可靠、稳健、真实等多项标准，不只看代理分数。', '对一个指定改动做前后行为对比，识别适用的要求、受影响群体和相关结果，而不是只看总体任务表现。', '指明具体改动、相关访问条件、进入 / 转化 / 评估 / 发布的位置，对比更新前状态的安全、韧性、隐私、授权使用。', '有可检查的改动证据，更新前后测试相关解释和控制；声称可审查可纠正，就要证明干预在声明条件下达到预期效果。'],
+  ['证明改动被继承且被实际使用，在得到的系统上重新评估；多个后继测出提升持续多久、迁移多远。', '证明改动被继承且被实际使用，重新评估同样的要求；多个后继可以显示效应是持续、累积还是逆转。', '证明改动被继承并被使用，重新评估声称的保护或恢复效果；要考虑相关派生资产和可访问的历史版本。', '测试解释是否仍然忠实、授权干预是否仍然有效、责任分配是否仍覆盖得到的状态。'],
+  ['观察到 U 的修订与复用，评估其产出的更新；与不变的 U 在可比条件下受控比较，分离额外资源和起点差异。', '跟踪 U 的修订与复用，在产出的更新上评估约束违反、对齐和群体结果；声称“更能保持要求”需要与不变的 U 受控比较。', '对证据检查、权限或数据使用规则的修改，要在修订后的机制下重测；声称改善需与不变的 U 在可比访问条件、预算和起点下比较。', '修改边界规定哪些组件能被改，控制边界规定谁能提出、批准、实施、中断、撤销；复用后监督是否仍有效要单独测试。']
+];
+var ax = [0, 0, 0];
+function axDraw() {
+  var t = TH[ax[0]];
+  $('#axOut').innerHTML = '<b>' + t.t + ' × ' + ['S1 改进诊断', 'S2 方案生成', 'S3 方案评估', 'S4 更新实施', 'RI 递归改进'][ax[1]] + '</b>：' + AX[ax[0]][ax[1]] +
+    '<br><b>' + ['单次更新', '后继', '元改进'][ax[2]] + '层要补的证据</b>：' + LV[ax[2]][ax[0]] +
+    '<br><span style="font-size:15px;color:var(--ink-3)">详见' + t.n + '。</span>';
+}
+S.seg($('#axT'), function (v) { ax[0] = +v; axDraw(); });
+S.seg($('#axS'), function (v) { ax[1] = +v; axDraw(); });
+S.seg($('#axL'), function (v) { ax[2] = +v; axDraw(); });
+axDraw();
+
+/* ---------- 记下来 ---------- */
+S.notes($('#n-req'), {
+  c: [['可信', '对系统的依赖在其预期用途下是否有正当理由。'], ['行为安全 vs 系统安全', '前者防输出 / 动作造成伤害，后者防未授权访问和干扰。'], ['人类控制 vs 可纠正性', '有没有开关 vs 系统配不配合开关。']],
+  p: [['来源框架', 'NIST（七特征）、TrustLLM（八维度）、欧盟 AI HLEG、Li 等、Liu 等。'], ['八组', '(i) 有效可靠稳健真实 (ii) 行为安全与对齐 (iii) 公平 (iv) 系统安全与韧性 (v) 隐私与数据治理 (vi) 透明可解释 (vii) 人类控制与可纠正 (viii) 问责与治理。']]
+});
+S.notes($('#n-theme'), {
+  c: [['改进有效性', '提升是否真实、持续（第 3 篇）。'], ['约束保持', '行为约束、对齐、公平（第 4 篇）；安全、韧性、隐私、数据治理（第 5 篇）。'], ['有效监督', '透明与可控（第 6 篇）。']],
+  p: [['角色≠阶段', '三个分析角色是互补视角，不是改进流程的先后阶段。'], ['一改多主题', '改接受测试同时关系改进有效性和有效监督。']]
+});
+S.notes($('#n-level'), {
+  c: [['单次更新主张', '一个被接受的修订是否满足要求。'], ['后继主张', '继承并被实际使用后，要求是否仍成立。'], ['元改进主张', '修订后的 U 是否产出更好的、可信的后续更新。']],
+  p: [['后继额外证据', '改动被继承 + 被实际使用 + 重新评估。'], ['元改进额外证据', '观察到 U 的修订和复用 + 与不变 U 受控比较 + 排除额外资源和起点差异。'], ['核心警句', '成功的后继本身不证明修订后的更新器更好（p.56）。']]
+});
+S.notes($('#n-axes'), {
+  c: [['主题', '查什么。'], ['S1–S4 / RI', '在哪里出问题、保障加在哪里。'], ['主张层级', '证据的范围。']],
+  p: [['第 3–6 篇结构', '定义与边界 → 按阶段的风险与失败证据 → 已有保障及局限 → 证据综合与研究空白 → Takeaway。']]
+});
+S.notes($('#n-survey'), {
+  c: [['联合证据（JE）', '在对齐的系统版本或更新轨迹上，把能力、约束、监督证据放在一起审计。'], ['SAVER', 'Chen 等（2026a）追踪可复用状态转换中安全失效的框架。']],
+  p: [['五维度', 'MT 多维可信、IL 改进循环、MR 机制修订、LA 纵向保证、JE 联合证据。'], ['综述观察', '对复用改进机制的评估偏重能力提升，少有约束保持与干预有效性的联合评估。']]
+});
+})();
+</script>
+</body>
+</html>

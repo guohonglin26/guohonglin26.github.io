@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>评估可信 RSI：成对续跑与联合判据</title>
+<meta name="description" content="可信递归自我改进学习笔记（七）：现有评估在单次更新、后继、元改进三层各覆盖了什么；114 项研究里只有 4 项做了匹配起点和预算的改进器比较；三层比较设计（开发 / 接受 / 报告分离、版本化后继记录、成对续跑）；一次性发现成本的分摊；接受规则的有效性（PACE、SGM、REUSE）；一条轨迹上的联合判据；八项纵向可信检查。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 4a8 8 0 1 1-7.4 5' fill='none' stroke='%2313171C' stroke-width='2.2' stroke-linecap='round'/%3E%3Cpath d='M2 6l2.6 3 3-2.4' fill='none' stroke='%2313171C' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='12' cy='12' r='3.2' fill='%232340D6'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../assets/site.css">
+<link rel="stylesheet" href="../study-shared/series.css">
+<script src="../../assets/site.js"></script>
+<script src="../study-shared/series.js"></script>
+<script src="../study-shared/agentevo.js"></script>
+<link rel="stylesheet" href="../study-shared/rsi.css">
+<script src="../study-shared/rsi.js"></script>
+</head>
+<body data-series="rsi-series" data-part="7" data-rail>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="../../">
+      <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><rect x="7" y="9" width="10" height="11" rx="1.5" fill="var(--s1)"/></svg>
+      AI 观察笔记
+    </a>
+    <nav class="site-nav">
+      <a href="../../">全部文章</a>
+      <button class="theme-btn" type="button">深色</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+<section class="hero wrap">
+  <p class="kicker"><span>技术学习</span><span>可信 RSI · 07</span><span>对应原文第 7 节（p.43–49）</span><span>约 25 分钟</span></p>
+  <h1>别只看终点分数，<em>看整条轨迹</em></h1>
+  <p class="lead">第 3–6 篇在每个主题末尾都说“需要在匹配条件下比较”“需要纵向评估”。这一篇是原文把这些要求收拢成具体评估设计的一节，也是全文最“可操作”的部分：现有研究到底测了什么，三个层级各该怎么比，成本怎么算，以及什么时候能说一条演化轨迹“同时”满足了所有要求。</p>
+  <p class="credit">本系列是综述论文《<a href="https://arxiv.org/abs/2610.35193" rel="noopener">Trustworthy Recursive Self-Improvement in the Era of Large Models: Foundation, Risks, Evaluation and Open Challenges</a>》（Jiayue Pu、Ang Gao 等，中国人民大学高瓴人工智能学院，2026 年 10 月 26 日 v1）的学习笔记。原文正文 56 页，另有约 25 页参考文献和附录。这里按原文第 2–8 节重排成八篇，用自己的话重讲：定义和框架做成可以动手的分类、分步演示，风险和保障按 S1–S4 / RI 做成可切换的对照，评估设计配真实计算。每节标出原文页码；原文数字标“原文数据”，演示数值标“示意”。原文把证据分成“RSI 中直接观察到的”和“相关系统中的”，本笔记沿用这个区分。</p>
+<nav class="series" aria-label="系列目录">
+  <a href="../2026-10-30-rsi/"><b>总览</b>复习台</a>
+  <a href="../2026-10-30-rsi-1/" data-part="1"><b>01</b>什么是 RSI</a>
+  <a href="../2026-10-30-rsi-2/" data-part="2"><b>02</b>可信框架</a>
+  <a href="../2026-10-30-rsi-3/" data-part="3"><b>03</b>真实提升</a>
+  <a href="../2026-10-30-rsi-4/" data-part="4"><b>04</b>约束与对齐</a>
+  <a href="../2026-10-30-rsi-5/" data-part="5"><b>05</b>安全与隐私</a>
+  <a href="../2026-10-30-rsi-6/" data-part="6"><b>06</b>透明与可控</a>
+  <a href="../2026-10-30-rsi-7/" aria-current="page" data-part="7"><b>07</b>怎么评估</a>
+  <a href="../2026-10-30-rsi-8/" data-part="8"><b>08</b>应用与难题</a>
+</nav>
+</section>
+
+<nav class="secnav" aria-label="本篇小节">
+  <div class="wrap"><a href="#cover">现有评估覆盖</a><a href="#count">先估一个数</a><a href="#update">单次更新比较</a><a href="#succ">后继比较</a><a href="#meta">成对续跑</a><a href="#cost">成本分摊</a><a href="#valid">接受有效性</a><a href="#joint">联合判据</a><a href="#recap">回扣三问</a></div>
+</nav>
+<div class="wrap">
+<div class="ask3">
+  <h3>读完这一篇，你应该能回答</h3>
+  <ol>
+    <li>要把提升归因到修订后的更新器，“成对续跑”需要固定哪些条件？</li>
+    <li>一次性的更新器发现成本，原文建议怎么算进效率比较？</li>
+    <li>一条轨迹的初始版和最终版都通过了所有检查，为什么仍可能不满足联合判据？</li>
+  </ol>
+</div>
+
+<section class="part" id="cover">
+  <div class="part-head"><h2>现有评估覆盖了什么</h2><span class="meta">原文 §7.1，图 8，p.43–45</span></div>
+  <div class="sec-lede">
+    <p>原文按“证据主要支撑哪一层主张”把研究分组，再用四个主题看每组的覆盖。图 8 是一张证据覆盖矩阵：行是改进有效性（任务表现、保留 / 迁移）、约束保持（安全 / 安全性、公平、隐私）、有效监督（干预），以及支撑性的评估设计（成本、实验对照、接受、复用分析、状态复用、更新器编辑、由修订后更新器产出的更新）；列是各项研究。格子分“已考察”“讨论或案例”“未评估”“不清楚”四种。原文附录 A.4 和审计文件给出了编码标准和来源位置。</p>
+    <p>矩阵的两个编码约定值得记住：<strong>“报告了成本”和“在匹配的总资源下比较”是两回事</strong>；<strong>“修订了更新器”和“持久的任务状态变化”也是两回事</strong>。</p>
+    <p class="go">按层级浏览原文提到的代表性评估。</p>
+  </div>
+  <div class="lab">
+    <div class="seg" id="cvS"><button data-v="0" aria-pressed="true">单次更新层</button><button data-v="1">后继层</button><button data-v="2">元改进层</button></div>
+    <div id="cvOut" style="margin-top:10px"></div>
+  </div>
+  <div class="notes" id="n-cover"></div>
+</section>
+
+<section class="part" id="count">
+  <div class="part-head"><h2>先估一个数</h2><span class="meta">原文 §7.2，p.47</span></div>
+  <div class="sec-lede">
+    <p>原文在讲元改进比较时引用了一项文献统计（Chen 等 2026j）：回顾了 114 项研究，其中 26 项标为 RSI、声称改进了改进程序本身。问题是，这 26 项里有多少项在<strong>相同的起始产物、匹配的预算</strong>下比较了前后两版改进器？</p>
+  </div>
+  <div class="lab">
+    <div id="ctGuess"></div>
+    <div class="kv" style="margin-top:8px">
+      <div><b>114</b><span>被回顾的研究</span></div>
+      <div><b>26</b><span>标为 RSI、声称改进了改进程序</span></div>
+      <div><b>4</b><span>用相同起始产物和匹配预算比较前后改进器</span></div>
+    </div>
+    <p class="note">原文数据，引自 Chen 等（2026j），p.47。</p>
+  </div>
+  <div class="notes" id="n-count"></div>
+</section>
+
+<section class="part" id="update">
+  <div class="part-head"><h2>单次更新层：开发、接受、报告三分开</h2><span class="meta">原文 §7.2，图 9 左，p.46</span></div>
+  <div class="sec-lede">
+    <p>原文的第一条要求：<strong>把 S1–S2 的开发经验、S3 的接受证据、S4 之后在冻结的后继快照上做的独立报告分开</strong>。会影响后续提案的接受结果，本身就是方程 (3) 里反馈 F<sub>t+1</sub> 的一部分。这个区分在自写验证里很关键：内部测试可能一直很好看，而封存的部署表现在恶化；在所研究的“策略与测试重写”设定中，外部接受减少了回退（Guo 等 2026）。</p>
+    <p>具体做法：独立报告测试在<strong>一次性的后继副本</strong>上运行，结果在整个被评估的运行中都不回传给改进搜索；接受集被复用时，说明提案者能拿到哪些反馈；<strong>事先</strong>设定接受阈值，包括相关人群和（适用时）攻击者访问权限；完整记录在经验收集、提案、被拒尝试、训练和接受测试上花的资源；人类协助和报告成本单独报告；参照 RE-Bench 和 Agent Plasticity，在终点分数之外报告<strong>性能–预算曲线</strong>。</p>
+    <p class="go">拿一份假想的评估报告对照一下：勾上它做到了的。</p>
+  </div>
+  <div class="lab">
+    <div class="chk" id="upChk"></div>
+    <div class="verdict3" id="upOut" aria-live="polite"></div>
+  </div>
+  <div class="notes" id="n-update"></div>
+</section>
+
+<section class="part" id="succ">
+  <div class="part-head"><h2>后继层：版本化记录，记下所有分支</h2><span class="meta">原文 §7.2，图 9 中，p.46–47</span></div>
+  <div class="sec-lede">
+    <p>原文要求维护一个<strong>版本化记录</strong>：继承的 (h<sub>t</sub>, B<sub>t</sub>, U<sub>t</sub>)、依赖、父版本、提案和接受决定。在共同的参考任务和留出的任务族上，评估初始、中间和最终快照。几个具体建议都来自已有基准：RSIBench-Data 提示要同时报告观察到的最佳候选和被选中的在任者；TEB 提示要重复评估冻结的对照；EvoPathBench 加入干扰和规则逆转测试；在某个检查点关闭对产物的访问，可以估计继承产物对评估表现的贡献。</p>
+    <p>还要：改变任务顺序；<strong>保留失败的分支，包括耗尽预算的运行</strong>；在独立的改进运行之间估计不确定性，同时考虑同一运行内后继之间的依赖；对每项要求维护版本化的评估范围、结果和不确定性记录，适当时写“未评估”。</p>
+    <p>安全方面，SEABench 用自适应发现找下游失败，但要估计部署中的发生率，还需要定义好的任务分布和抽样程序。原文建议把攻击和控制评估延伸到一个声明的时域上，度量：<strong>到第一次严重失败的时间、累计违规数、出现过任何严重失败的运行比例、恢复结果</strong>（包括被提前停止的运行）；在 S4 之后和 U<sub>t+1</sub> 被复用之后重复停止和回滚测试，覆盖记忆、工具、排队的动作和权限；把恢复的内部状态和残留的外部效应分开记录。</p>
+  </div>
+  <div class="notes" id="n-succ"></div>
+</section>
+
+<section class="part" id="meta">
+  <div class="part-head"><h2>元改进层：成对续跑</h2><span class="meta">原文 §7.2，图 9 右，p.47</span></div>
+  <div class="sec-lede">
+    <p>要把提升归因到修订后的更新器，原文给出的设计是<strong>成对续跑（paired continuations）</strong>，沿用 Hyperagents 固定更新器对照的思路：从<strong>同一个</strong> h<sub>t</sub>、B<sub>t</sub> 和持久状态出发，一臂用 U<sub>t</sub>，另一臂用 U<sub>t+1</sub>；<strong>每一臂内更新器保持固定</strong>；匹配任务流、权限和续跑预算；在相同的报告任务上评估得到的后继。如果修订后的更新器依赖对记忆或接口的改动，就把<strong>整组改动当作干预</strong>。进一步的更新器修订可以作为单独的 RI 条件评估。版本化的后继记录让收益可以和约束满足、干预结果放在一起看。</p>
+    <p class="go">勾选你的实验做到了哪些条件，看提升能不能归因到更新器。</p>
+  </div>
+  <div class="lab">
+    <p class="lab-t">这个“更新器更好”的结论成立吗？</p>
+    <div class="chk" id="pcChk"></div>
+    <div class="verdict3" id="pcOut" aria-live="polite"></div>
+  </div>
+  <div class="notes" id="n-meta"></div>
+</section>
+
+<section class="part" id="cost">
+  <div class="part-head"><h2>总成本效率要单独算</h2><span class="meta">原文 §7.2 末段，p.47</span></div>
+  <div class="sec-lede">
+    <p>原文把“机制效应”和“总成本效率”分开：成对续跑回答的是“在匹配的续跑预算下，U<sub>t+1</sub> 是否产出更好的后继”；总成本效率则要在<strong>匹配的总预算</strong>下比较表现，总预算包括更新器的发现、验证和之后的使用。记账规则：只用一次时，把全部一次性发现和验证成本算在这一次上；同一个更新器被反复使用时，报告续跑次数，把一次性成本平摊到每次续跑，再加上每次续跑本身的成本；额外的适应或修订成本也要加上；两臂用同样的记账规则。第 3 篇里 Evo2 的推理成本比较没算训练，就是这条规则要防的情况。</p>
+    <p class="go">调参数，看修订后的更新器要被用多少次才“回本”（真实计算，数值为示意）。</p>
+  </div>
+  <div class="lab">
+    <div class="ctl-grid">
+      <label class="ctl"><span>一次性发现 + 验证成本 <output id="csD">300</output></span><input type="range" id="csDs" min="0" max="1000" step="10" value="300"></label>
+      <label class="ctl"><span>新更新器每次续跑成本 <output id="csC">40</output></span><input type="range" id="csCs" min="5" max="200" step="5" value="40"></label>
+      <label class="ctl"><span>原更新器每次续跑成本 <output id="csO">60</output></span><input type="range" id="csOs" min="5" max="200" step="5" value="60"></label>
+      <label class="ctl"><span>续跑次数 <output id="csK">5</output></span><input type="range" id="csKs" min="1" max="50" value="5"></label>
+    </div>
+    <table class="calc" id="csT"></table>
+    <p class="cap" id="csCap" aria-live="polite"></p>
+    <p class="note">成本单位任意（可以是美元、GPU 时或 token）。这里只比较成本；原文要求在匹配总预算下比较表现，所以实际评估还要同时看两臂的结果质量。</p>
+  </div>
+  <div class="notes" id="n-cost"></div>
+</section>
+
+<section class="part" id="valid">
+  <div class="part-head"><h2>证据来源与接受的有效性</h2><span class="meta">原文 §7.3，p.47–48</span></div>
+  <div class="sec-lede">
+    <p><strong>证据来源</strong>：记录每个评估器的数据、提示词、代码和修改权限。PostTrainBench 中观察到的污染和未授权的检查点替换，说明追踪产物来源的重要性。评估器变化时，在两个版本下重测共同的快照。</p>
+    <p><strong>接受的有效性</strong>：三种统计工具各管一件事。PACE 对单次提交决定使用随时有效（anytime-valid）的检验；SGM 把条件有效的确认和跨尝试可预测、可求和的错误分配结合起来；REUSE 处理“固定评估集影响后续提案”造成的依赖：它<strong>只把晋升决定（而不是分数）提供给搜索程序</strong>，并在所有可能的决策历史上分配错误；在初始独立的评估集和“只给决定”的接口下，它的保证覆盖整个过程中被接受的总体改进。原文要求评估记录写明抽样假设、对评估反馈的访问方式、每条接受规则的错误范围，报告错误接受、错过的改进、保留的收益和测试成本；<strong>U 的改变如果改了证据访问或候选选择，这些条件都要重查</strong>。</p>
+  </div>
+  <div class="confuse">
+    <h4>易混辨析：PACE vs SGM vs REUSE</h4>
+    <p><b>PACE</b>：一次提交决定，候选被自适应地测试时，界住错误接受。<b>SGM</b>：一连串更新，把错误预算按可求和的方式分到每次尝试上。<b>REUSE</b>：同一个评估集被反复用、并影响了后面的提案，靠“只回传决定”切断信息泄露。三者都依赖测试相关且未被污染、抽样和反馈假设成立（原文 §8.2.2）。</p>
+  </div>
+  <div class="notes" id="n-valid"></div>
+</section>
+
+<section class="part" id="joint">
+  <div class="part-head"><h2>联合判据：同一条轨迹上全部满足</h2><span class="meta">原文 §7.3，表 8，p.48–49</span></div>
+  <div class="sec-lede">
+    <p>原文先盘点了已有研究的“联合证据”。单次更新层：AI Control 在审计和推迟协议下评估效用和对蓄意破坏的抵抗，但效用用 GPT-4 测、安全用红队攻击策略测，覆盖的是不同评估条件，不是同一次实际运行；AgentDojo 评估良性效用和攻击结果；HELM 度量固定模型的多种性质。后继层：SEABench 比较演化与不演化的智能体，它的监控实验是在收集到的推理痕迹的留出部分上事后评估的，<strong>“监控器开着继续演化”还没被测试</strong>；Misevolution 的任务结果和缓解结果来自不同配置和实验。元改进层：DGM、Dream-RSI、Hyperagents、Evo2、MASS、MetaRSI 提供了更新器复用后的能力结果；MetaRSI 增加了匹配初始状态和预算的改进器比较以及能力保留度量，其保护机制是结构性描述的。原文的总结：<strong>在这六项研究中，能力结果得到的直接支持，多于对行为约束和有效干预的纵向联合评估</strong>。</p>
+    <p>于是原文提出<strong>联合判据</strong>：把单项要求的结果和它们在同一轨迹上的联合满足分开报告。<strong>只有当每一项强制要求在声明时域内的每一次预定评估中都成立，一条轨迹才满足联合判据。</strong>原文的例子：协议要求任务表现高于阈值且禁止未授权披露，那么中间某个版本发生一次披露，这条轨迹就失败，哪怕初始和最终版本都通过了两项检查。报告时给出满足联合判据的独立运行比例及其不确定性，联合评估不完整的标“未评估”；通过判定依赖估计量时，要同时在多项要求和多个版本上控制不确定性。</p>
+    <p class="go">点版本格子切换它的检查结果（通过 → 失败 → 未评估），看联合判据。</p>
+  </div>
+  <div class="lab">
+    <p class="lab-t">一条 7 个版本的轨迹 <span class="evt arg">示意</span></p>
+    <p class="lab-s">第一行：任务表现是否高于阈值；第二行：是否没有未授权披露。初始状态复现原文的例子。</p>
+    <div id="jtRows"></div>
+    <div class="verdict3" id="jtOut" aria-live="polite"></div>
+    <div class="btnrow" style="margin-top:8px"><button class="btn" type="button" id="jtReset">恢复原文例子</button></div>
+  </div>
+  <div class="sec-lede">
+    <p>原文表 8 列出八组要求各自的核心信号和跨版本要看的东西。对每个主张层级，都要报告版本、范围、威胁模型、不确定性和评估状态。原文点名的优先方向是：跨版本的公平、纠正或删除之后的隐私保持，以及这些要求与持续改进之间的相互作用。</p>
+  </div>
+  <div class="tblw"><table class="cmpt">
+    <thead><tr><th>要求组</th><th>核心信号</th><th>跨版本</th></tr></thead>
+    <tbody>
+      <tr><td>改进有效性</td><td>独立的收益；方差</td><td>保留 / 偏移；报告的准确性</td></tr>
+      <tr><td>行为安全与对齐</td><td>违规严重程度</td><td>冲突或改变了的目标</td></tr>
+      <tr><td>公平</td><td>最差群体；分群体的收益 / 伤害</td><td>跨版本的人群覆盖</td></tr>
+      <tr><td>安全与韧性</td><td>攻击成功率；良性效用</td><td>继承的污染；恢复</td></tr>
+      <tr><td>隐私与数据治理</td><td>披露 / 推断 / 提取</td><td>删除后的残余暴露</td></tr>
+      <tr><td>透明与可解释</td><td>可重建的改动</td><td>继承后的解释保真度</td></tr>
+      <tr><td>人类控制与可纠正性</td><td>停止 / 回滚成功率；延迟</td><td>残余外部效应</td></tr>
+      <tr><td>问责与治理</td><td>审批权限；审查覆盖</td><td>事件重建</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">整理自原文表 8（p.49）。</p>
+  <div class="take">
+    <h4>原文 Takeaway（p.49）</h4>
+    <dl>
+      <dt class="r">风险</dt><dd>只看终点的收益会掩盖测量噪声、已获得能力的丧失、后继继承的不安全行为、以及对评估反馈的过拟合。</dd>
+      <dt class="g">保障</dt><dd>使用不变的对照系统，把改进反馈和独立报告分开，在复用后评估更新，在匹配资源预算下比较后继。这些措施帮助把报告的收益和具体改动联系起来。</dd>
+      <dt class="f">未来</dt><dd>在匹配条件下比较被之后版本复用的改进程序；测试行为和安全约束是否在连续版本中保持满足、授权干预是否保持有效。</dd>
+    </dl>
+  </div>
+  <div class="notes" id="n-joint"></div>
+</section>
+
+<section class="part" id="recap">
+  <div class="part-head"><h2>回扣开头的三个问题</h2><span class="meta">先自己答，再点开</span></div>
+  <div class="ask3" style="margin-top:0">
+    <details><summary>1. 成对续跑要固定哪些条件？</summary><p class="ans">同一个 h<sub>t</sub>、B<sub>t</sub> 和持久状态作为起点；一臂 U<sub>t</sub>、一臂 U<sub>t+1</sub>，每臂内更新器固定；匹配任务流、权限和续跑预算；在相同的报告任务上评估。新更新器依赖记忆或接口改动时，把整组改动当作干预。</p></details>
+    <details><summary>2. 一次性发现成本怎么算？</summary><p class="ans">只用一次：全部算在这一次上。反复使用：报告续跑次数，把一次性成本平摊到每次，再加每次续跑成本和额外的适应或修订成本；两臂用同样规则；在匹配总预算下比较表现。</p></details>
+    <details><summary>3. 首尾都过了，为什么仍可能不满足联合判据？</summary><p class="ans">联合判据要求每项强制要求在声明时域内的每次预定评估都成立。中间版本发生一次未授权披露，整条轨迹就失败。只看首尾会漏掉中间的违规。</p></details>
+  </div>
+</section>
+<nav class="pager" aria-label="翻页"><a href="../2026-10-30-rsi-6/"><small>上一篇</small><span>06 · 透明与可控：监督还管用吗</span></a><a class="nx" href="../2026-10-30-rsi-8/"><small>下一篇</small><span>08 · 应用场景、开放问题与结论</span></a></nav>
+</div>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <span>AI 观察笔记</span>
+    <span>学习笔记 · 原书：<a href="https://arxiv.org/abs/2610.35193" rel="noopener">arXiv:2610.35193</a></span>
+  </div>
+</footer>
+<script>
+(function () {
+'use strict';
+var $ = S.$, $$ = S.$$, h = S.h;
+/* ---------- 覆盖 ---------- */
+var CV = [
+  [
+    ['RE-Bench', '与人类专家比较不同时间预算下的研究工程表现。'],
+    ['PostTrainBench', '在算力约束下评估自主后训练；观察到污染和未授权检查点替换。'],
+    ['VibeTraining-Bench', '从共同的初始系统出发，允许修改训练数据、训练器和 harness；隔离评分、受保护测试数据、受限网络把验证反馈和隐藏测试报告分开。'],
+    ['RSIBench-Data', '固定训练基础设施以隔离数据研究决策；轨迹非单调，且同一任务子集既用于选择又用于报告。'],
+    ['Trace Evolution Bench（TEB）', '度量不变智能体重复评估的分数波动；用冻结对照和种子匹配把波动和演化带来的变化分开。'],
+    ['自写验证研究（SAV）', '评估演化系统自己写的测试的可靠性（Guo 等 2026）。'],
+    ['AgentDojo / AI Control / HELM', '分别评估提示注入攻防、对蓄意破坏的监督协议、多维度报告框架。']
+  ],
+  [
+    ['DGM 存档', '记录父代–后继关系和备选分支。'],
+    ['EvoPathBench', '用累积、干扰、逆转三种任务流评估泛化、保留和对规则变化的适应；留出探针和对产物访问的干预把检查点表现和继承产物联系起来。'],
+    ['Agent Plasticity', '权重固定，把留出任务上的收益和获取成本联系起来，区分终点能力和学习效率。'],
+    ['harness 更新与收益研究（HB）', '用智能体–演化器配对区分“生成有用 harness 更新的能力”和“使用它们的能力”。'],
+    ['Misevolution', '考察对模型、记忆、工具、工作流的改动带来的风险。'],
+    ['SEABench', '在任务序列上比较演化和不演化的个人助理，把下游安全和隐私失效追溯到局部有用的适应。'],
+    ['EvoUndo', '在反事实状态上评估从一次性 harness 修改中恢复；状态接地和恢复语言的表达力是重要因素。']
+  ],
+  [
+    ['Dream-RSI', '用历史发现树修订探索策略代码并重新部署，发现智能体、评估器、执行接口固定；与固定探索策略比较。'],
+    ['Hyperagents', '修订元层修改程序，用 improvement@50 评估迁移后的元智能体，生成任务智能体变体时每个元智能体固定；另有允许继续元层修订的续跑实验。'],
+    ['复用分析：SGM / REUSE', '在声明的抽样和反馈条件下，分别为复用的有限评估池和底层任务总体提供改进保证。']
+  ]
+];
+function cover(i) {
+  $('#cvOut').innerHTML = '<ul class="pts">' + CV[i].map(function (r) { return '<li><strong>' + r[0] + '</strong>：' + r[1] + '</li>'; }).join('') + '</ul>' +
+    (i === 2 ? '<p class="note">原文：评估应识别 U<sub>t</sub> 中被修订的组件、随之转移的状态，以及用来评估其效应的后续更新。</p>' : '');
+}
+S.seg($('#cvS'), function (v) { cover(+v); });
+cover(0);
+
+/* ---------- 先估 ---------- */
+S.guess($('#ctGuess'), {
+  q: '26 项声称改进了改进程序的 RSI 研究里，有几项用相同起始产物和匹配预算比较了前后两版改进器？',
+  unit: '项', ans: 4, fmt: function (x) { return S.f(x, 0); },
+  why: '4 项，约 15%。这正是原文要在 §7.2 给出成对续跑设计的原因。'
+});
+
+/* ---------- 单次更新清单 ---------- */
+var UP = [
+  ['dev', '开发用的经验和接受用的证据分开，测试数据不泄露进开发'],
+  ['thr', '接受阈值事先设定（含相关人群和攻击者访问权限）'],
+  ['frz', '在冻结的后继快照上做独立报告'],
+  ['dsp', '报告测试跑在一次性副本上，结果不回传给改进搜索'],
+  ['fb', '接受集被复用时，说明提案者能拿到哪些反馈'],
+  ['res', '资源记账包括经验收集、提案、被拒尝试、训练和接受测试'],
+  ['hum', '人类协助和报告成本单独报告'],
+  ['curve', '在终点分数之外给出性能–预算曲线']
+];
+function mkChk(root, items, cb) {
+  items.forEach(function (d) {
+    var l = S.h('label', null, root);
+    var i = S.h('input', { type: 'checkbox', 'data-k': d[0] }, l);
+    S.h('span', { html: d[1] }, l);
+    i.addEventListener('change', cb);
+  });
+}
+function on(root) { return $$('input', root).filter(function (i) { return i.checked; }).map(function (i) { return i.getAttribute('data-k'); }); }
+mkChk($('#upChk'), UP, upd);
+function upd() {
+  var o = on($('#upChk')), miss = UP.filter(function (d) { return o.indexOf(d[0]) < 0; });
+  var core = ['dev', 'frz', 'dsp'].every(function (k) { return o.indexOf(k) >= 0; });
+  var out = $('#upOut');
+  if (!miss.length) { out.className = 'verdict3'; out.innerHTML = '<b>八条都做到了。</b>这份评估能支撑单次更新层的主张；后继和元改进层还需要另外的证据。'; return; }
+  out.className = 'verdict3 bad';
+  out.innerHTML = (core ? '核心的“三分开”做到了，' : '<b>核心问题：</b>开发、接受、独立报告没有完全分开，报告的提升可能包含对评估反馈的过拟合。') +
+    '还缺 ' + miss.length + ' 条：' + miss.map(function (d) { return d[1]; }).join('；') + '。';
+}
+upd();
+
+/* ---------- 成对续跑 ---------- */
+var PC = [
+  ['same', '两臂从同一个 h<sub>t</sub>、B<sub>t</sub> 和持久状态出发', '起点不同，差异可能来自继承状态（例如继承的记忆本身就能抬高表现）。'],
+  ['fix', '每一臂内更新器保持固定（一臂 U<sub>t</sub>，一臂 U<sub>t+1</sub>）', '更新器在续跑中继续变，就无法把结果归到某一版更新器。'],
+  ['budget', '匹配任务流、权限和续跑预算', '多给一臂预算或权限，提升可能来自更多尝试（第 3 篇的 best-of-N 陷阱）。'],
+  ['report', '在相同的报告任务上评估两臂产出的后继', '用不同的任务或评估器打分，分数不可比。'],
+  ['bundle', '新更新器依赖的记忆或接口改动，被当作同一个干预的一部分', '只把“更新器代码”算作干预，会把配套改动的效应错算给更新器。'],
+  ['runs', '多次独立运行，并报告不确定性', '单次运行无法区分效应和运行间波动（原文要求跨独立运行估计不确定性）。']
+];
+mkChk($('#pcChk'), PC, pc);
+function pc() {
+  var o = on($('#pcChk')), miss = PC.filter(function (d) { return o.indexOf(d[0]) < 0; });
+  var out = $('#pcOut');
+  if (!miss.length) { out.className = 'verdict3'; out.innerHTML = '<b>可以把提升归因到更新器修订</b>（在这些条件下）。下一步：在同一组版本化记录上，把收益和约束满足、干预结果一起看；总成本效率另算。'; return; }
+  out.className = 'verdict3 bad';
+  out.innerHTML = '<b>还不能归因到更新器。</b>' + miss.map(function (d) { return d[2]; }).join(' ');
+}
+pc();
+
+/* ---------- 成本 ---------- */
+function cost() {
+  var D = +$('#csDs').value, c = +$('#csCs').value, c0 = +$('#csOs').value, k = +$('#csKs').value;
+  $('#csD').textContent = D; $('#csC').textContent = c; $('#csO').textContent = c0; $('#csK').textContent = k;
+  var per = D / k + c;
+  $('#csT').innerHTML =
+    '<tr><td>一次性成本平摊到每次（' + D + ' ÷ ' + k + '）</td><td class="n">' + S.f(D / k, 1) + '</td></tr>' +
+    '<tr><td>加上新更新器每次续跑成本</td><td class="n">' + S.f(c, 1) + '</td></tr>' +
+    '<tr class="tot' + (per > c0 ? ' over' : '') + '"><td>新更新器每次的总成本</td><td class="n">' + S.f(per, 1) + '</td></tr>' +
+    '<tr><td>原更新器每次续跑成本</td><td class="n">' + S.f(c0, 1) + '</td></tr>';
+  var be = c0 > c ? Math.ceil(D / (c0 - c)) : Infinity;
+  $('#csCap').textContent = (per > c0 ? '目前每次比原更新器贵 ' + S.f(per - c0, 1) + '。' : '目前每次比原更新器省 ' + S.f(c0 - per, 1) + '。') +
+    (isFinite(be) ? '至少要被复用 ' + be + ' 次，一次性成本才能摊平。' : '新更新器每次续跑并不更便宜，一次性成本永远摊不平，只能靠结果质量更好来证明价值。');
+}
+['csDs', 'csCs', 'csOs', 'csKs'].forEach(function (id) { $('#' + id).addEventListener('input', cost); });
+cost();
+
+/* ---------- 联合判据 ---------- */
+var JT0 = [[1, 1, 1, 1, 1, 1, 1], [1, 1, 1, 0, 1, 1, 1]];
+var JT = JT0.map(function (r) { return r.slice(); });
+var JL = ['任务表现', '无未授权披露'];
+function jt() {
+  var box = $('#jtRows'); box.innerHTML = '';
+  JT.forEach(function (row, ri) {
+    S.h('p', { class: 'lab-s', text: JL[ri], style: 'margin:8px 0 0' }, box);
+    var tr = S.h('div', { class: 'vtrack' }, box);
+    row.forEach(function (v, vi) {
+      var b = S.h('button', { type: 'button', class: 'vb ' + (v === 1 ? 'ok' : v === 0 ? 'bad' : 'dim'), html: '<b>v' + vi + '</b>' + (v === 1 ? '通过' : v === 0 ? '失败' : '未评估'), style: 'cursor:pointer;font:inherit;font-size:14px' }, tr);
+      b.addEventListener('click', function () { JT[ri][vi] = v === 1 ? 0 : v === 0 ? -1 : 1; jt(); });
+    });
+  });
+  var fail = [], na = [];
+  JT.forEach(function (row, ri) { row.forEach(function (v, vi) { if (v === 0) fail.push(JL[ri] + ' @ v' + vi); if (v === -1) na.push(JL[ri] + ' @ v' + vi); }); });
+  var ends = JT.every(function (r) { return r[0] === 1 && r[r.length - 1] === 1; });
+  var o = $('#jtOut');
+  if (fail.length) { o.className = 'verdict3 bad'; o.innerHTML = '<b>联合判据：失败。</b>' + fail.join('、') + (ends ? '。注意：初始和最终版本都通过了全部检查，只看首尾会得出相反结论。' : '。'); }
+  else if (na.length) { o.className = 'verdict3 bad'; o.innerHTML = '<b>联合判据：未评估。</b>' + na.join('、') + ' 缺少评估，联合评估不完整时原文要求标“未评估”，而不是当作通过。'; }
+  else { o.className = 'verdict3'; o.innerHTML = '<b>联合判据：满足。</b>两项强制要求在全部 7 次预定评估中都成立。实际报告还要给出满足判据的独立运行比例及其不确定性。'; }
+}
+$('#jtReset').addEventListener('click', function () { JT = JT0.map(function (r) { return r.slice(); }); jt(); });
+jt();
+
+/* ---------- 记下来 ---------- */
+S.notes($('#n-cover'), {
+  c: [['证据覆盖矩阵', '图 8：三组研究 × 三个分析角色 + 支撑性评估设计。'], ['两个编码约定', '报告成本 ≠ 匹配总资源比较；修订更新器 ≠ 持久任务状态变化。']],
+  p: [['单次更新层', 'RE-Bench、PostTrainBench、VibeTraining-Bench、RSIBench-Data、TEB、SAV、AgentDojo、AI Control、HELM。'], ['后继层', 'DGM 存档、EvoPathBench、Agent Plasticity、HB、Misevolution、SEABench、EvoUndo。'], ['元改进层', 'Dream-RSI、Hyperagents；复用分析 SGM、REUSE。']]
+});
+S.notes($('#n-count'), {
+  c: [['Chen 等 2026j', '回顾 114 项研究的文献统计。']],
+  p: [['114 → 26 → 4', '被回顾 → 标为 RSI 并声称改进了改进程序 → 匹配起点和预算比较前后改进器（原文数据）。']]
+});
+S.notes($('#n-update'), {
+  c: [['三分开', 'S1–S2 开发经验、S3 接受证据、S4 后冻结快照上的独立报告。'], ['一次性副本', '独立报告在副本上跑，结果不回传给搜索。']],
+  p: [['事先定阈值', '含相关人群和攻击者访问权限。'], ['完整记账', '经验收集、提案、被拒尝试、训练、接受测试；人类协助单列。'], ['性能–预算曲线', '参照 RE-Bench 和 Agent Plasticity。']]
+});
+S.notes($('#n-succ'), {
+  c: [['版本化记录', '继承的 (h, B, U)、依赖、父版本、提案、接受决定。'], ['保留失败分支', '包括耗尽预算的运行。']],
+  p: [['安全指标', '到首次严重失败的时间、累计违规数、出现严重失败的运行比例、恢复结果。'], ['重复停止 / 回滚测试', 'S4 之后、U<sub>t+1</sub> 复用之后；覆盖记忆、工具、排队动作、权限。'], ['最佳候选与在任者', '两者都报告（RSIBench-Data）。']]
+});
+S.notes($('#n-meta'), {
+  c: [['成对续跑', '同一起点，一臂 U<sub>t</sub> 一臂 U<sub>t+1</sub>，每臂更新器固定，匹配任务流、权限、预算，同一报告任务。'], ['整组干预', '新更新器依赖的记忆或接口改动一起算作干预。']],
+  p: [['来源', '沿用 Hyperagents 的固定更新器对照。'], ['单独的 RI 条件', '允许更新器继续修订的情形单独评估。']]
+});
+S.notes($('#n-cost'), {
+  c: [['机制效应', '匹配续跑预算下，新更新器是否产出更好后继。'], ['总成本效率', '匹配总预算（含发现、验证、使用）下比较表现。']],
+  p: [['<code>每次成本 = D / k + c</code>', 'D 一次性发现与验证成本，k 续跑次数，c 每次续跑成本。'], ['回本次数', '<code>⌈D / (c<sub>0</sub> − c)⌉</code>（新更新器每次更便宜时）。']]
+});
+S.notes($('#n-valid'), {
+  c: [['证据来源', '记录评估器的数据、提示词、代码、修改权限。'], ['REUSE', '只给搜索晋升决定，在决策历史上分配错误。']],
+  p: [['PACE', '单次提交，随时有效检验。'], ['SGM', '跨尝试可预测、可求和的错误分配。'], ['要报告', '错误接受、错过的改进、保留收益、测试成本；U 改变证据访问时重查。']]
+});
+S.notes($('#n-joint'), {
+  c: [['联合判据', '每项强制要求在声明时域内每次预定评估都成立。'], ['未评估', '联合评估不完整就标“未评估”，不当作通过。']],
+  p: [['报告', '满足判据的独立运行比例及不确定性；跨要求和版本同时控制不确定性。'], ['现状', '六项元改进研究里，能力结果的直接支持多于约束与干预的纵向联合评估。'], ['优先方向', '跨版本公平、纠正或删除后的隐私、与持续改进的交互。']]
+});
+})();
+</script>
+</body>
+</html>

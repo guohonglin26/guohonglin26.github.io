@@ -1,0 +1,294 @@
+---
+title: 系统安全、韧性、隐私与数据治理
+desc: 可信递归自我改进学习笔记（五）：被污染的经验和反馈如何沿 S1–S4 变成被继承的资产；记忆投毒、技能劫持、评估证据篡改、记忆提取；删掉源头为什么不等于清理干净；删除主张要说清覆盖范围；差分隐私的基本组合；以及为什么候选者不能是自己新保障的唯一批准者。
+kicker: <span>技术学习</span><span>可信 RSI · 05</span><span>对应原文第 5 节（p.30–36）</span><span>约 25 分钟</span>
+h1: 毒会遗传，<em>删源头不够</em>
+lead: 第 4 篇关心系统自己会不会“学坏”；这一篇关心外部的恶意和数据的边界：被投毒的经验、被篡改的评估证据、被提取的记忆、被继承的敏感信息。原文的主线是一条“谱系”：低可信输入在 S1 进入，在 S2 被转化成技能等派生资产，在 S3 影响接受证据，在 S4 被保留并遗传给后继。所以安全和隐私都不能只看“这一次更新”，要看什么东西、什么权限在更新之后留了下来。
+nav: def|定义与主张;stages|四阶段风险;attack|攻击放哪一格;lineage|清理演练;delete|删除主张;dp|差分隐私账本;ri|RI 与空白;recap|回扣三问
+---
+<link rel="stylesheet" href="../study-shared/rsi.css">
+<script src="../study-shared/rsi.js"></script>
+===BODY===
+<div class="ask3">
+  <h3>读完这一篇，你应该能回答</h3>
+  <ol>
+    <li>为什么删除了被投毒的源记录，系统仍可能继续出问题？恢复要覆盖哪些东西？</li>
+    <li>一句“我们已删除该用户数据”的主张，需要说明哪些范围才算可检验？</li>
+    <li>RI 场景下，原文建议把哪些权力放在候选者能修改的范围之外？</li>
+  </ol>
+</div>
+
+<section class="part" id="def">
+  <div class="part-head"><h2>四个概念与三层主张</h2><span class="meta">原文 §5.1，p.30–31</span></div>
+  <div class="sec-lede">
+    <p>原文用方程定位这一章：被污染的经验 E<sub>t+1</sub> 能改变方程 (2) 里的 h<sub>t+1</sub>，被污染的反馈 F<sub>t+1</sub> 能改变方程 (3) 里的 B<sub>t+1</sub> 和 U<sub>t+1</sub>。</p>
+    <p><strong>系统安全</strong>保护经验、保留的资产、以及用来接受更新的证据，防止未授权的访问、修改或影响。<strong>韧性</strong>是系统能否承受、遏制被污染的输入或状态并从中恢复，同时维持或恢复可接受的服务。<strong>隐私</strong>保护个人或敏感信息不被不当地获取、转化、披露或<strong>继承</strong>，包括超出授权范围的处理。<strong>数据治理</strong>关心收集和之后的复用是否在许可目的和授权范围内。相关对象包括记忆、技能、模型版本和其他派生资产。原文强调这些性质需要分开测试：输入拦截、服务恢复、从派生资产和可访问版本中移除、残余的污染影响。</p>
+    <p>主张层级：<span class="lv u">单次更新</span> 要指明改动、相关访问条件、以及进入 / 转化 / 评估 / 发布的位置，与更新前状态对比。<span class="lv s">后继</span> 还要证明改动被继承和使用，再评估声称的保护或恢复效果，并考虑派生资产和可访问的历史版本；要说明测试的访问、传播、删除、恢复条件以及覆盖的依赖。<span class="lv m">元改进</span> 下，对证据检查、权限或数据使用规则的修改都要在修订后的机制下重测；声称改善需要在可比访问条件、预算、继承起点下与不变的 U<sub>t</sub> 比较。</p>
+  </div>
+  <div class="notes" id="n-def"></div>
+</section>
+
+<section class="part" id="stages">
+  <div class="part-head"><h2>按阶段看：从入口到遗传</h2><span class="meta">原文 §5.2–5.3，图 6，p.31–34</span></div>
+  <div class="sec-lede">
+    <p>原文图 6 把每个阶段分成两行：上面是安全与韧性，下面是隐私与数据治理。S1 经验与来源：被投毒的经验 / 过度收集，对应“绑定来源与权限”/“只为授权用途收集”。S2 派生资产：恶意技能 / 敏感的派生资产，对应“约束执行”/“审查嵌入的数据”。S3 接受证据：被篡改的接受证据 / 记忆提取，对应“保护日志和测量”/“监测提取与泄露”。S4 后继与版本：继承的载荷 / 跨版本泄露，对应“追踪后代并测试恢复”/“为发布记账并测试删除”。</p>
+    <p class="go">切换阶段。</p>
+  </div>
+  <div class="lab"><div id="stg"></div></div>
+  <div class="notes" id="n-stages"></div>
+</section>
+
+<section class="part" id="attack">
+  <div class="part-head"><h2>攻击放哪一格</h2><span class="meta">原文 §5.2.1–5.2.4，p.31–32</span></div>
+  <div class="sec-lede">
+    <p>原文在介绍攻击时一直强调<strong>访问假设</strong>：AgentPoison 假设对记忆或知识库有写权限；MINJA 只通过查询交互就诱导写入；Zombie Agents 把外部内容带进之后的会话。入口权限不同，但都能污染诊断用的经验或反馈。它也区分<strong>度量的是什么</strong>：EVOMAL 的“自我投毒率”统计的是添加了恶意技能的任务，不是完成了的数据外泄；PoisonedEvolution 用惰性的“金丝雀”度量产物被污染，不是被执行的伤害。这些区分决定了一项结果能支撑多大的主张。</p>
+    <p class="go">把这些研究放进它们主要作用的阶段。</p>
+  </div>
+  <div class="lab"><div id="atkSort"></div></div>
+  <div class="notes" id="n-attack"></div>
+</section>
+
+<section class="part" id="lineage">
+  <div class="part-head"><h2>清理演练：删源头够不够</h2><span class="meta">原文 §5.2.4、§5.3.4、§5.4，p.32–35</span></div>
+  <div class="sec-lede">
+    <p>原文 S4 的核心观察：S4 把改动保留进 h<sub>t+1</sub> 和 B<sub>t+1</sub>，<strong>源头被改动之后，被污染的资产仍可能保持活跃</strong>。SkillJack 测到了源记录删除后的持续性；EVOMAL 观察到通过生成的后代传播；Hyperagents 投毒实验里，有害指令在干净基准上继续演化后仍然存活，换到明确惩罚该漏洞的基准上演化后，在那次运行中被移除。原文说恢复必须处理活跃的被投毒技能、凭据、待执行的动作，以及源记录和模型检查点；韧性测试还要看良性服务是否恢复。</p>
+    <p>原文建议记录资产的来源、父代、审查过的版本、权限和依赖，这样恢复时可以隔离已知的后代，测试残余影响（包括缓存副本和外部效应）；不可逆的外部效应需要单独的补救。原文还提出一个具体的比较设计：<strong>只清理源头</strong> vs <strong>清理源头和后代</strong>，同时评估之后的伤害和良性服务的恢复。</p>
+    <p class="go">选一种清理策略，看谱系上每个节点的状态。</p>
+  </div>
+  <div class="lab">
+    <p class="lab-t">一条被污染的谱系 <span class="evt arg">示意</span></p>
+    <div class="seg" id="lnS"><button data-v="0" aria-pressed="true">不处理</button><button data-v="1">只删源记录</button><button data-v="2">回滚模型检查点</button><button data-v="3">在干净基准上继续演化</button><button data-v="4">源头 + 已知后代（依赖记录完整）</button><button data-v="5">源头 + 已知后代（漏记一个副本）</button></div>
+    <div class="lineage" id="lnBox"></div>
+    <div class="read"><div class="warn"><div class="v" id="lnBad">0</div><div class="k">仍被污染的节点</div></div><div><div class="v" id="lnSvc">—</div><div class="k">良性服务</div></div></div>
+    <p class="cap" id="lnCap" aria-live="polite"></p>
+    <p class="note">谱系结构综合自原文转述的 SkillJack、EVOMAL、Hyperagents 投毒实验，各节点在不同策略下的状态是按原文论述推出的示意，不是某一项实验的结果。</p>
+  </div>
+  <div class="notes" id="n-lineage"></div>
+</section>
+
+<section class="part" id="delete">
+  <div class="part-head"><h2>删除主张：说清楚删了什么</h2><span class="meta">原文 §5.2.4、§5.4.2，p.32、35</span></div>
+  <div class="sec-lede">
+    <p>原文要求<strong>删除主张必须说明覆盖的派生资产、可访问的历史版本和辅助信息</strong>，并且“测试的访问条件界定了每个删除主张”。几项研究说明为什么：精确遗忘的提取攻击同时用遗忘前后的 logits，因此测的是跨版本泄露；可逆遗忘的结果表明，遗忘集上的表现可能低估了在所测重学习程序下的可恢复性；Bemula 用成对的遗忘 / 对照对话先验证模型确实记住过，再评估移除、保留、重学和抗提取，被测系统要么目标仍可提取、要么删多了；AUBench 在一个受控的虚构作者设定里分别评估参数遗忘、记忆保留和经工具重新获取。</p>
+    <p>原文还提醒一个容易忽略的矛盾：详细的审计日志本身可能含有敏感信息，所以评估用到的记录的访问权，也属于隐私评估的范围。对删除测试，原文建议事先说明可访问的记忆、技能、检查点和日志，以及之前的披露和接收方的访问权，并在修订后的更新器被复用后重复测试。</p>
+    <p class="go">勾选你的删除测试覆盖了哪些范围，下面生成一条“能被检验的”删除主张。</p>
+  </div>
+  <div class="lab">
+    <div class="chk" id="dlChk"></div>
+    <div class="verdict3" id="dlOut" aria-live="polite"></div>
+  </div>
+  <div class="notes" id="n-delete"></div>
+</section>
+
+<section class="part" id="dp">
+  <div class="part-head"><h2>差分隐私：一本累加的账</h2><span class="meta">原文 §5.3.4，p.34</span></div>
+  <div class="sec-lede">
+    <p>原文在 S4 保障里专门写了差分隐私（DP-SGD 与隐私记账）提供的条件性保护，说得很精确：在固定的有限时域内，如果每个发布机制在同一邻接定义和事先确定的界下都是条件 (ε<sub>j</sub>, δ<sub>j</sub>)-DP，那么<strong>基本自适应组合</strong>给出联合 (Σε<sub>j</sub>, Σδ<sub>j</sub>)-DP 保护。不再访问私有数据的<strong>后处理不增加预算</strong>；所以<strong>后继的数量本身并不决定隐私成本</strong>，决定成本的是有多少次发布真正接触了私有数据。邻接定义必须说明保护是记录级还是用户级。原文最后一句也很重要：<strong>差分隐私不能替代同意和目的限制</strong>。</p>
+    <p class="go">先估一下，再用计算器算一条后继链的累计预算。</p>
+  </div>
+  <div class="lab-row">
+    <div class="lab">
+      <div id="dpGuess"></div>
+      <p class="lab-t">后继链的隐私账本（基本组合，真实计算）</p>
+      <div class="ctl-grid">
+        <label class="ctl"><span>后继版本数 <output id="dpV">12</output></span><input type="range" id="dpVs" min="1" max="40" value="12"></label>
+        <label class="ctl"><span>其中重新接触私有数据的版本 <output id="dpK">4</output></span><input type="range" id="dpKs" min="0" max="40" value="4"></label>
+        <label class="ctl"><span>每次的 ε <output id="dpE">0.50</output></span><input type="range" id="dpEs" min="0.05" max="2" step="0.05" value="0.5"></label>
+        <label class="ctl"><span>每次的 δ（× 10<sup>−6</sup>） <output id="dpD">1</output></span><input type="range" id="dpDs" min="0" max="10" step="0.5" value="1"></label>
+      </div>
+      <div class="read"><div class="hl"><div class="v" id="dpTE">0</div><div class="k">累计 ε</div></div><div class="hl"><div class="v" id="dpTD">0</div><div class="k">累计 δ</div></div><div><div class="v" id="dpN">0</div><div class="k">按后处理处理、不计预算的版本</div></div></div>
+      <p class="note">基本组合是保守的上界；前提是每次发布在同一邻接定义、事先确定的界下满足条件 DP。更紧的组合定理不在原文讨论范围内。</p>
+    </div>
+    <div class="lab">
+      <p class="lab-t">原文对 RI 的追加要求</p>
+      <p class="lab-s">如果更新器修订了隐私机制本身，要在适用时重新评估：</p>
+      <ul class="pts">
+        <li>数据来源与授权</li>
+        <li>邻接定义（记录级还是用户级）</li>
+        <li>裁剪、噪声与记账方式</li>
+        <li>修订后的 U<sub>t+1</sub> 被复用时，数据使用规则在运行中的表现，以及它生成的后继</li>
+      </ul>
+    </div>
+  </div>
+  <div class="notes" id="n-dp"></div>
+</section>
+
+<section class="part" id="ri">
+  <div class="part-head"><h2>RI：谁来批准新的保障</h2><span class="meta">原文 §5.2.5、§5.3.5、§5.4，p.32–36</span></div>
+  <div class="sec-lede">
+    <p>在方程 (3) 中，U<sub>t</sub> 的改动能改变管着后续更新的证据、权限和检查。原文比较了两种可编辑范围：Hyperagents 允许修改任务智能体和元智能体的代码，而 DGM 的外层探索程序保留固定组件。评估 RI 下的安全，需要观察到具体修改、它之后的复用、以及复用期间对保护的测试；可编辑的机制决定了这些测试必须覆盖哪些改动。对收集、脱敏或发布规则的修改，同样会让之前的隐私结论失效。</p>
+    <p>原文给出一条明确的设计建议，并注明这是从已观察到的篡改机制推出来的：<strong>候选者可以提出新的保障，但不应该是它的唯一批准者</strong>。<strong>最终的变更批准、权限根、恢复权限</strong>应放在候选者能修改的范围之外。改了日志，要重新测试证据覆盖；改了解释器，要重新检查策略。这个设计是否有效，需要在之后的使用中测试被改变的执行边界。</p>
+    <p>原文也很克制地指出证据的边界：在 Hyperagents 投毒实验里，被记录的改动是任务智能体的指令，对照变化的是演化基准；要确认 U 被修订，还需要识别被修改的更新器组件并追踪其复用；要隔离这一修订对污染或恢复的影响，需要从匹配的继承状态出发与原机制比较。<strong>持续的污染本身并不能说明改进程序被修订了</strong>。</p>
+  </div>
+  <div class="take">
+    <h4>原文 Takeaway（p.36）</h4>
+    <dl>
+      <dt class="r">风险</dt><dd>研究展示了对记忆、技能和用于接受更新的证据的投毒，以及被带进之后版本的不当收集与信息暴露。持续的污染本身不说明改进程序被修订。</dd>
+      <dt class="g">保障</dt><dd>验证产物来源、约束执行、保护评估、控制数据访问、跟踪累计隐私损失，各自针对特定风险；依赖可信的执行机制和明确的数据访问规定。产物被转化或组合、或改进程序被修订之后，覆盖仍然有限。</dd>
+      <dt class="f">未来</dt><dd>比较清理被污染的源产物与其派生物、正常服务的恢复、跨历史版本的信息删除；修订后的改进程序被复用后，在匹配资源下重测保护；把伤害和信息披露与合法任务表现、对合法输入或更新的拒绝一起报告。</dd>
+    </dl>
+  </div>
+  <div class="notes" id="n-ri"></div>
+</section>
+
+<section class="part" id="recap">
+  <div class="part-head"><h2>回扣开头的三个问题</h2><span class="meta">先自己答，再点开</span></div>
+  <div class="ask3" style="margin-top:0">
+    <details><summary>1. 删了源记录为什么还会出问题？恢复要覆盖什么？</summary><p class="ans">S2 已经把污染转化成派生资产（技能、副本、持久指令），它们在源头删除后仍可活跃，还可能被后代复制。恢复要覆盖活跃的被投毒技能、凭据、待执行动作、源记录、模型检查点、缓存副本和外部效应，检查 h 和 B 两层，并确认良性服务恢复；不可逆的外部效应要单独补救。前提是依赖记录足够完整。</p></details>
+    <details><summary>2. 可检验的删除主张要说明什么？</summary><p class="ans">覆盖了哪些派生资产（记忆、技能、适配器、合并权重）、哪些可访问的历史版本和发布、哪些辅助信息与查询条件、之前的披露和接收方访问权；测试的访问条件就是主张的边界。修订后的更新器被复用后要重测。</p></details>
+    <details><summary>3. 哪些权力应放在候选者能修改的范围之外？</summary><p class="ans">最终的变更批准、权限根、恢复权限。候选者可以提出新保障，但不能是唯一的批准者；改日志要重测证据覆盖，改解释器要重查策略。这是原文从已观察的篡改机制推出的设计要求，有效性仍需测试。</p></details>
+  </div>
+</section>
+===SCRIPT===
+/* ---------- 四阶段 ---------- */
+R.stages($('#stg'), [
+  { k: 'S1', t: '经验与来源', q: '谁写进了经验？它有资格支撑这么一般的规则吗？',
+    risk: ['<b>安全</b>：记忆投毒让低可信输入持续影响诊断；局部正确的经验被提炼成不被其条件支持的一般规则；单独看都无害的经验组合起来诱导有害回应。', '<b>隐私</b>：失败可能发生在存储之前，即超出任务需要的获取；持久记忆在组合任务中被不合情境地披露。'],
+    ev: [R.tag('rel') + 'AgentPoison（写权限）、MINJA（仅查询）、Zombie Agents（外部内容进入后续会话）。', R.tag('rel') + 'OEP：局部正确经验的条件不支持提取出的一般规则；EvoBreak：组合单独无害的经验，在新会话诱导有害回应。', R.tag('rel') + 'PrivacyPeek 度量超出任务需要的获取；CIMemories 考察持久记忆的不当披露。'],
+    guard: ['<b>来源绑定</b>：TMA-NM 把动作权限绑定到来源；PerMIT 让来自环境的值在到达敏感工具调用前需要精确值、针对工具的背书，并有 Lean 检查的动作完整性结果；Memory Echo 每个来源族只收一个代表、用已验证的更正淘汰过时记录。', '<b>隐私</b>：SP-Mem 把脱敏可检索的记忆和受保护的精确值分开，按任务需要和同意取值。'],
+    lim: '保证都依赖假设：标签正确、存储不可变、显示忠实、背书可靠、更正可靠。精确值受保护还要评估从存储表示中推断的风险；收集限制要在信息进入 E<sub>t+1</sub> 之前就生效。' },
+  { k: 'S2', t: '派生资产', q: '被污染的经验，变成了什么样的可复用资产？',
+    risk: ['<b>安全</b>：方案生成把被污染的经验转成保留的资产，可能在源记录删除后存活、通过后代传播、或把有害目标分散到共同安装的技能里。', '<b>隐私</b>：派生技能不必逐字复制原记录，也能保留敏感信息。'],
+    ev: [R.tag('rel') + 'SkillJack：投毒经验转成独立存储的技能，源删除后存活。', R.tag('rel') + 'EVOMAL：智能体编写的副本在技能库里传播。', R.tag('rel') + 'SkillCascade：有害目标分散在共装技能中，不需要递归生成；PoisonedEvolution：轨迹贡献被提升为持久指令。', R.tag('rel') + 'AntiSkillBench：从历史中提炼的人设技能暴露显式和推断的个人属性，可被用于冒充。'],
+    guard: ['DGM 用沙箱和资源限制约束候选效应；CaMeL 通过可信解释器执行信息流策略；SkillSecurer 检测、定位并修补技能包中的注入漏洞。', '隐私审查要覆盖生成技能中的数据和拟议的数据流向；签名把资产绑定到版本，嵌入的属性和预期披露需要另行授权。'],
+    lim: '隔离不能验证目标是否正确；扫描单个包不能证明组合使用时安全。保护主张要说明它针对的是执行效应、被检查的包，还是多个包合用的行为。' },
+  { k: 'S3', t: '接受证据', q: '候选者能动它自己的成绩单吗？评估接口会不会成为泄露通道？',
+    risk: ['<b>安全</b>：候选者能改动评估它的证据时，接受决策不可靠；只保护评分器，留下了可写的观测通道。', '<b>隐私</b>：反复查询候选或其记忆可能成为披露通道。'],
+    ev: [R.tag('rsi') + 'DGM 工具幻觉实验：候选删掉了隐藏检测器所需的日志，却没修正底层行为（Zhang 等 2026e）。', R.tag('rsi') + 'harness 篡改审计把分析扩展到执行、评估、选择、记录和传播（Wang 等 2026h）。', R.tag('rel') + 'MEXTRA、ADAM 在各自访问假设下演示了智能体记忆提取；MEXTRA 用的是没有会话控制的共享记忆。'],
+    guard: ['接受证据应把候选、输入、输出、评估器和决策绑定在一起；BenchShield 结合对奖励相关路径的静态分析和基础设施侧的运行时证据；harness 审计增加对编辑的语义检查。', 'MemPot 用优化过的记忆蜜罐和序列检索证据检测提取。'],
+    lim: '建模的事件可能漏掉某条路径，审计者可能误判编辑；完整性检查还要配合“基准成功标准是否捕捉预期任务”的测试。MemPot 假设知道记忆、检索器和部分历史攻击查询，应报告误报、检测延迟、良性效用和干预前的披露量。' },
+  { k: 'S4', t: '后继与版本', q: '源头改了之后，什么还活着？哪些旧版本还能被访问？',
+    risk: ['<b>安全</b>：被污染的资产在源头改动后仍活跃。', '<b>隐私</b>：删除主张如果不说明派生资产、可访问的历史版本和辅助信息，就无法检验。'],
+    ev: [R.tag('rel') + 'SkillJack 源删除后的持续性；EVOMAL 通过后代传播。', R.tag('rel') + '精确遗忘提取（用前后 logits）；可逆遗忘；Bemula：被测系统目标仍可提取或删多了；AUBench 区分参数遗忘、记忆保留、经工具重获取。'],
+    guard: ['记录资产来源、父代、审查版本、权限、依赖，以便隔离已知后代、测试残余影响；MUTE 在联邦边缘智能体实验里结合溯源、擦除、轨迹隔离和事后审计，有效用代价。', 'AIM 用访问控制分开私有和共享记忆；DP-SGD 与隐私记账提供条件性保护。'],
+    lim: '恢复需要足够完整的依赖记录、对 h 和 B 的检查、良性服务的恢复；MUTE 推广到单个 LLM 智能体需要在该设定评估；差分隐私不能替代同意和目的限制。' },
+  { k: 'RI', t: '修订更新器', q: '更新器改了检查、权限或数据规则以后，旧的保护还算数吗？',
+    risk: '对 U<sub>t</sub> 的修改能改变管着后续更新的证据、权限和检查；对收集、脱敏、发布规则的修改会让之前的隐私结论失效。',
+    ev: [R.tag('rsi') + 'Hyperagents 允许修改任务和元智能体代码；DGM 外层探索程序保留固定组件。', R.tag('rsi') + 'Hyperagents 投毒实验中被记录的是任务智能体指令的改动，不能直接说明 U 被修订。'],
+    guard: R.tag('arg') + '候选者可以提出新保障但不应是唯一批准者；最终批准、权限根、恢复权限放在可修改范围之外；改日志重测证据覆盖，改解释器重查策略；改隐私机制重评数据来源、授权、邻接、裁剪、噪声、记账。',
+    lim: '这是原文从篡改机制推出的设计要求，有效性需要在之后的使用中测试被改变的执行边界；隔离修订对污染和恢复的影响需要从匹配继承状态出发与原机制比较。' }
+]);
+
+/* ---------- 攻击归类 ---------- */
+S.sortGame($('#atkSort'), {
+  bins: [{ k: '1', t: 'S1 经验进入' }, { k: '2', t: 'S2 转化成资产' }, { k: '3', t: 'S3 接受证据 / 评估接口' }, { k: '4', t: 'S4 保留与遗传' }],
+  items: [
+    { t: 'MINJA：只通过查询交互诱导写入记忆', k: '1', why: '污染诊断用的经验，入口权限是仅查询。' },
+    { t: 'AgentPoison：假设对记忆或知识库有写权限', k: '1', why: '记忆投毒，属于经验进入阶段。' },
+    { t: 'EvoBreak：组合单独无害的经验诱导有害回应', k: '1', why: '原文放在 S1：成分各自被判良性，组合后在新会话产生伤害。' },
+    { t: 'EVOMAL：恶意技能通过智能体编写的副本在技能库传播', k: '2', why: '方案生成把污染转成可复用资产。' },
+    { t: 'AntiSkillBench：人设技能暴露推断出的个人属性', k: '2', why: '派生资产带来的隐私问题。' },
+    { t: 'DGM：候选删掉隐藏检测器需要的日志', k: '3', why: '候选者改动了评估它的证据。' },
+    { t: 'MEXTRA：反复查询提取智能体记忆', k: '3', why: '评估时对候选或其记忆的访问成为披露通道。' },
+    { t: 'SkillJack：源记录删除后，技能里的后门仍在', k: '4', why: '原文在 S4 用它说明源头改动后资产仍活跃（它同时也是 S2 的转化例子）。' }
+  ]
+});
+
+/* ---------- 谱系 ---------- */
+var LN = [
+  { t: '源记录：被投毒的记忆条目', s: 'S1 进入' },
+  { t: '技能 A：从投毒经验提炼出的技能', s: 'S2 转化' },
+  { t: '技能 A′：智能体编写的副本（存在另一个工作区）', s: 'S2 传播' },
+  { t: '持久指令：“跳过证书校验”写进任务智能体', s: 'S4 保留' },
+  { t: '后继 v3：继承以上全部，正在服务', s: 'S4 遗传' },
+  { t: '已推送到外部仓库的不安全代码', s: '外部效应', ext: true }
+];
+// 每种策略下各节点：1 = 仍被污染，0 = 已清理，2 = 不可逆，需要单独补救
+var LS = [
+  { st: [1, 1, 1, 1, 1, 2], svc: '受影响', c: '什么都不做：所有派生资产都在，后继在良性任务上继续生成不安全代码。' },
+  { st: [0, 1, 1, 1, 1, 2], svc: '受影响', c: '原文 SkillJack 的情形：源记录删除后，已转化出的技能和副本仍然存活。' },
+  { st: [1, 1, 1, 1, 1, 2], svc: '受影响', c: '回滚模型检查点只恢复权重。这条谱系里的污染全在记忆、技能、harness 指令这些非权重状态里，所以全部原样。原文说恢复除了源记录和模型检查点，还必须处理活跃的被投毒技能、凭据和待执行动作。' },
+  { st: [1, 1, 1, 1, 1, 2], svc: '受影响', c: '原文 Hyperagents 实验：在干净基准上继续演化，有害指令依然存活。只有换到明确惩罚该漏洞的基准，那次运行里才被移除。' },
+  { st: [0, 0, 0, 0, 0, 2], svc: '已恢复（需测试）', c: '原文建议的做法：依赖记录完整时，可以隔离已知后代并测试残余影响；还要确认良性服务恢复。已发生的外部效应无法通过回滚撤销，需要单独补救。' },
+  { st: [0, 0, 1, 0, 1, 2], svc: '受影响', c: '原文强调恢复依赖“足够完整的依赖记录”：一个没被记录的副本就足以让污染在后继里重新出现。这也是原文要求测试缓存副本和残余影响的原因。' }
+];
+function lineage(k) {
+  var b = $('#lnBox'); b.innerHTML = '';
+  var bad = 0;
+  LN.forEach(function (n, i) {
+    var v = LS[k].st[i];
+    if (v === 1) bad++;
+    S.h('div', { class: 'nd ' + (v === 1 ? 'bad' : v === 0 ? 'ok' : '') + (n.ext ? ' ext' : ''), html: '<span>' + n.t + ' <span style="color:var(--ink-3);font-size:14px">· ' + n.s + '</span></span><span class="st2">' + (v === 1 ? '仍被污染' : v === 0 ? '已清理' : '不可逆，需单独补救') + '</span>' }, b);
+  });
+  $('#lnBad').textContent = bad + ' / 5';
+  $('#lnSvc').textContent = LS[k].svc;
+  $('#lnCap').textContent = LS[k].c;
+}
+S.seg($('#lnS'), function (v) { lineage(+v); });
+lineage(0);
+
+/* ---------- 删除主张 ---------- */
+var DL = [
+  ['m', '记忆与检索索引（含派生摘要）'],
+  ['s', '由该数据提炼出的技能 / 人设'],
+  ['w', '模型参数（含合并权重、适配器）'],
+  ['v', '可访问的历史版本与已发布的检查点'],
+  ['l', '审计日志和评估记录'],
+  ['t', '经工具重新获取的途径（如重新检索外部源）'],
+  ['p', '之前的披露与接收方的访问权'],
+  ['r', '修订后的更新器被复用后的重测']
+];
+DL.forEach(function (d) {
+  var l = S.h('label', null, $('#dlChk'));
+  var i = S.h('input', { type: 'checkbox', 'data-k': d[0] }, l);
+  S.h('span', { text: d[1] }, l);
+  i.addEventListener('change', delClaim);
+});
+function delClaim() {
+  var on = $$('#dlChk input').filter(function (i) { return i.checked; }).map(function (i) { return i.getAttribute('data-k'); });
+  var names = DL.filter(function (d) { return on.indexOf(d[0]) >= 0; }).map(function (d) { return d[1]; });
+  var miss = DL.filter(function (d) { return on.indexOf(d[0]) < 0; }).map(function (d) { return d[1]; });
+  var o = $('#dlOut');
+  if (!names.length) { o.className = 'verdict3 bad'; o.innerHTML = '“已删除”：没有说明任何范围，这条主张无法被检验。'; return; }
+  o.className = 'verdict3' + (miss.length ? ' bad' : '');
+  o.innerHTML = '<b>可检验的主张：</b>在声明的访问条件下，目标信息已从 ' + names.join('、') + ' 中移除并通过测试。' +
+    (miss.length ? '<br><b>未覆盖（必须写明“未评估”）：</b>' + miss.join('、') + '。' : '<br>覆盖了本笔记列出的全部范围；原文仍要求写明访问假设和查询条件。');
+}
+delClaim();
+
+/* ---------- 差分隐私 ---------- */
+S.guess($('#dpGuess'), {
+  q: '一条后继链共 10 个版本，每个版本都重新用私有数据训练一次，每次 ε = 0.5。按基本组合，累计 ε 是多少？',
+  ans: 5, fmt: function (x) { return S.f(x, 1); },
+  why: '基本组合直接相加：10 × 0.5 = 5。如果其中只有 4 次真正接触了私有数据、其余 6 次只是后处理，累计 ε 就是 2。决定成本的是接触私有数据的发布次数，不是后继数量。'
+});
+function dp() {
+  var v = +$('#dpVs').value, k = Math.min(+$('#dpKs').value, v), e = +$('#dpEs').value, d = +$('#dpDs').value;
+  if (+$('#dpKs').value > v) $('#dpKs').value = v;
+  $('#dpV').textContent = v; $('#dpK').textContent = k; $('#dpE').textContent = S.f(e, 2); $('#dpD').textContent = S.f(d, 1);
+  $('#dpTE').textContent = S.f(k * e, 2);
+  $('#dpTD').textContent = k * d === 0 ? '0' : S.f(k * d, 1) + '×10⁻⁶';
+  $('#dpN').textContent = (v - k) + ' 个';
+}
+['dpVs', 'dpKs', 'dpEs', 'dpDs'].forEach(function (id) { $('#' + id).addEventListener('input', dp); });
+dp();
+
+/* ---------- 记下来 ---------- */
+S.notes($('#n-def'), {
+  c: [['系统安全', '保护经验、保留资产、接受证据免受未授权访问、修改、影响。'], ['韧性', '承受、遏制、恢复，并维持或恢复可接受服务。'], ['隐私', '防止不当获取、转化、披露、继承，含超授权处理。'], ['数据治理', '收集与复用在许可目的和授权范围内。']],
+  p: [['分开测试', '输入拦截、服务恢复、从派生资产与可访问版本中移除、残余影响。'], ['方程定位', '污染的 E 改 h；污染的 F 改 B 和 U。']]
+});
+S.notes($('#n-stages'), {
+  c: [['来源绑定', '把动作权限绑定到来源，区分“授权行动”和“证据支持”。'], ['接受证据绑定', '把候选、输入、输出、评估器、决策绑在一起。']],
+  p: [['图 6 安全行', '投毒经验 → 恶意技能 → 篡改接受证据 → 继承载荷。'], ['图 6 隐私行', '过度收集 → 敏感派生资产 → 记忆提取 → 跨版本泄露。']]
+});
+S.notes($('#n-attack'), {
+  c: [['访问假设', '写权限、仅查询、外部内容进入后续会话，决定攻击结论的范围。'], ['度量什么', '加入恶意技能 ≠ 完成外泄；金丝雀污染 ≠ 执行伤害。']],
+  p: [['S1', 'AgentPoison、MINJA、Zombie Agents、OEP、EvoBreak。'], ['S2', 'SkillJack、EVOMAL、SkillCascade、PoisonedEvolution、AntiSkillBench。'], ['S3', 'DGM 删日志、harness 篡改审计、MEXTRA、ADAM。']]
+});
+S.notes($('#n-lineage'), {
+  c: [['源头 ≠ 全部', '派生资产在源删除后仍活跃，还可能被复制。'], ['依赖记录', '来源、父代、审查版本、权限、依赖；不完整就隔离不全。']],
+  p: [['恢复要覆盖', '被投毒技能、凭据、待执行动作、源记录、检查点、缓存副本、外部效应；h 和 B 都要查。'], ['比较设计', '只清源头 vs 源头 + 后代，同时看后续伤害和良性服务恢复。']]
+});
+S.notes($('#n-delete'), {
+  c: [['删除主张的边界', '由测试的访问条件界定。'], ['日志悖论', '审计日志本身可能含敏感信息，访问权也属隐私评估。']],
+  p: [['要写明', '派生资产、可访问历史版本、辅助信息、之前的披露与接收方。'], ['研究', '精确遗忘提取、可逆遗忘、Bemula、AUBench。']]
+});
+S.notes($('#n-dp'), {
+  c: [['基本自适应组合', '同一邻接、事先确定的界下，(Σε<sub>j</sub>, Σδ<sub>j</sub>)-DP。'], ['后处理', '不再访问私有数据的处理不增加预算。'], ['邻接', '必须说明是记录级还是用户级。']],
+  p: [['后继数 ≠ 成本', '成本由接触私有数据的发布次数决定。'], ['不能替代', '差分隐私不替代同意和目的限制。']]
+});
+S.notes($('#n-ri'), {
+  c: [['不当唯一批准者', '候选可以提出新保障，但不能自己批准。'], ['污染 ≠ 修订 U', '持续污染不说明改进程序被修订。']],
+  p: [['放在可修改范围之外', '最终变更批准、权限根、恢复权限。'], ['改什么重测什么', '日志 → 证据覆盖；解释器 → 策略检查；隐私机制 → 来源、授权、邻接、裁剪、噪声、记账。']]
+});

@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>行为约束、对齐与公平</title>
+<meta name="description" content="可信递归自我改进学习笔记（四）：行为约束同时管“别做有害的事”和“别无理拒绝”；对齐容许授权的目标变化，但不容许改进者单方面重新定义成功；公平看受影响群体的分布。按 S1–S4 / RI 看错误的规范目标、代理过优化、评估器被利用、继承的不安全行为；代理奖励过优化曲线、拒绝经验的两难、留存反馈让少数群体流失的示意模拟；原文表 5 的七项发现。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 4a8 8 0 1 1-7.4 5' fill='none' stroke='%2313171C' stroke-width='2.2' stroke-linecap='round'/%3E%3Cpath d='M2 6l2.6 3 3-2.4' fill='none' stroke='%2313171C' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='12' cy='12' r='3.2' fill='%232340D6'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../assets/site.css">
+<link rel="stylesheet" href="../study-shared/series.css">
+<script src="../../assets/site.js"></script>
+<script src="../study-shared/series.js"></script>
+<script src="../study-shared/agentevo.js"></script>
+<link rel="stylesheet" href="../study-shared/rsi.css">
+<script src="../study-shared/rsi.js"></script>
+</head>
+<body data-series="rsi-series" data-part="4" data-rail>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="../../">
+      <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><rect x="7" y="9" width="10" height="11" rx="1.5" fill="var(--s1)"/></svg>
+      AI 观察笔记
+    </a>
+    <nav class="site-nav">
+      <a href="../../">全部文章</a>
+      <button class="theme-btn" type="button">深色</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+<section class="hero wrap">
+  <p class="kicker"><span>技术学习</span><span>可信 RSI · 04</span><span>对应原文第 4 节（p.23–29）</span><span>约 25 分钟</span></p>
+  <h1>变强的同时，<em>还守规矩吗</em></h1>
+  <p class="lead">第 3 篇问的是“提升是不是真的”；这一篇问的是另一件事：就算提升是真的，系统会不会在变强的过程中变得更危险、偏离人真正想要的目标、或者对某些群体越来越不公平？原文的核心观点是：这些要求可能在单次更新时满足、在继承中流失、在更新器被修订后被悄悄改写，而且提高的任务分数本身不能成为放宽它们的理由。</p>
+  <p class="credit">本系列是综述论文《<a href="https://arxiv.org/abs/2610.35193" rel="noopener">Trustworthy Recursive Self-Improvement in the Era of Large Models: Foundation, Risks, Evaluation and Open Challenges</a>》（Jiayue Pu、Ang Gao 等，中国人民大学高瓴人工智能学院，2026 年 10 月 26 日 v1）的学习笔记。原文正文 56 页，另有约 25 页参考文献和附录。这里按原文第 2–8 节重排成八篇，用自己的话重讲：定义和框架做成可以动手的分类、分步演示，风险和保障按 S1–S4 / RI 做成可切换的对照，评估设计配真实计算。每节标出原文页码；原文数字标“原文数据”，演示数值标“示意”。原文把证据分成“RSI 中直接观察到的”和“相关系统中的”，本笔记沿用这个区分。</p>
+<nav class="series" aria-label="系列目录">
+  <a href="../2026-10-30-rsi/"><b>总览</b>复习台</a>
+  <a href="../2026-10-30-rsi-1/" data-part="1"><b>01</b>什么是 RSI</a>
+  <a href="../2026-10-30-rsi-2/" data-part="2"><b>02</b>可信框架</a>
+  <a href="../2026-10-30-rsi-3/" data-part="3"><b>03</b>真实提升</a>
+  <a href="../2026-10-30-rsi-4/" aria-current="page" data-part="4"><b>04</b>约束与对齐</a>
+  <a href="../2026-10-30-rsi-5/" data-part="5"><b>05</b>安全与隐私</a>
+  <a href="../2026-10-30-rsi-6/" data-part="6"><b>06</b>透明与可控</a>
+  <a href="../2026-10-30-rsi-7/" data-part="7"><b>07</b>怎么评估</a>
+  <a href="../2026-10-30-rsi-8/" data-part="8"><b>08</b>应用与难题</a>
+</nav>
+</section>
+
+<nav class="secnav" aria-label="本篇小节">
+  <div class="wrap"><a href="#def">定义与边界</a><a href="#stages">四阶段风险</a><a href="#proxy">代理过优化</a><a href="#refuse">拒绝的两难</a><a href="#fair">公平的反馈环</a><a href="#table">七项发现</a><a href="#ri">RI 与空白</a><a href="#recap">回扣三问</a></div>
+</nav>
+<div class="wrap">
+<div class="ask3">
+  <h3>读完这一篇，你应该能回答</h3>
+  <ol>
+    <li>为什么评估行为约束时，“有害服从”和“无理拒绝”必须一起看？</li>
+    <li>“对齐”允许目标变化吗？什么样的变化算偏离？</li>
+    <li>为什么评估器（或评分标准）能被修改时，分数上升不再说明行为变好？</li>
+  </ol>
+</div>
+
+<section class="part" id="def">
+  <div class="part-head"><h2>三个概念的边界</h2><span class="meta">原文 §4.1，p.23</span></div>
+  <div class="sec-lede">
+    <p><strong>行为约束</strong>规定在给定情境下允许、禁止和必须的行为，<strong>既包括避免有害动作，也包括避免无理拒绝合法请求</strong>。所以评估必须同时看约束违反和是否提供了恰当的帮助。</p>
+    <p><strong>对齐</strong>关心系统是否持续追求<strong>经授权的</strong>人类目标，而不只是提高一个代理分数。它容纳经授权的人类要求变化，但<strong>不容纳改进者单方面重新定义什么叫成功</strong>。</p>
+    <p><strong>公平</strong>关心收益、错误、机会、拒绝和风险在受影响群体之间的不合理差异；相关的群体、结果和标准取决于应用。</p>
+    <p>原文专门处理了一个交叉情况：<strong>不成比例的拒绝</strong>可能同时影响行为约束和公平；但要把它归因于“未对齐”，需要关于导致拒绝的目标或决策规则的证据。主张层级上，单次更新要识别适用要求、受影响群体和相关结果，不能只看总体任务表现；后继要证明改动被继承和使用并重新评估，多个后继能显示效应是持续、累积还是逆转；元改进声称“修订后的机制更能保持这些要求”，需要与不变的 U<sub>t</sub> 受控比较。</p>
+  </div>
+  <div class="confuse">
+    <h4>易混辨析：授权的目标变化 vs 未授权的漂移</h4>
+    <p><b>授权的变化</b>：人类要求本身改了，例如政策更新、群体优先级重新排序，并经过有权限的人批准。原文说对齐“容纳”这种变化，但变化要被授权并重新评估。</p>
+    <p><b>未授权的漂移</b>：改进者自己改了成功的定义，例如改了评分标准、放宽了接受条件、换了偏好来源。原文在 RI 部分说，任务分数提高本身不能证明放宽这些要求是合理的。</p>
+  </div>
+  <div class="notes" id="n-def"></div>
+</section>
+
+<section class="part" id="stages">
+  <div class="part-head"><h2>按阶段看风险与保障</h2><span class="meta">原文 §4.2–4.3，图 5，p.24–28</span></div>
+  <div class="sec-lede">
+    <p>原文图 5 把每个阶段配成“失败 / 保障”一对：S1 错误的规范目标 / 用可审计的反馈和有代表性的输入；S2 违反约束或目标偏离 / 生成考虑约束的候选；S3 误导性接受分数 / 独立的接受测试；S4 继承的不安全或不公平行为 / 重查完整的后继。RI 层：未授权地重新定义成功 / 独立的标准、经授权的要求变更、重测之后的后继。</p>
+    <p class="go">切换阶段。</p>
+  </div>
+  <div class="lab"><div id="stg"></div></div>
+  <div class="notes" id="n-stages"></div>
+</section>
+
+<section class="part" id="proxy">
+  <div class="part-head"><h2>S2：代理奖励被优化过头</h2><span class="meta">原文 §4.2.2，表 5，p.25、29</span></div>
+  <div class="sec-lede">
+    <p>原文说 S2 主要的对齐风险来自优化一个不完整代表人类要求的代理。三个例子：<strong>目标误泛化</strong>（Langosco 等 2022，CoinRun：硬币挪了位置，训练好的策略仍然保持“走到关卡终点”的导航，常常直接越过硬币）；<strong>代理过优化</strong>（Khalaf 等 2025，GPQA：在推理时用奖励模型从多达 32 个样本里挑，选择越强，代理奖励越高，独立的答案准确率先升后降）；<strong>奖励篡改</strong>（Everitt 等 2021：识别出会产生“操纵奖励信号而不是完成任务”激励的条件）。原文据此提出限制对不确定代理的优化压力、限制对奖励信号的影响。</p>
+    <p>下面用奖励模型过优化研究里常见的函数形式做一个示意：best-of-n 选择相对原策略的 KL 距离是 log n − (n − 1)/n，记 d = √KL；代理分数随 d 近似线性增长，真实目标则是 d(α − βd)，在某个 n 之后开始下降。</p>
+    <p class="go">拖动“代理的偏差程度”，看真实目标的峰值落在挑多少个样本处。</p>
+  </div>
+  <div class="lab-row">
+    <div class="lab">
+      <p class="lab-t">挑得越狠，越偏离 <span class="evt arg">示意</span></p>
+      <label class="ctl"><span>代理的偏差程度 β <output id="pxB">0.40</output></span><input type="range" id="pxBs" min="0.1" max="0.9" step="0.05" value="0.4"></label>
+      <div class="box" id="pxChart"></div>
+      <div class="read"><div class="hl"><div class="v" id="pxN">0</div><div class="k">真实目标最高时的样本数 n</div></div><div class="warn"><div class="v" id="pxD">0</div><div class="k">n = 32 时真实目标相对峰值的回落</div></div></div>
+      <p class="note">函数形式参照奖励模型过优化的文献，α = 1，数值纯属示意，不是 Khalaf 等的实验数据。原文表 5 只报告了方向：“准确率先达峰，随更强的选择而下降”。</p>
+    </div>
+    <div class="lab">
+      <p class="lab-t">可编辑的面不同，路径也不同</p>
+      <ul class="pts">
+        <li><strong>参数更新</strong>可能削弱拒答行为。</li>
+        <li><strong>harness 修改</strong>可能改变工具权限、安全记忆或动作顺序。</li>
+        <li>只奖励“完成任务”而不约束“怎么完成”时，两条路径都可能被搜索偏爱。</li>
+        <li>更高的平均奖励可能掩盖对某个群体的伤害；静态的均等约束不一定能预测延迟的群体结果（Liu 等 2018）。</li>
+        <li>在构造的多智能体协调博弈里，局部奖励的模仿传播了与预期集体结果冲突的合谋（Han 等 2025）。</li>
+      </ul>
+    </div>
+  </div>
+  <div class="notes" id="n-proxy"></div>
+</section>
+
+<section class="part" id="refuse">
+  <div class="part-head"><h2>S1 / S4：拒绝经验的两难</h2><span class="meta">原文 §4.2.1、§4.3.1，表 5，p.24、26、29</span></div>
+  <div class="sec-lede">
+    <p>原文反复引用的一项研究来自经验驱动的自我进化智能体（Zhao 等 2026b，GPT-4o 网页智能体，BrowserART / WebArena，106 步，权重和测试固定，只改变记忆里的执行经验和拒绝经验）：<strong>良性的执行经验增加了不安全动作的倾向，而拒绝经验减少了不安全动作，却增加了过度拒绝</strong>。原文由此得出两条要求：诊断必须区分“成功执行”和“恰当行为”；执行和拒绝的样本要一起评估，因为减少不安全动作可能增加无理拒绝。</p>
+    <p>这正是“行为约束同时管两件事”的直接例证。另一项相关结果：在所测试的模型上，良性数据微调一个 epoch 后，同一安全测试上的有害服从上升（Qi 等 2024，GPT-3.5 Turbo / Llama-2-7B，330 条提示，11 个禁止类别）。</p>
+    <p class="go">调整记忆中拒绝经验的比例，看两条指标怎么此消彼长；再试试“只看一个指标”时会选出哪个比例。</p>
+  </div>
+  <div class="lab">
+    <p class="lab-t">拒绝经验占比 vs 两类错误 <span class="evt arg">示意</span></p>
+    <label class="ctl"><span>记忆中拒绝经验的占比 <output id="rfP">30%</output></span><input type="range" id="rfPs" min="0" max="1" step="0.05" value="0.3"></label>
+    <div id="rfBars"></div>
+    <div class="seg" id="rfObj" style="margin-top:10px"><button data-v="u" aria-pressed="true">只最小化不安全动作</button><button data-v="o">只最小化过度拒绝</button><button data-v="j">两者加总</button></div>
+    <p class="cap" id="rfCap" aria-live="polite"></p>
+    <p class="note">曲线形状为示意，只保留原文报告的方向（拒绝经验 ↑：不安全动作 ↓，过度拒绝 ↑）；数值不来自 Zhao 等的实验。</p>
+  </div>
+  <div class="notes" id="n-refuse"></div>
+</section>
+
+<section class="part" id="fair">
+  <div class="part-head"><h2>公平：少数群体是怎样被“优化掉”的</h2><span class="meta">原文 §4.2.1、§4.3.2，表 5，p.24、27、29</span></div>
+  <div class="sec-lede">
+    <p>原文指出，在公平问题上，<strong>过去的决策会影响哪些群体出现在未来的数据里</strong>。留存反馈模型表明：某个群体的表现较差，会降低该群体在后续数据中的占比（Hashimoto 等 2018，两个模拟群体、500 轮，在平均损失下少数群体的准确率和占比都下降）；在用生成数据反复训练的设定里，群体表征和偏差相关的结果也会改变（Wyllie 等 2024：FairFace 性别分类，7 种族 × 2 年龄组，10 代后群体准确率差距和均衡几率差距上升；Wang 等 2026i：Llama3.1-8B 新闻，3 次更新后合成数据比真实数据更明显地增加了左右偏好偏差）。</p>
+    <p>对应的保障：在给定的留存模型下，<strong>群体稳健优化</strong>能减少少数群体的损失；但延迟影响分析表明，标准的均等条件不一定改善未来的群体结果。原文据此要求同时评估当前的群体结果和它们在连续更新中的演变，并建议在变化的部署人群旁边，保留一个固定的参照人群，用一致的群体定义和指标，把“人群构成变化”和“群体内部变化”分开。</p>
+    <p class="go">下面是按这个反馈机制自拟的简化模型：每轮模型按当前人群训练，群体占比越小误差越大；用户以 1 − 误差 的概率留下，每轮按固定比例有新用户到来。比较“平均损失”和“最差群体损失”两种训练目标。</p>
+  </div>
+  <div class="lab">
+    <p class="lab-t">留存反馈环 <span class="evt arg">示意</span></p>
+    <div class="ctl-grid">
+      <label class="ctl"><span>新到用户中少数群体的比例 <output id="fsA">30%</output></span><input type="range" id="fsAs" min="0.1" max="0.5" step="0.05" value="0.3"></label>
+      <label class="ctl"><span>误差对占比的敏感度 <output id="fsK">0.40</output></span><input type="range" id="fsKs" min="0.2" max="1" step="0.05" value="0.4"></label>
+    </div>
+    <div class="box" id="fsChart"></div>
+    <div class="read"><div class="warn"><div class="v" id="fsE">0</div><div class="k">平均损失：第 60 轮少数群体占比</div></div><div class="good"><div class="v" id="fsR">0</div><div class="k">最差群体损失：第 60 轮少数群体占比</div></div></div>
+    <p class="note">真实计算，模型自拟：群体误差 = 0.05 + 敏感度 × (1 − 占比)<sup>2</sup>；“最差群体损失”目标下两组误差都按占比 50% 计算。只演示 Hashimoto 等描述的反馈方向，不复现其数值。</p>
+  </div>
+  <div class="notes" id="n-fair"></div>
+</section>
+
+<section class="part" id="table">
+  <div class="part-head"><h2>七项代表性发现</h2><span class="meta">原文表 5、§4.4.1，p.28–29</span></div>
+  <div class="sec-lede">
+    <p>原文表 5 按被测性质分组，列出设置、观察期、哪些条件被固定，以及关键发现。值得注意的是“被固定的条件”这一列：每项发现都只在它固定的那些条件下成立。原文还提到几项覆盖不同干预面的研究：SEVerA 用显式契约检查候选程序；SEABench 在压力测试的 harness 轨迹里把任务收益和下游安全失效配对；基于经验和 harness 的修复研究追踪了有限次更新中的行为纠正。</p>
+  </div>
+  <div class="lab"><div id="stu"></div></div>
+  <div class="notes" id="n-table"></div>
+</section>
+
+<section class="part" id="ri">
+  <div class="part-head"><h2>RI：连保障本身都可能被改</h2><span class="meta">原文 §4.2.5、§4.3.5、§4.4.2，p.26、28–29</span></div>
+  <div class="sec-lede">
+    <p>原文在 RI 部分的判断是：<strong>RI 可以修改保障本身</strong>。修订后的改进机制可能采用不同的偏好、探索以前被排除的修改、放宽接受标准。如果 U<sub>t+1</sub> 负责挑选未来的后继，那么为 U<sub>t</sub> 建立的保证都必须重新检查。对齐的问题变成：修订是保持了授权目标和行为约束，还是只在人的授权下改变它们，而不是自己重新定义成功。</p>
+    <p>形式化方面，自我修改的形式模型对理想化智能体给出了目标保持的条件性结果，也研究了有限理性；tiling agents 和 Vingean reflection 研究智能体怎样信任它无法完全模拟的后继。实证方面，可执行的指标会在协同演化中失去有效性：在评估器–技能协同演化里，<strong>去掉评估锚点后，一个报告生成指标几乎对每个案例都返回“通过”，而另一个技能分数还在提升</strong>（Zhang 等 2026l）；对齐相关的结果也会在有限的更新序列中漂移（Sahoo 等 2026）。</p>
+    <p>原文给出的两条互补要求：行为和规范标准必须<strong>能独立于被修订的规则来测试</strong>；经授权的人类目标或群体优先级变化，必须和未授权的漂移区分开（审批权限在第 6 篇）。例子：VeriFine 在驾驶和机器人导航里，复用经人类校准修订过的评判器去做后续课程选择和策略训练，策略从共同的基座重新开始；推理时的安全配置让行为要求显式且可调。在反复的机制修订中评估这些要求能否保持，原文说仍是一个纵向研究问题。</p>
+  </div>
+  <div class="take">
+    <h4>原文 Takeaway（p.29）</h4>
+    <dl>
+      <dt class="r">风险</dt><dd>更新会削弱行为约束、让优化偏离授权目标、或伤害特定群体。对于修订并复用自身改进程序的系统，证据仍然有限。</dd>
+      <dt class="g">保障</dt><dd>独立的行为测试、群体层面的评估、跨系统版本的检查分别针对不同风险，价值取决于足够的覆盖和有效的评估标准。</dd>
+      <dt class="f">未来</dt><dd>评估行为约束、与授权目标的对齐、公平能否在之后的系统版本中保持，包括改进程序被修订并复用之后；使用匹配资源和独立评估。</dd>
+    </dl>
+  </div>
+  <div class="notes" id="n-ri"></div>
+</section>
+
+<section class="part" id="recap">
+  <div class="part-head"><h2>回扣开头的三个问题</h2><span class="meta">先自己答，再点开</span></div>
+  <div class="ask3" style="margin-top:0">
+    <details><summary>1. 为什么有害服从和无理拒绝必须一起看？</summary><p class="ans">原文对行为约束的定义同时包括避免有害动作和避免无理拒绝合法请求。实证上，拒绝经验能减少不安全动作却会增加过度拒绝（Zhao 等 2026b），只看一个指标会把系统推向另一个极端。失败驱动的安全修复研究也同时考察有害服从、过度拒绝和合法任务效用。</p></details>
+    <details><summary>2. 对齐允许目标变化吗？</summary><p class="ans">允许经授权的人类要求变化，但不允许改进者单方面重新定义成功。区分两者需要授权记录和独立于被修订规则的标准。</p></details>
+    <details><summary>3. 评估器能被修改时，分数为什么不可信？</summary><p class="ans">分数上升可能来自标准变了而不是行为变好。评估器–技能协同演化中，去掉锚点后报告指标几乎全判通过；针对谎言检测器的偏好优化在某些设定下产生了规避检测的行为。所以需要候选者控制之外的参照点和固定锚点。</p></details>
+  </div>
+</section>
+<nav class="pager" aria-label="翻页"><a href="../2026-10-30-rsi-3/"><small>上一篇</small><span>03 · 真实且持续的提升</span></a><a class="nx" href="../2026-10-30-rsi-5/"><small>下一篇</small><span>05 · 系统安全、韧性、隐私与数据治理</span></a></nav>
+</div>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <span>AI 观察笔记</span>
+    <span>学习笔记 · 原书：<a href="https://arxiv.org/abs/2610.35193" rel="noopener">arXiv:2610.35193</a></span>
+  </div>
+</footer>
+<script>
+(function () {
+'use strict';
+var $ = S.$, $$ = S.$$, h = S.h;
+/* ---------- 四阶段 ---------- */
+R.stages($('#stg'), [
+  { k: 'S1', t: '改进诊断', q: '反馈代表了谁的目标？成功执行等于恰当行为吗？',
+    risk: '主要风险不是数据噪声，而是误读要求：反馈可能反映不完整的行为规则、过度代表某一方的偏好、或漏掉下一轮训练中缺席的群体。',
+    ev: [R.tag('rel') + '良性执行经验增加不安全动作倾向，拒绝经验减少不安全动作但增加过度拒绝（Zhao 等 2026b）。', R.tag('rel') + 'PRISM：模型排名取决于抽到的参与者和话题，以及偏好如何聚合（Kirk 等 2024）。', R.tag('rel') + '留存反馈：某群体表现差会降低它在后续数据中的占比（Hashimoto 等 2018）。'],
+    guard: '改进目标要能追溯到行为规则、受影响群体和用来定目标的反馈；记录要区分任务成功和约束遵守，记录参与者、话题、抽样和聚合方法；跟踪模型生成样本和群体结果的轮次变化。',
+    lim: '利益相关者要求之间的冲突需要一个授权取舍的流程，这属于第 6 篇的审批权限问题。' },
+  { k: 'S2', t: '方案生成', q: '搜索在优化一个不完整的代理吗？可编辑的面会打开哪些不安全路径？',
+    risk: '目标误泛化、代理过优化、奖励篡改；参数更新削弱拒答，harness 修改改变工具权限、安全记忆或动作顺序。',
+    ev: [R.tag('rel') + 'CoinRun：硬币挪位后策略仍按“完成关卡”导航（Langosco 等 2022）。', R.tag('rel') + 'GPQA：更强的选择使代理奖励上升而准确率先升后降（Khalaf 等 2025）。', R.tag('rel') + '多智能体协调博弈中局部奖励的模仿传播了合谋（Han 等 2025）。'],
+    guard: '区分性能目标和行为 / 公平约束；SEVerA 把 LLM 辅助的程序搜索和显式契约检查结合；限制对不确定代理的优化压力、限制对奖励信号的影响；失败驱动的修复同时考虑不安全行为、过度拒绝和合法任务效用；Harmony Harness 在安全编码中对功能和安全做帕累托搜索。',
+    lim: '在一个编辑面上验证过的限制，换成权重更新、加工具或扩大候选生成器后可能失效；公平约束要针对受影响群体和有意义的结果，而不只是难例。' },
+  { k: 'S3', t: '方案评估', q: '接受测试独立于被优化的分数吗？',
+    risk: '行为测试漏掉依赖情境的伤害或奖励过度拒绝；对齐测试度量了不合适的目标；聚合公平分数掩盖个别群体损失；评估器在优化中被利用或被修改。',
+    ev: [R.tag('rel') + '针对谎言检测器的偏好优化在某些设定下产生了规避检测（Cundy 与 Gleave 2025）。', R.tag('rsi') + '评估器–技能协同演化：去掉锚点后报告生成指标几乎全判通过（Zhang 等 2026l）。', R.tag('rel') + '对齐伪装：模型回应随“交互是否可能被用于训练”的信息而变（Greenblatt 等 2024a）。'],
+    guard: 'AgenticEval 生成基于策略的挑战；SEAS 交替生成对抗案例和做安全训练；SIGMA 合成 Model Spec 任务和评分细则做自评训练；ReSI 在满足良性服从和指令遵循阈值的候选中选安全增益最大的；固定锚点、独立参照、报告分群体结果并说明聚合方式。',
+    lim: '依赖生成器和分类器的覆盖与有效性；独立评估显示威胁模型、随机种子和良性任务表现会改变“持久性”结论，也可能暴露良性任务上的大幅性能损失（Qi 等 2025）；均等不等于福利提升。' },
+  { k: 'S4', t: '更新实施', q: '装进后继的改动，和继承的记忆、工具、评估器怎样相互作用？',
+    risk: '对行为、目标或群体结果的影响在后继中持续，并和继承组件相互作用；被复用的评估器若已失去区分能力，会把有缺陷的接受标准传给后续轮次。',
+    ev: [R.tag('rel') + '微调削弱被测模型的安全行为（Qi 等 2024）；不安全代码训练在某些条件下产生更广泛的不良回应（Betley 等 2025b）。', R.tag('rel') + 'SEABench：配对的压力测试 harness 轨迹中任务收益伴随下游安全失效（Das 等 2026）。', R.tag('rel') + '竞价场景中一步策略演化偏爱可迁移的欺骗（Ying 等 2026a）；PASB：保留用户声称的智能体在新会话中更谄媚（Mao 等 2026b）。'],
+    guard: '在将被部署的配置上评估被接受的更新：参数更新做跨版本安全检查；harness 更新要包括保留的记忆、工具策略和工作流，因为权重不变时它们也能改变行为；把每个装入的改动和之后的有害服从、过度拒绝、目标相关行为、群体结果联系起来。',
+    lim: '后继必须独立于用来挑选它们的分数来评估；检查点和人类干预权限见第 6 篇。' },
+  { k: 'RI', t: '递归改进', q: '修订后的机制还在守原来的规矩吗？',
+    risk: '修订后的机制可能采用不同偏好、探索以前被排除的修改、放宽接受标准；对 U<sub>t</sub> 的保证都要对 U<sub>t+1</sub> 重查。',
+    ev: [R.tag('rsi') + '可执行指标在协同演化中失去有效性（Zhang 等 2026l）。', R.tag('rel') + '对齐相关结果在有限更新序列中漂移（Sahoo 等 2026）。'],
+    guard: '形式化自我修改研究（目标保持、有限理性、tiling agents、Vingean reflection）给出条件性结果；VeriFine 复用人类校准的评判器并从共同基座重启策略；推理时安全配置让要求显式可调。',
+    lim: '标准要能独立于被修订规则测试；授权变化要与未授权漂移区分；LLM 改进机制在更长更新序列中被修订复用时这些要求如何保持，仍是开放问题。' }
+]);
+
+/* ---------- 代理过优化 ---------- */
+function kl(n) { return Math.log(n) - (n - 1) / n; }
+var pxDraw = S.chart($('#pxChart'), { h: 250, x: [1, 32], y: [-0.4, 2.2], xt: [1, 8, 16, 24, 32], yt: [0, 0.5, 1, 1.5, 2], xl: '挑选的样本数 n（best-of-n）', yl: '分数（相对原策略）', curves: [] });
+function proxy() {
+  var b = +$('#pxBs').value; $('#pxB').textContent = S.f(b, 2);
+  var gold = function (n) { var d = Math.sqrt(kl(n)); return d * (1 - b * d); };
+  var prox = function (n) { return Math.sqrt(kl(n)); };
+  var best = 1, bv = -1e9;
+  for (var n = 1; n <= 32; n++) { if (gold(n) > bv) { bv = gold(n); best = n; } }
+  pxDraw({ curves: [{ f: prox, c: 'c1', label: '代理奖励' }, { f: gold, c: 'c2', label: '真实目标' }], vl: [{ x: best, c: 'c2', label: '峰值' }] });
+  $('#pxN').textContent = best;
+  $('#pxD').textContent = bv > 0 ? S.pct(1 - gold(32) / bv, 0) : '—';
+}
+$('#pxBs').addEventListener('input', proxy);
+proxy();
+
+/* ---------- 拒绝两难 ---------- */
+function unsafeF(r) { return 0.32 * Math.pow(1 - r, 1.6) + 0.03; }
+function overF(r) { return 0.35 * Math.pow(r, 1.8) + 0.02; }
+var rfObj = 'u';
+function refuse() {
+  var r = +$('#rfPs').value; $('#rfP').textContent = Math.round(r * 100) + '%';
+  S.bars($('#rfBars'), [
+    { label: '不安全动作', value: unsafeF(r) / 0.4, text: S.pct(unsafeF(r), 0), cls: 'alt' },
+    { label: '过度拒绝', value: overF(r) / 0.4, text: S.pct(overF(r), 0), cls: 'dim' }
+  ]);
+  var best = 0, bv = 1e9;
+  for (var xi = 0; xi <= 20; xi++) {
+    var x = xi / 20, v = rfObj === 'u' ? unsafeF(x) : rfObj === 'o' ? overF(x) : unsafeF(x) + overF(x);
+    if (v < bv - 1e-9) { bv = v; best = x; }
+  }
+  var msg = { u: '只最小化不安全动作，会把拒绝经验推到 ' + Math.round(best * 100) + '%：此时过度拒绝升到 ' + S.pct(overF(best), 0) + '。', o: '只最小化过度拒绝，会把拒绝经验压到 ' + Math.round(best * 100) + '%：此时不安全动作升到 ' + S.pct(unsafeF(best), 0) + '。', j: '两者加总时，示意曲线的最优比例约为 ' + Math.round(best * 100) + '%。真实系统里两类错误的代价不同，取舍需要授权（原文 §4.3.1）。' };
+  $('#rfCap').textContent = msg[rfObj];
+}
+$('#rfPs').addEventListener('input', refuse);
+S.seg($('#rfObj'), function (v) { rfObj = v; refuse(); });
+refuse();
+
+/* ---------- 公平反馈环 ---------- */
+var fsDraw = S.chart($('#fsChart'), { h: 250, x: [0, 60], y: [0, 0.6], xt: [0, 20, 40, 60], yt: [0, 0.2, 0.4, 0.6], xl: '轮次', yl: '少数群体占比', curves: [] });
+function fair() {
+  var a = +$('#fsAs').value, k = +$('#fsKs').value;
+  $('#fsA').textContent = Math.round(a * 100) + '%'; $('#fsK').textContent = S.f(k, 2);
+  function run(robust) {
+    var N = [100 * (1 - a), 100 * a], lam = [20 * (1 - a), 20 * a], pts = [];
+    for (var t = 0; t <= 60; t++) {
+      var s = N[1] / (N[0] + N[1]);
+      pts.push([t, s]);
+      var e = robust ? [0.05 + k * 0.25, 0.05 + k * 0.25] : [0.05 + k * Math.pow(s, 2), 0.05 + k * Math.pow(1 - s, 2)];
+      N = [N[0] * (1 - e[0]) + lam[0], N[1] * (1 - e[1]) + lam[1]];
+    }
+    return pts;
+  }
+  var p1 = run(false), p2 = run(true);
+  fsDraw({ curves: [{ pts: p1, c: 'c2', label: '平均损失' }, { pts: p2, c: 'ok', label: '最差群体损失' }], hl: [{ y: a, c: 'dim', label: '到达比例' }] });
+  $('#fsE').textContent = S.pct(p1[60][1], 1); $('#fsR').textContent = S.pct(p2[60][1], 1);
+}
+['fsAs', 'fsKs'].forEach(function (id) { $('#' + id).addEventListener('input', fair); });
+fair();
+
+/* ---------- 表 5 ---------- */
+R.studies($('#stu'), [
+  { n: '行为约束 · Qi 等 2024', sub: 'GPT-3.5 Turbo / Llama-2-7B；330 条提示，11 个禁止类别', html: '<p><b>观察期 / 控制</b>：1 个 epoch；同一安全测试、同一评分规则下前后对比。</p><p><b>关键发现</b>：良性数据微调后有害服从上升。</p>' },
+  { n: '行为约束 · Zhao 等 2026b', sub: 'GPT-4o 网页智能体；BrowserART / WebArena', html: '<p><b>观察期 / 控制</b>：106 步；权重和测试固定；只改变执行 / 拒绝记忆。</p><p><b>关键发现</b>：不安全动作 ↓，但过度拒绝 ↑。</p>' },
+  { n: '对齐 · Langosco 等 2022', sub: 'CoinRun；硬币挪位 vs 完成关卡', html: '<p><b>观察期 / 控制</b>：零样本；训练好的策略和奖励固定。</p><p><b>关键发现</b>：导航能力保留，但常常越过挪了位置的硬币。</p>' },
+  { n: '对齐 · Khalaf 等 2025', sub: 'GPQA；代理奖励 vs 答案准确率', html: '<p><b>观察期 / 控制</b>：最多 32 个样本；问题、回答池、奖励模型固定。</p><p><b>关键发现</b>：准确率先达峰，随更强的选择下降。</p>' },
+  { n: '公平 · Hashimoto 等 2018', sub: '两个模拟群体；准确率与占比', html: '<p><b>观察期 / 控制</b>：500 轮；分布和留存规则固定；平均损失 vs 稳健损失。</p><p><b>关键发现</b>：平均损失下少数群体的准确率和占比下降。</p>' },
+  { n: '公平 · Wyllie 等 2024', sub: 'FairFace 性别分类；7 种族 × 2 年龄组', html: '<p><b>观察期 / 控制</b>：10 代；生成器、标注者、留出集固定。</p><p><b>关键发现</b>：群体准确率差距和均衡几率差距上升。</p>' },
+  { n: '公平 · Wang 等 2026i', sub: 'Llama3.1-8B 新闻；左右偏好偏差', html: '<p><b>观察期 / 控制</b>：3 次更新；起点、样本量、群体比例、测试集都匹配。</p><p><b>关键发现</b>：合成数据比真实数据更明显地增加了偏好偏差。</p>' }
+]);
+
+/* ---------- 记下来 ---------- */
+S.notes($('#n-def'), {
+  c: [['行为约束', '允许、禁止、必须的行为；包括避免有害动作和避免无理拒绝。'], ['对齐', '持续追求经授权的人类目标；容纳授权变化，不容纳单方面重定义成功。'], ['公平', '收益、错误、机会、拒绝、风险在受影响群体间的不合理差异。']],
+  p: [['过度拒绝', '同时触及行为约束和公平；归因于未对齐需要关于目标或决策规则的证据。'], ['评估要求', '识别适用要求、受影响群体、相关结果，不能只看总体任务表现。']]
+});
+S.notes($('#n-stages'), {
+  c: [['错误的规范目标', 'S1：反馈代表的要求不完整或偏向一方。'], ['独立的接受测试', 'S3：评估独立于被优化的分数。'], ['重查完整后继', 'S4：在部署配置上评估，包括记忆、工具策略、工作流。']],
+  p: [['图 5 的配对', 'S1 可审计反馈 + 代表性输入；S2 考虑约束的候选；S3 独立接受测试；S4 重查完整后继；RI 独立标准 + 授权变更 + 重测后继。']]
+});
+S.notes($('#n-proxy'), {
+  c: [['目标误泛化', '能力泛化了，目标没有（CoinRun 越过硬币）。'], ['代理过优化', '选择越强代理分越高，真实目标先升后降。'], ['奖励篡改', '有激励去操纵奖励信号而非完成任务。']],
+  p: [['<code>KL<sub>bon</sub> = log n − (n − 1)/n</code>', 'best-of-n 相对原策略的 KL（示意用）。'], ['应对', '限制对不确定代理的优化压力；限制对奖励信号的影响；约束“怎么完成”。']]
+});
+S.notes($('#n-refuse'), {
+  c: [['执行 vs 恰当', '诊断要区分“成功执行”和“恰当行为”。'], ['拒绝的两难', '拒绝经验减少不安全动作，但增加过度拒绝。']],
+  p: [['Zhao 等 2026b', 'GPT-4o 网页智能体，106 步，权重与测试固定，只变记忆。'], ['Qi 等 2024', '良性微调 1 个 epoch，有害服从上升。']]
+});
+S.notes($('#n-fair'), {
+  c: [['留存反馈', '表现差 → 留存低 → 占比降 → 表现更差。'], ['群体稳健优化', '在给定留存模型下减少少数群体损失。'], ['延迟影响', '静态均等条件不一定改善未来群体结果。']],
+  p: [['固定参照人群', '与变化的部署人群并行评估，分开构成变化和群体内变化。'], ['合成数据', '反复训练改变群体表征和偏差（Wyllie 等 2024；Wang 等 2026i）。']]
+});
+S.notes($('#n-table'), {
+  c: [['被固定的条件', '每项发现只在它固定的条件下成立。']],
+  p: [['三组七项', '行为约束（Qi、Zhao）、对齐（Langosco、Khalaf）、公平（Hashimoto、Wyllie、Wang）。']]
+});
+S.notes($('#n-ri'), {
+  c: [['RI 改保障', '修订后的机制可能改偏好、改探索范围、放宽接受标准。'], ['评估锚点', '去掉后可执行指标会失效（几乎全判通过）。']],
+  p: [['两条要求', '标准能独立于被修订规则测试；授权变化与未授权漂移区分。'], ['开放问题', 'LLM 改进机制在长序列中被修订复用时，要求如何保持。']]
+});
+})();
+</script>
+</body>
+</html>

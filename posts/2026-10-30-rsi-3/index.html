@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>真实且持续的提升</title>
+<meta name="description" content="可信递归自我改进学习笔记（三）：提升要真实（强化了预期能力）也要持续（在后续使用和更新中保住）；按 S1–S4 / RI 看诊断偏差、捷径搜索、误导性接受分数、无效更新和归因难题；递归训练里稀有模式先消失的玩具模拟；更多尝试带来的“假进步”先估再算；SICA、Agent Plasticity、MASS、Hyperagents、Evo2 五项研究的证据强度对比。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 4a8 8 0 1 1-7.4 5' fill='none' stroke='%2313171C' stroke-width='2.2' stroke-linecap='round'/%3E%3Cpath d='M2 6l2.6 3 3-2.4' fill='none' stroke='%2313171C' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='12' cy='12' r='3.2' fill='%232340D6'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../assets/site.css">
+<link rel="stylesheet" href="../study-shared/series.css">
+<script src="../../assets/site.js"></script>
+<script src="../study-shared/series.js"></script>
+<script src="../study-shared/agentevo.js"></script>
+<link rel="stylesheet" href="../study-shared/rsi.css">
+<script src="../study-shared/rsi.js"></script>
+</head>
+<body data-series="rsi-series" data-part="3" data-rail>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="../../">
+      <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><rect x="7" y="9" width="10" height="11" rx="1.5" fill="var(--s1)"/></svg>
+      AI 观察笔记
+    </a>
+    <nav class="site-nav">
+      <a href="../../">全部文章</a>
+      <button class="theme-btn" type="button">深色</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+<section class="hero wrap">
+  <p class="kicker"><span>技术学习</span><span>可信 RSI · 03</span><span>对应原文第 3 节（p.15–23）</span><span>约 25 分钟</span></p>
+  <h1>分数涨了，<em>能力真的涨了吗</em></h1>
+  <p class="lead">这是四个主题里的第一个，也是最容易被忽略的一个：大家默认“分数涨了就是变强了”。原文逐个阶段拆开，指出分数可以在能力不变甚至下降的情况下上涨，提升也可能在下一个版本里悄悄流失。到了 RI 层，问题变成更难的归因：变强了，是因为更新器变好了，还是因为多花了算力？</p>
+  <p class="credit">本系列是综述论文《<a href="https://arxiv.org/abs/2610.35193" rel="noopener">Trustworthy Recursive Self-Improvement in the Era of Large Models: Foundation, Risks, Evaluation and Open Challenges</a>》（Jiayue Pu、Ang Gao 等，中国人民大学高瓴人工智能学院，2026 年 10 月 26 日 v1）的学习笔记。原文正文 56 页，另有约 25 页参考文献和附录。这里按原文第 2–8 节重排成八篇，用自己的话重讲：定义和框架做成可以动手的分类、分步演示，风险和保障按 S1–S4 / RI 做成可切换的对照，评估设计配真实计算。每节标出原文页码；原文数字标“原文数据”，演示数值标“示意”。原文把证据分成“RSI 中直接观察到的”和“相关系统中的”，本笔记沿用这个区分。</p>
+<nav class="series" aria-label="系列目录">
+  <a href="../2026-10-30-rsi/"><b>总览</b>复习台</a>
+  <a href="../2026-10-30-rsi-1/" data-part="1"><b>01</b>什么是 RSI</a>
+  <a href="../2026-10-30-rsi-2/" data-part="2"><b>02</b>可信框架</a>
+  <a href="../2026-10-30-rsi-3/" aria-current="page" data-part="3"><b>03</b>真实提升</a>
+  <a href="../2026-10-30-rsi-4/" data-part="4"><b>04</b>约束与对齐</a>
+  <a href="../2026-10-30-rsi-5/" data-part="5"><b>05</b>安全与隐私</a>
+  <a href="../2026-10-30-rsi-6/" data-part="6"><b>06</b>透明与可控</a>
+  <a href="../2026-10-30-rsi-7/" data-part="7"><b>07</b>怎么评估</a>
+  <a href="../2026-10-30-rsi-8/" data-part="8"><b>08</b>应用与难题</a>
+</nav>
+</section>
+
+<nav class="secnav" aria-label="本篇小节">
+  <div class="wrap"><a href="#concept">概念与主张</a><a href="#stages">四阶段风险</a><a href="#collapse">稀有模式消失</a><a href="#bestn">更多尝试的假进步</a><a href="#s3">接受与实施</a><a href="#evidence">五项研究</a><a href="#gap">空白与要点</a><a href="#recap">回扣三问</a></div>
+</nav>
+<div class="wrap">
+<div class="ask3">
+  <h3>读完这一篇，你应该能回答</h3>
+  <ol>
+    <li>“真实的提升”和“持续的提升”分别指什么？各自容易在哪个阶段出问题？</li>
+    <li>为什么“多跑几次再挑最好的”可以让输出变好，却不能说明提案机制变好了？</li>
+    <li>在原文列出的五项研究里，哪两项最能把提升归因到更新器？它们各自还缺什么？</li>
+  </ol>
+</div>
+
+<section class="part" id="concept">
+  <div class="part-head"><h2>真实的、持续的</h2><span class="meta">原文 §3.1，p.16</span></div>
+  <div class="sec-lede">
+    <p>原文的定义很简洁：<strong>真实的提升</strong>强化的是预期的能力；<strong>持续的提升</strong>在之后的使用和更新中保住这些收益。衡量它们用的是第 (i) 组要求：有效（满足预期用途）、可靠（规定条件下可依赖）、稳健（扰动和分布偏移下保持）、真实（输出和报告事实准确）。修改 h 或 B 后，通过系统的行为和表现来评估这些性质；修改 U 则多出一个问题：修订后的机制能不能产出更好的后续更新。</p>
+    <p>对应三层主张，原文要求的证据也分三层。<span class="lv u">单次更新</span> 要在声明条件下对比前后，看多项标准而不只看代理分数。<span class="lv s">后继</span> 还要证明改动被继承、被实际使用，并在得到的系统上重新评估；跟踪多个后继，能测出收益持续多久、迁移多远。<span class="lv m">元改进</span> 要有 U<sub>t</sub> → U<sub>t+1</sub> 的修订、修订后的复用、对其产出更新的评估，并与不变的 U<sub>t</sub> 在可比条件下受控比较，把修订的效应与额外资源、继承起点不同分开。原文总结：<strong>即时收益、保留的收益、产生后续更新的能力提升，这三者需要不同的证据。</strong></p>
+  </div>
+  <div class="notes" id="n-concept"></div>
+</section>
+
+<section class="part" id="stages">
+  <div class="part-head"><h2>按阶段看：提升在哪里被扭曲</h2><span class="meta">原文 §3.2–3.3，图 4，p.16–21</span></div>
+  <div class="sec-lede">
+    <p>原文图 4 把四个阶段的风险压缩成四个词：<strong>有偏的诊断、捷径搜索、误导性的接受分数、无效的更新</strong>。每个阶段对应一组检查：更广的覆盖和验证疑似原因；多样的提案和匹配总搜索成本；独立测试和可比的接受规则；测试保留与使用、保存可恢复状态。RI 层则要从相同的初始状态出发，比较原 U 和修订后 U 产出的后续更新在收益、保留、迁移上的差别。</p>
+    <p class="go">切换阶段，看风险、失败证据、已有保障和它们的局限。</p>
+  </div>
+  <div class="lab"><div id="stg"></div></div>
+  <div class="notes" id="n-stages"></div>
+</section>
+
+<section class="part" id="collapse">
+  <div class="part-head"><h2>S1 的一个机制：稀有模式先消失</h2><span class="meta">原文 §3.2.1、§3.3.1，p.16–19</span></div>
+  <div class="sec-lede">
+    <p>原文说，用生成样本替换早先的数据，会把稀有模式从训练分布里去掉（Shumailov 等 2024；Alemohammad 等 2024），基于这种变窄的经验做诊断，就会漏掉涉及这些模式的失败。损失还是不均匀的：理论分析表明在所研究的递归训练设定里，<strong>越不常见的模式消失得越早</strong>（Suresh 等 2024）。对应的保障是保留真实样本、让新经验不必抹掉旧证据（Gerstgrasser 等 2024），但原文也提醒，这只拓宽了诊断可用的证据，<strong>不能保证覆盖没见过的情况</strong>。</p>
+    <p>下面是一个玩具模型，用来直观感受“替换”和“累积”的差别：有 30 种模式，出现频率按长尾分布；每一代只用上一代数据估计出的频率重新采样。“替换”模式下每一代只看上一代的生成样本；“累积”模式下保留原始真实数据和历代样本一起估计。一个模式只要某一代没被采到，在“替换”模式里就永远回不来了。</p>
+    <p class="go">调小每代样本量，看两种模式下还剩几种模式；点“换一组随机数”多跑几次。</p>
+  </div>
+  <div class="lab">
+    <p class="lab-t">递归重采样：还剩多少种模式 <span class="evt arg">示意</span></p>
+    <div class="ctl-grid">
+      <label class="ctl"><span>每代样本量 <output id="clN">200</output></span><input type="range" id="clNs" min="40" max="1000" step="20" value="200"></label>
+      <label class="ctl"><span>长尾程度（Zipf 指数） <output id="clA">1.2</output></span><input type="range" id="clAs" min="0.6" max="2" step="0.1" value="1.2"></label>
+    </div>
+    <div class="box" id="clChart"></div>
+    <div class="read"><div class="warn"><div class="v" id="clR">0</div><div class="k">替换：第 40 代剩余模式</div></div><div class="good"><div class="v" id="clC">0</div><div class="k">累积：第 40 代剩余模式</div></div><div><div class="v" id="clF">—</div><div class="k">替换模式下最先消失的模式频率排名</div></div></div>
+    <div class="btnrow" style="margin-top:8px"><button class="btn" type="button" id="clRe">换一组随机数</button></div>
+    <p class="note">真实计算，但模型是本笔记自拟的玩具设定（多项分布逐代重估），只演示原文所说的机制，不复现任何论文的数值。“累积”在这里保留了原始真实数据，所以模式永远不会归零；它说明的是“新经验不必抹掉旧证据”，而不是覆盖了没见过的情况。</p>
+  </div>
+  <div class="notes" id="n-collapse"></div>
+</section>
+
+<section class="part" id="bestn">
+  <div class="part-head"><h2>S2 的陷阱：多试几次就“变强”了</h2><span class="meta">原文 §3.2.2、§3.3.2，p.17–19</span></div>
+  <div class="sec-lede">
+    <p>原文指出 S2 的两种风险。第一种是<strong>捷径</strong>：搜索偏爱高分但没解决目标弱点的方案，比如利用代理奖励或可执行测试的漏洞；更简单的研究点子能抬高平均奖励却不提高可达的最佳结果；工具使用策略会利用无关的提示线索而不是响应任务要求。</p>
+    <p>第二种更隐蔽：<strong>额外计算会让一个没变的提案机制看起来更有效</strong>。尝试越多，碰到强候选的机会越大，于是“挑最好的那个”能提高表现，而每次尝试的提案质量并没有变。原文提到，演化的智能体程序在<strong>可比的反馈和推理预算</strong>下，相对简单搜索的优势可能消失（Wang 等 2026k）。原文的措辞很准：输出上的提升可能是真的，但把它归因于机制改进，就夸大了底层的变化。</p>
+    <p class="go">先估一下，再拖动滑块看曲线。</p>
+  </div>
+  <div class="lab-row">
+    <div class="lab">
+      <div id="bnGuess"></div>
+      <p class="lab-t">“至少一个够好”的概率 vs 单次提案质量</p>
+      <label class="ctl"><span>单次提案“够好”的概率 p <output id="bnP">10%</output></span><input type="range" id="bnPs" min="0.02" max="0.4" step="0.01" value="0.1"></label>
+      <div class="box" id="bnChart"></div>
+      <p class="note">真实计算，假设各次尝试独立：P(至少一个够好) = 1 − (1 − p)<sup>N</sup>。单次质量 p 没变，曲线却一路上升。演示数值为示意。</p>
+    </div>
+    <div class="lab">
+      <p class="lab-t">原文给出的应对</p>
+      <ul class="pts">
+        <li><strong>保留多样候选</strong>：只按分数选会淘汰行为不同的备选；保留它们，并通过跨搜索分支共享发现，让它们参与后续探索（MAP-Elites、新颖性搜索等）。</li>
+        <li><strong>让每次尝试更有信息量</strong>：用下游任务结果引导提案，执行候选程序取得证据（AlphaEvolve 等）；生成任务时要保证任务和检查器一致。</li>
+        <li><strong>匹配总成本</strong>：证明“搜索变好了”，需要在<strong>提案、执行、验证的总成本相同</strong>的条件下比较。</li>
+        <li><strong>开发条件之外评估</strong>：检验收益是可迁移的质量，还是对开发集的特化。</li>
+      </ul>
+    </div>
+  </div>
+  <div class="notes" id="n-bestn"></div>
+</section>
+
+<section class="part" id="s3">
+  <div class="part-head"><h2>S3 和 S4：接受的标准、装进去以后</h2><span class="meta">原文 §3.2.3–3.2.4、§3.3.3–3.3.4，p.18–20</span></div>
+  <div class="sec-lede">
+    <p><strong>S3 的风险</strong>是接受分数在错误被强化时也会上涨。自生成奖励的可靠性取决于识别错误的能力；耦合的出题器和解题器会越来越一致地认同错误答案；自写测试会奖励部署中失败的行为；污染会奖励对泄露测试信息的熟悉。即使判断准确，评估条件或标准一变也会误导：代理偏好的策略部署后可能改变环境或其他智能体的反应，评分者可能在能力不变时变得更宽松。</p>
+    <p>原文举了一个测试质量的定量例子。TeSearch 用基于变异的质量度量搜索紧凑的测试集，在 mini-swe-agent 上的结果如下（原文数据，Cheng 等 2026a）：</p>
+  </div>
+  <div class="kv">
+    <div><b>59.9%</b><span>TeSearch 测试集拒绝“改变了行为”的修订</span></div>
+    <div><b>25.3%</b><span>仓库自带测试拒绝同类修订</span></div>
+    <div><b>4.0%</b><span>TeSearch 对“保持行为”修订的误报率</span></div>
+  </div>
+  <div class="sec-lede">
+    <p>其他 S3 保障：留出任务把开发和接受分开；Trace Evolution Bench 用种子匹配的方式给不变的智能体重新打分，把提升和评测波动分开；反复使用测试会泄露留出信息，自动生成的测试要检查独立性；外部测试也要审计指令、评分和答案是否正确。在判定层面，SpecRSI 允许从未评估完的前代起草，但只在固定验证契约下证据完整时才采纳；PACE 为自适应测试的候选给出错误接受的界，SGM 在多次更新之间分配错误预算。原文提醒：这些保护都依赖测试本身有效、假设成立。</p>
+    <p><strong>S4 的风险</strong>是新能力干扰旧技能。适应会造成遗忘，专精会以其他能力为代价；在四个漂移的任务流上，GEPA 和 Meta-Harness 对共享提示词或工作区的编辑会干扰早先或没见过的任务；ReasoningBank 通过检索局部化更新，但相似查询需要冲突的工作流时会“撞车”；技能加多会妨碍检索或引入有缺陷的流程；协同演化会让策略特化到训练用的技能库，换了技能就脆弱。还有一个容易忽略的点：<strong>智能体可能生成了有用的改动，却因为没调用或没遵循而几乎没得到收益</strong>（Lin 等 2026e）。所以后继评估要检查系统是否调用了保留的改动、是否遵循了它、是否在运行中从中获益。</p>
+    <p>S4 的保障是把<strong>对旧技能的表现当作接受标准</strong>（要求继续解出以前解出的任务，或给已测技能的损失设上限），但保护只覆盖被测过的技能集；加上回归测试和状态管理（压缩时保留技能需求、回溯恢复早先的搜索状态）。</p>
+  </div>
+  <div class="lab">
+    <p class="lab-t">判断：这个现象主要是哪个阶段的问题？</p>
+    <div id="s3Sort"></div>
+  </div>
+  <div class="notes" id="n-s3"></div>
+</section>
+
+<section class="part" id="evidence">
+  <div class="part-head"><h2>五项研究：谁真的隔离了更新器</h2><span class="meta">原文表 4、§3.4，p.21–22</span></div>
+  <div class="sec-lede">
+    <p>原文用表 4 对比五项代表性研究：改了什么、有没有复用修订后的更新器、观察多长、用什么对照、资源怎么记。结论是：<strong>对“修订后的 U”最强的证据来自能隔离更新器贡献的比较</strong>。Hyperagents 在共同迭代额度下比较可编辑和固定的元智能体；Evo2 在执行器、父 harness、搜索程序都固定的情况下比较训练过和未训练的演化器。SICA 复用编辑后的智能体做后续修改，但没有单独固定更新器；MASS 把更新后的模型同时用于优化、评估和执行，两轮结果混合了这些角色的变化；Agent Plasticity 则是在固定改进协议下追踪继承的产物。</p>
+    <p>观察期也不能直接比较：SICA 是 15 次自我编辑，Agent Plasticity 是 20 或 40 轮经验，MASS 是两个训练循环，Hyperagents 联合领域实验是 100 次搜索迭代。原文说这些是“暴露于变化的不同单位”，不是可比的长期保留度量。</p>
+    <p class="go">点每项研究，看它的设置和证据强度。</p>
+  </div>
+  <div class="lab"><div id="stu"></div></div>
+  <div class="sec-lede">
+    <p>原文还整理了几条“提升的质量和持续性要分开看”的发现：初始收益可能逆转；保留下来的行为可能掩盖丢失的知识；在所研究的序列里，强化微调比监督微调更能保住能力；任务顺序会改变进展；更好的采样不一定扩大能解决的问题范围；harness 优化在 pass@1 上相对模型扩容或更多推理的优势，在更大尝试预算下可能逆转（Kim 等 2026）。</p>
+  </div>
+  <div class="notes" id="n-evidence"></div>
+</section>
+
+<section class="part" id="gap">
+  <div class="part-head"><h2>研究空白与本章要点</h2><span class="meta">原文 §3.4.2 与 Takeaway，p.22–23</span></div>
+  <div class="sec-lede">
+    <p>原文建议的研究设计：用受控起点比较原 U 和修订后 U，把机制变化和继承状态的效应分开；在 SICA 式的自我编辑和 MASS 式的联合训练里，轮流固定更新器或执行器，弄清各部分的贡献；对训练出来的演化器，预算要包括产生和测试后续修订所需的提案、训练、回放、执行和验证；在连续的检查点上用保留任务重测，度量旧技能、新任务覆盖、迁移和“峰值到最终”的回退。动态的评估条件也重要：RealtimeBench 考察智能体思考时游戏还在变的情况，继承的记忆也能独立地抬高表现。</p>
+  </div>
+  <div class="take">
+    <h4>原文 Takeaway（p.22–23）</h4>
+    <dl>
+      <dt class="r">风险</dt><dd>有偏的经验、共享的错误、不匹配的评估会抬高分数；无效的更新和回退会让真实的收益无法持续。</dd>
+      <dt class="g">保障</dt><dd>独立验证、在相同总资源下比较、测试保留的能力，用来判断收益是否真实、能否归因到具体改动、能否持续。结论取决于这些检查的准确性和覆盖面。</dd>
+      <dt class="f">未来</dt><dd>跟踪能力是否在之后的版本中保持、能否迁移到新任务；在匹配条件下比较修订和未修订的改进程序，判断修订能否产出更好的未来更新。</dd>
+    </dl>
+  </div>
+  <div class="notes" id="n-gap"></div>
+</section>
+
+<section class="part" id="recap">
+  <div class="part-head"><h2>回扣开头的三个问题</h2><span class="meta">先自己答，再点开</span></div>
+  <div class="ask3" style="margin-top:0">
+    <details><summary>1. 真实的提升和持续的提升分别指什么？容易在哪出问题？</summary><p class="ans">真实：强化了预期能力，而不是在不充分的测试上拿到好分数，主要风险在 S1（诊断有偏）、S2（捷径）、S3（误导性接受分数）。持续：收益在之后的使用和更新中保住，主要风险在 S4（遗忘、干扰、没被调用或遵循）以及后续修订。</p></details>
+    <details><summary>2. 为什么“多跑几次挑最好的”不能说明提案机制变好？</summary><p class="ans">尝试次数增加时，至少出现一个好候选的概率 1 − (1 − p)<sup>N</sup> 会上升，而单次提案质量 p 没变。输出的提升可以是真的，但归因给机制就夸大了。要证明搜索变好，必须在提案、执行、验证总成本相同的条件下比较。</p></details>
+    <details><summary>3. 哪两项研究最能归因到更新器？还缺什么？</summary><p class="ans">Hyperagents（可编辑 vs 固定元智能体，共同迭代额度）和 Evo2（训练 vs 未训练演化器，执行器、父 harness、搜索固定）。Hyperagents 的自我编辑 token 计量不含评估；Evo2 的推理成本比较没有算进获得这些权重所需的训练。长期机制收益还需要完整资源记账下的重复后继测试。</p></details>
+  </div>
+</section>
+<nav class="pager" aria-label="翻页"><a href="../2026-10-30-rsi-2/"><small>上一篇</small><span>02 · 可信框架：八组要求、四个主题、三层主张</span></a><a class="nx" href="../2026-10-30-rsi-4/"><small>下一篇</small><span>04 · 行为约束、对齐与公平</span></a></nav>
+</div>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <span>AI 观察笔记</span>
+    <span>学习笔记 · 原书：<a href="https://arxiv.org/abs/2610.35193" rel="noopener">arXiv:2610.35193</a></span>
+  </div>
+</footer>
+<script>
+(function () {
+'use strict';
+var $ = S.$, $$ = S.$$, h = S.h;
+/* ---------- 四阶段 ---------- */
+R.stages($('#stg'), [
+  { k: 'S1', t: '改进诊断', q: '诊断依据的经验和反馈，能看见真正的弱点吗？',
+    risk: '经验有偏：生成样本替换旧数据会去掉稀有模式；反馈可能误报失败，或准确但漏报弱点；对单个步骤的判断不一定能识别真正影响结果的动作。',
+    ev: [R.tag('rel') + '模型生成的代码评审越来越正面，代码质量却在下降（Song 等 2026）。', R.tag('rel') + '单次尝试准确率上升，多样性和迁移却在下降（Wu 等 2024a）。', R.tag('rel') + '按不可靠的自我判断去改，会改坏原本正确的答案（Huang 等 2024a）；错误的上下文会把后续推理带向类似错误。'],
+    guard: ['保留真实样本，新经验不抹掉旧证据；自选练习时照顾不同技能、包括结果不确定的尝试；用详细记录和可复用指导保存教训。', '结果过滤：不把失败尝试当成功样本训练（ReST-EM），跨轮重复验证；在控制其他条件的情况下测试疑似原因。'],
+    lim: '只拓宽了可用证据，不保证覆盖没见过的情况；过滤依赖检查器的准确性和覆盖面，不可靠的检查本身会阻碍甚至逆转改进。' },
+  { k: 'S2', t: '方案生成', q: '提出的改动，是在解决弱点，还是在钻分数的空子？',
+    risk: '捷径：利用代理奖励或可执行测试；收敛到方便但有限的策略。额外计算：尝试越多越容易碰到好候选，让没变的机制看起来更有效。',
+    ev: [R.tag('rel') + '更简单的研究点子提高平均奖励却不提高可达的最佳结果（Si 等 2026）。', R.tag('rel') + '工具使用策略利用无关提示线索（Yang 等 2026d）。', R.tag('rsi') + '演化的智能体程序在可比反馈和推理预算下，相对简单搜索的优势可能消失（Wang 等 2026k）。'],
+    guard: '保留多样候选并跨分支共享发现；用下游结果和程序执行让每次尝试更有信息量；受限编辑、廉价估计集中资源。',
+    lim: '多样性只保住了探索范围，仍需单独评估改动是否提升预期能力；证明搜索变好必须匹配提案、执行、验证的总成本，并在开发条件之外评估。' },
+  { k: 'S3', t: '方案评估', q: '接受分数涨了，能力真的涨了吗？',
+    risk: '错误被强化时接受分数也会涨；评估条件或标准变化让准确的判断也变得误导。',
+    ev: [R.tag('rel') + '耦合的出题器和解题器越来越一致地认同错误答案（Chen 等 2026e）。', R.tag('rsi') + '自写测试奖励部署中失败的行为（Guo 等 2026）。', R.tag('rsi') + '评分者在没有能力提升时变得更宽松（Zhang 等 2026l）。'],
+    guard: ['留出任务、参考解答；TeSearch 测试集（59.9% vs 25.3%，误报 4.0%）；Trace Evolution Bench 种子匹配重打分。', '用验证、工具、执行提供证据；修订标准后对早先候选重新打分；ImageRSI 配对 A/B；SpecRSI 只在证据完整时采纳；PACE、SGM 控制错误接受。'],
+    lim: '依赖测试有效、假设成立；反复使用测试会泄露留出信息；自动生成的测试需要独立性检查；外部测试本身也要审计。' },
+  { k: 'S4', t: '更新实施', q: '装进去以后，旧能力还在吗？新改动真的被用上了吗？',
+    risk: '遗忘、专精以其他能力为代价、共享提示词互相干扰、技能变多妨碍检索、策略过拟合训练用技能库；改动没被调用或没被遵循。',
+    ev: [R.tag('rsi') + 'GEPA 和 Meta-Harness 在四个漂移任务流上编辑共享提示词或工作区，干扰早先或未见任务；ReasoningBank 在相似查询需要冲突工作流时撞车（Chen 等 2026h）。', R.tag('rel') + '智能体生成了有用改动却因调用或遵循失败收益很小（Lin 等 2026e）。'],
+    guard: '把旧技能表现作为接受标准；在持续交互中测试改动；跨智能体测试技能的稳健性；压缩时保留技能需求，回溯恢复搜索状态。',
+    lim: '只保护被测试过的技能，未测能力的干扰可能发现不了；行为证据需要可用的保留状态。' },
+  { k: 'RI', t: '递归改进', q: '改了更新器，未来改进的能力真的提高了吗？',
+    risk: '修订 U 可能只是改变了“怎么尝试改进”，没有提高未来改进的能力；开发分数不再反映预期能力时，归因风险更大；提升可能来自额外计算或别处的同时改动。',
+    ev: [R.tag('rsi') + 'MASS 交替做自评的工作流搜索和微调，两轮里把更新后的模型同时当执行器、优化器和评估器（Lee 等 2026a）。', R.tag('rsi') + 'MetaRSI 在受保护、可机器检查的评估下修订算子策略和调度（Tan 等 2026）。', R.tag('rel') + '自主后训练中开发分数不再反映预期能力（Shi 等 2026）。'],
+    guard: '从失败中学习修订后续更新的指导（Recursive Reward Improvement 把发现的评分漏洞用于修复和生成未来任务与奖励的提示词）；Evo2 用评估结果训练提案与反思策略；固定参照检查、受保护的接受组件。',
+    lim: '后继测试应从相同 h、B 出发比较修订和未修订的 U，匹配总资源、共同评估；资源记账要包括改进器的训练和回放成本。' }
+]);
+
+/* ---------- 稀有模式消失 ---------- */
+var K = 30, GEN = 40, seed = 7;
+function zipf(a) { var w = [], s = 0; for (var i = 1; i <= K; i++) { w.push(1 / Math.pow(i, a)); s += 1 / Math.pow(i, a); } return w.map(function (x) { return x / s; }); }
+function sample(p, n, r) {
+  var c = new Array(K).fill(0), cum = [], s = 0;
+  p.forEach(function (x) { s += x; cum.push(s); });
+  for (var i = 0; i < n; i++) { var u = r() * s, j = 0; while (j < K - 1 && cum[j] < u) j++; c[j]++; }
+  return c;
+}
+function runCollapse(n, a) {
+  var r = S.rng(seed), p0 = zipf(a);
+  var real = sample(p0, n, r);
+  var rep = real.slice(), acc = real.slice(), firstLost = null;
+  var R1 = [[0, real.filter(Boolean).length]], R2 = [[0, real.filter(Boolean).length]];
+  for (var g = 1; g <= GEN; g++) {
+    var tr = rep.reduce(function (x, y) { return x + y; }, 0);
+    var next = sample(rep.map(function (x) { return x / tr; }), n, r);
+    for (var j = 0; j < K; j++) if (rep[j] > 0 && next[j] === 0 && firstLost === null) firstLost = j + 1;
+    rep = next;
+    var ta = acc.reduce(function (x, y) { return x + y; }, 0);
+    var nx2 = sample(acc.map(function (x) { return x / ta; }), n, r);
+    acc = acc.map(function (x, j) { return x + nx2[j]; });
+    R1.push([g, rep.filter(Boolean).length]); R2.push([g, acc.filter(Boolean).length]);
+  }
+  return { R1: R1, R2: R2, first: firstLost };
+}
+var clDraw = S.chart($('#clChart'), { h: 260, x: [0, GEN], y: [0, K], xt: [0, 10, 20, 30, 40], yt: [0, 10, 20, 30], xl: '代数', yl: '剩余模式数（共 30 种）', curves: [] });
+function collapse() {
+  var n = +$('#clNs').value, a = +$('#clAs').value;
+  $('#clN').textContent = n; $('#clA').textContent = S.f(a, 1);
+  var o = runCollapse(n, a);
+  clDraw({ curves: [{ pts: o.R1, c: 'c2', label: '替换：只用上一代生成样本' }, { pts: o.R2, c: 'ok', label: '累积：保留真实数据和历代样本' }] });
+  $('#clR').textContent = o.R1[GEN][1]; $('#clC').textContent = o.R2[GEN][1];
+  $('#clF').textContent = o.first ? '第 ' + o.first + ' 名' : '无';
+}
+['clNs', 'clAs'].forEach(function (id) { $('#' + id).addEventListener('input', collapse); });
+$('#clRe').addEventListener('click', function () { seed = (seed * 48271) % 2147483647; collapse(); });
+collapse();
+
+/* ---------- best-of-N ---------- */
+S.guess($('#bnGuess'), {
+  q: '每次提案独立地有 10% 的概率“够好”。把尝试次数从 1 次加到 20 次，至少出现一个够好候选的概率是多少？',
+  unit: '%', ans: (1 - Math.pow(0.9, 20)) * 100, fmt: function (x) { return S.f(x, 1); },
+  why: '1 − 0.9<sup>20</sup> ≈ 87.8%。单次质量还是 10%，“挑最好的”这一步却让结果看起来强了近九倍。这就是原文说的：输出提升可能是真的，但归因给机制就夸大了。'
+});
+var bnDraw = S.chart($('#bnChart'), { h: 240, x: [1, 40], y: [0, 1], xt: [1, 10, 20, 30, 40], yt: [0, 0.25, 0.5, 0.75, 1], xl: '尝试次数 N', yl: '概率', curves: [] });
+function bestn() {
+  var p = +$('#bnPs').value;
+  $('#bnP').textContent = Math.round(p * 100) + '%';
+  bnDraw({ curves: [{ f: function (n) { return 1 - Math.pow(1 - p, n); }, c: 'c1', label: '至少一个够好（挑最好）' }, { f: function () { return p; }, c: 'dim', dash: true, label: '单次提案质量' }] });
+}
+$('#bnPs').addEventListener('input', bestn);
+bestn();
+
+/* ---------- S3 / S4 分类 ---------- */
+S.sortGame($('#s3Sort'), {
+  bins: [{ k: '1', t: 'S1 诊断' }, { k: '2', t: 'S2 生成' }, { k: '3', t: 'S3 评估' }, { k: '4', t: 'S4 实施' }],
+  items: [
+    { t: '评分者没变强，打分却越来越宽', k: '3', why: '评估标准漂移，原文 §3.2.3。' },
+    { t: '加了很多技能后，检索反而找不到对的那个', k: '4', why: '技能累积妨碍检索，原文 §3.2.4。' },
+    { t: '训练数据里的罕见病例越来越少，诊断从不报告相关失败', k: '1', why: '经验有偏导致诊断漏掉稀有失败。' },
+    { t: '候选方案专挑测试用例能过的写法，真实需求没解决', k: '2', why: '捷径搜索，利用可执行测试。' },
+    { t: '有用的指令写进了配置，但智能体执行时从不遵循', k: '4', why: '实施要求系统调用并遵循更新，原文引 Lin 等 2026e。' },
+    { t: '出题器和解题器越来越一致地认同同一个错误答案', k: '3', why: '共享错误让接受分数上涨，原文引 Chen 等 2026e。' }
+  ]
+});
+
+/* ---------- 五项研究 ---------- */
+R.studies($('#stu'), [
+  { n: 'SICA', sub: 'Robeyns 等 2025 · Claude 3.5 / o3-mini · SWE-bench、LiveCodeBench',
+    html: '<p><b>改了什么</b>：智能体代码、提示词、工具；修改后的智能体写后续编辑（复用更新器 ✓），存档选择固定。</p><p><b>观察期</b>：15 次自我编辑。</p><p><b>对照与资源</b>：初始 vs 后来的智能体，在 50 个 SWE-bench 任务上从 17% 到峰值 53%；约 7000 美元 API 费用；<b>没有固定更新器的消融</b>。</p><p><b>证据强度</b>：后继层的能力变化有支撑，无法把提升归因到更新器修订。</p>' },
+  { n: 'Agent Plasticity', sub: 'Singh 等 2026 · 前沿模型 · 国际象棋、围棋、Hex、NetHack',
+    html: '<p><b>改了什么</b>：工具、技能、笔记被继承；改进协议固定（–，权重也固定）。</p><p><b>观察期</b>：20 / 40 轮。</p><p><b>对照与资源</b>：留出的检查点测试；按美元计的收益，包含反思和被拒绝的编辑成本。用留出的分布外游戏评估对更强对手的迁移。</p><p><b>证据强度</b>：在固定协议下追踪继承产物，把终点能力和学习效率分开；不涉及更新器修订。</p>' },
+  { n: 'MASS', sub: 'Lee 等 2026a · Qwen3.6-27B · 金融、机器人、药学',
+    html: '<p><b>改了什么</b>：工作流和权重；更新后的模型被复用为优化器和评估器（✓），外层循环固定。</p><p><b>观察期</b>：2 个循环。</p><p><b>对照与资源</b>：基座 vs 训练后模型；外部评判；报告了 token 效率，<b>训练成本未匹配</b>。</p><p><b>证据强度</b>：模型同时扮演执行、优化、评估三个角色，两轮结果混合了这些角色的变化；原文建议轮流固定更新器或执行器。</p>' },
+  { n: 'Hyperagents', sub: 'Zhang 等 2026g · Claude 4.5 · 论文评审、机器人奖励',
+    html: '<p><b>改了什么</b>：任务智能体和元智能体代码；修订后的元智能体跨领域复用（✓）。</p><p><b>观察期</b>：100 次搜索。</p><p><b>对照与资源</b>：<b>固定元智能体消融</b>和搜索对照；每 100 次迭代约 3300 万自我编辑 token，评估不计在内。还用 improvement@50 评估迁移后的元智能体。</p><p><b>证据强度</b>：原文认为这是隔离更新器贡献的最强证据之一。</p>' },
+  { n: 'Evo2', sub: 'Xu 等 2026b · Qwen3.8-27B · Polyglot、SWE-bench、LoCoMo',
+    html: '<p><b>改了什么</b>：harness / 提案者–反思者的权重；训练后的更新器在后续搜索中复用（✓）。</p><p><b>观察期</b>：多次重复，总数未报告。</p><p><b>对照与资源</b>：训练 vs 未训练的演化器；父 harness、执行器、搜索固定；<b>训练成本没计入推理成本</b>。</p><p><b>证据强度</b>：隔离了演化器权重的作用；但成本比较漏了获得这些权重的训练。</p>' }
+]);
+
+/* ---------- 记下来 ---------- */
+S.notes($('#n-concept'), {
+  c: [['真实的提升', '强化了预期能力，而不是在不充分的测试上得分。'], ['持续的提升', '收益在之后的使用和更新中保住。']],
+  p: [['三种收益三种证据', '即时收益、保留的收益、产生后续更新的能力提升需要不同证据。'], ['元改进对照', '与不变的 U<sub>t</sub> 在可比条件下比较，分离额外资源和起点差异。']]
+});
+S.notes($('#n-stages'), {
+  c: [['有偏的诊断', 'S1：经验和反馈看不见真正的弱点。'], ['捷径搜索', 'S2：钻代理奖励或测试的空子。'], ['误导性接受分数', 'S3：错误被强化时分数也涨。'], ['无效的更新', 'S4：干扰旧技能，或改动没被调用遵循。']],
+  p: [['对应检查', '更广覆盖 + 验证原因；多样提案 + 匹配总成本；独立测试 + 可比接受规则；测保留与使用 + 可恢复状态。'], ['RI 检查', '从匹配的初始状态出发，比较原 U 和新 U 产出更新的收益、保留、迁移。']]
+});
+S.notes($('#n-collapse'), {
+  c: [['模型坍缩', '用生成样本替换旧数据，稀有模式从分布中消失。'], ['不均匀的损失', '越不常见的模式消失得越早（所研究的递归训练设定）。']],
+  p: [['保障', '保留真实样本，新经验不抹掉旧证据（Gerstgrasser 等 2024）。'], ['局限', '只拓宽可用证据，不保证覆盖没见过的情况。']]
+});
+S.notes($('#n-bestn'), {
+  c: [['捷径', '高分但未解决目标弱点的方案。'], ['额外计算的混淆', '尝试越多越容易碰到好候选，单次质量不变。']],
+  p: [['<code>P = 1 − (1 − p)<sup>N</sup></code>', '至少一个够好的概率；p = 10%、N = 20 时约 87.8%。'], ['匹配总成本', '提案 + 执行 + 验证成本相同才能说搜索变好。'], ['Wang 等 2026k', '可比预算下，演化程序相对简单搜索的优势可能消失。']]
+});
+S.notes($('#n-s3'), {
+  c: [['TeSearch', '用基于变异的质量度量搜索紧凑测试集。'], ['能力保留', '把旧技能表现当作接受标准。'], ['调用与遵循', '后继评估要看保留的改动是否被调用、遵循、带来收益。']],
+  p: [['59.9% / 25.3% / 4.0%', 'mini-swe-agent 上：TeSearch 拒绝改变行为的修订 / 仓库测试拒绝 / TeSearch 误报（原文数据）。'], ['PACE / SGM', '单次决策的错误接受界 / 多次更新间分配错误预算。']]
+});
+S.notes($('#n-evidence'), {
+  c: [['隔离更新器', '最强证据来自固定更新器的对照：Hyperagents、Evo2。'], ['观察期不可比', '15 次编辑、20/40 轮、2 个循环、100 次迭代是不同单位。']],
+  p: [['SICA', '17% → 53%（50 个 SWE-bench 任务），约 7000 美元，无固定更新器消融。'], ['Hyperagents', '约 3300 万自我编辑 token / 100 次迭代，不含评估。'], ['Evo2', '执行器、父 harness、搜索固定；训练成本未计入。']]
+});
+S.notes($('#n-gap'), {
+  c: [['峰值到最终回退', '连续检查点上用保留任务重测时要报告的指标之一。'], ['完整资源记账', '提案、训练、回放、执行、验证全算上。']],
+  p: [['研究设计', '受控起点比较原 / 新 U；轮流固定更新器或执行器；交叉的模型–harness 比较；对完整运行历史的独立检查。']]
+});
+})();
+</script>
+</body>
+</html>

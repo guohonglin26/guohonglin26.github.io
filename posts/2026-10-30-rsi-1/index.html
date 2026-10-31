@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RSI 的定义：h、B、U 三层与 S1–S4 循环</title>
+<meta name="description" content="可信递归自我改进学习笔记（一）：从 Mitchell 的机器学习定义出发，用策略 h、归纳偏置 B、偏置更新函数 U 三层定义 RSI；它和传统机器学习、强化学习、元学习、AutoML 的边界；按功能而不是按文件类型划分组件；S1–S4 改进循环与 RI 递归改进，用一个编码智能体的三个变体串起来。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 4a8 8 0 1 1-7.4 5' fill='none' stroke='%2313171C' stroke-width='2.2' stroke-linecap='round'/%3E%3Cpath d='M2 6l2.6 3 3-2.4' fill='none' stroke='%2313171C' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='12' cy='12' r='3.2' fill='%232340D6'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../assets/site.css">
+<link rel="stylesheet" href="../study-shared/series.css">
+<script src="../../assets/site.js"></script>
+<script src="../study-shared/series.js"></script>
+<script src="../study-shared/agentevo.js"></script>
+<link rel="stylesheet" href="../study-shared/rsi.css">
+<script src="../study-shared/rsi.js"></script>
+<style>
+.eqs { display: grid; gap: 8px; margin-top: 10px; }
+.eqs .fx { margin: 0; cursor: pointer; border-left: 4px solid var(--hair); }
+.eqs .fx[aria-pressed="true"] { border-left-color: var(--s1); background: var(--s1-soft); }
+.layer3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+.layer3 div { border: 1px solid var(--hair); border-radius: 8px; padding: 10px 12px; background: var(--bg); transition: opacity .2s; }
+.layer3 div.dim { opacity: .38; }
+.layer3 div.on { border-color: var(--s1); box-shadow: 0 0 0 2px var(--s1-soft); }
+.layer3 b { font-family: var(--f-num); font-size: 22px; color: var(--s1); display: block; }
+.layer3 span { font-size: 15px; color: var(--ink-2); line-height: 1.6; display: block; }
+@media (max-width: 640px) { .layer3 { grid-template-columns: minmax(0, 1fr); } }
+.cmpbox { margin-top: 10px; }
+.cmpbox .row { display: grid; grid-template-columns: 9em minmax(0, 1fr); gap: 10px; padding: 8px 0; border-top: 1px solid var(--hair); font-size: 15px; }
+.cmpbox .row b { color: var(--ink); }
+.cmpbox .row span { color: var(--ink-2); line-height: 1.65; }
+.yes { color: var(--ok); font-weight: 650; } .no { color: var(--alert); font-weight: 650; }
+.vstage { margin-top: 12px; border: 1px solid var(--hair); border-radius: 8px; padding: 12px 14px; background: var(--bg); }
+.vstage h5 { margin: 0 0 6px; font-size: 16px; }
+.vstage p { margin: 0 0 6px; font-size: 15px; color: var(--ink-2); line-height: 1.7; }
+.vstage .chg { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.vstage .chg span { font-family: var(--f-num); font-size: 14px; padding: 2px 8px; border-radius: 4px; border: 1px solid var(--hair); color: var(--ink-3); }
+.vstage .chg span.mv { border-color: var(--s2); color: var(--s2); background: var(--s2-soft); font-weight: 600; }
+</style>
+</head>
+<body data-series="rsi-series" data-part="1" data-rail>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="../../">
+      <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><rect x="7" y="9" width="10" height="11" rx="1.5" fill="var(--s1)"/></svg>
+      AI 观察笔记
+    </a>
+    <nav class="site-nav">
+      <a href="../../">全部文章</a>
+      <button class="theme-btn" type="button">深色</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+<section class="hero wrap">
+  <p class="kicker"><span>技术学习</span><span>可信 RSI · 01</span><span>对应原文第 1–2.1 节（p.4–13）</span><span>约 20 分钟</span></p>
+  <h1>改自己不稀奇，<em>改“怎么改自己”</em>才是 RSI</h1>
+  <p class="lead">现在很多智能体都会“自我进化”：攒经验、改提示词、写新技能、甚至微调权重。原文给 RSI 划了一条更严格的线：系统不只更新自己，还要修改那个决定“下一次怎么更新”的机制，并在之后的循环里继续用它。这一篇先把这条线画清楚，后面七篇讨论的所有风险都以它为坐标。</p>
+  <p class="credit">本系列是综述论文《<a href="https://arxiv.org/abs/2610.35193" rel="noopener">Trustworthy Recursive Self-Improvement in the Era of Large Models: Foundation, Risks, Evaluation and Open Challenges</a>》（Jiayue Pu、Ang Gao 等，中国人民大学高瓴人工智能学院，2026 年 10 月 26 日 v1）的学习笔记。原文正文 56 页，另有约 25 页参考文献和附录。这里按原文第 2–8 节重排成八篇，用自己的话重讲：定义和框架做成可以动手的分类、分步演示，风险和保障按 S1–S4 / RI 做成可切换的对照，评估设计配真实计算。每节标出原文页码；原文数字标“原文数据”，演示数值标“示意”。原文把证据分成“RSI 中直接观察到的”和“相关系统中的”，本笔记沿用这个区分。</p>
+<nav class="series" aria-label="系列目录">
+  <a href="../2026-10-30-rsi/"><b>总览</b>复习台</a>
+  <a href="../2026-10-30-rsi-1/" aria-current="page" data-part="1"><b>01</b>什么是 RSI</a>
+  <a href="../2026-10-30-rsi-2/" data-part="2"><b>02</b>可信框架</a>
+  <a href="../2026-10-30-rsi-3/" data-part="3"><b>03</b>真实提升</a>
+  <a href="../2026-10-30-rsi-4/" data-part="4"><b>04</b>约束与对齐</a>
+  <a href="../2026-10-30-rsi-5/" data-part="5"><b>05</b>安全与隐私</a>
+  <a href="../2026-10-30-rsi-6/" data-part="6"><b>06</b>透明与可控</a>
+  <a href="../2026-10-30-rsi-7/" data-part="7"><b>07</b>怎么评估</a>
+  <a href="../2026-10-30-rsi-8/" data-part="8"><b>08</b>应用与难题</a>
+</nav>
+</section>
+
+<nav class="secnav" aria-label="本篇小节">
+  <div class="wrap"><a href="#why">为什么要谈可信</a><a href="#def">三层定义</a><a href="#cmp">和其他方法比</a><a href="#role">按功能分</a><a href="#cycle">S1–S4 与 RI</a><a href="#recap">回扣三问</a></div>
+</nav>
+<div class="wrap">
+<div class="ask3">
+  <h3>读完这一篇，你应该能回答</h3>
+  <ol>
+    <li>原文的 RSI 定义比“自我进化”多要求了什么？为什么元学习和 AutoML 不算 RSI？</li>
+    <li>一条提示词，什么时候属于策略 h，什么时候属于归纳偏置 B？</li>
+    <li>S1–S4 四个阶段各回答一个什么问题？RI 又是把什么东西放进这个循环？</li>
+  </ol>
+</div>
+
+<section class="part" id="why">
+  <div class="part-head"><h2>为什么要谈“可信”的 RSI</h2><span class="meta">原文 §1.1，p.4–6</span></div>
+  <div class="sec-lede">
+    <p>原文开头的判断很直接：基于大模型的系统越来越多地用经验和反馈，对模型参数、记忆、工具和工作流做<strong>持久的</strong>修改，而且这些修改会影响后面的任务。近期的工作更进一步，让改进程序本身也成为修改对象：可编辑的元智能体（Hyperagents）、会演化的探索策略、模块化或带正则的 harness 演化。原文把这类“连改进机制也一起改”的能力称为递归自我改进（Recursive Self-Improvement，RSI）。</p>
+    <p>问题在于，<strong>会改自己不等于改得可信</strong>。原文摘要列了五种情况：报告的提升可能来自有缺陷的评测；已有能力可能退化；遵守行为约束的程度可能减弱；被污染的产物或敏感信息可能留在后继系统里；改进机制一变，之前的验证结论可能失效、人类监督可能变得不那么管用。</p>
+    <p>原文用一个实验说明这些问题怎么串在一起（Roesner 和 Kohno 2026 年在 Hyperagents 上做的基准投毒实验）。下面分步看，每一步都对应后面某一篇要展开的主题。</p>
+    <p class="go">点“下一步”，看一条被污染的评测反馈怎么变成后继系统里的安全漏洞。</p>
+  </div>
+  <div class="lab">
+    <p class="lab-t">基准投毒如何一路遗传 <span class="evt rsi">RSI 直接</span></p>
+    <p class="lab-s">事实取自原文 p.5 与 p.35 的转述；每一步右侧标出它对应本系列的哪一篇。</p>
+    <div id="hyFlow"></div>
+  </div>
+  <div class="quote">
+    <p>原文给出的结论：这个实验把“被污染的评测反馈”和“后来的后继系统出现安全失效”连了起来。它说明要同时检查改进证据是否有效、安全要求是否在修订中保持；而当改进机制本身改变时，管着后续更新的评测和保障也需要重新评估。</p>
+    <p class="en">“When the improvement mechanism changes, the evaluations and safeguards governing later updates also require reassessment.”（p.5）</p>
+  </div>
+  <div class="notes" id="n-why"></div>
+</section>
+
+<section class="part" id="def">
+  <div class="part-head"><h2>三层定义：策略 h、归纳偏置 B、更新函数 U</h2><span class="meta">原文 §2.1.1，p.9–10</span></div>
+  <div class="sec-lede">
+    <p>原文从 Mitchell 1997 年的机器学习定义出发：如果一个程序在任务类 T 上、按性能指标 P 衡量的表现随经验 E 提升，就说它从 E 中学习。要从有限的经验泛化，就需要<strong>归纳偏置 B</strong>：在都符合观测数据的候选策略里，优先选哪个的偏好。于是学习系统可以写成 h = A(B, E)，h 是学到的策略。原文特意说明，这里的“经验”比 Silver 和 Sutton 强调的“与环境交互产生的经验”更宽，指任何能帮助改进的数据。</p>
+    <p>在传统机器学习里，B 由人事先定好、学习时不变，它可能体现在数据获取策略、目标函数、假设空间、优化算法或模型评价标准里。在大模型系统里，<strong>h 可以是一个模型，也可以是模型加上提示词、记忆、技能和工具</strong>；B 则规定 h 怎么学、怎么改，包括初始化、训练目标、数据选择规则、优化过程。再往上一层是<strong>偏置更新函数 U</strong>：它管着 B 怎么改，而且在 RSI 里 U 自己也能被修改并复用。</p>
+    <p>原文的 RSI 定义是：一个学习系统从新经验更新策略，<strong>自主修订</strong>归纳偏置，并<strong>修订和复用</strong>未来偏置更新的机制，目标是任务表现的持续提升。形式化为两个方程，t 是已完成的改进循环编号（没有任何修订被接受的循环也算）。</p>
+    <p class="go">点下面的方程，看每一层在一个循环里由谁来改。</p>
+  </div>
+  <div class="lab-row">
+    <div class="lab">
+      <p class="lab-t">原文方程 (1)–(3)</p>
+      <div class="eqs" id="eqs">
+        <button class="fx" type="button" data-v="0" aria-pressed="true">(1)  h = A(B, E)</button>
+        <button class="fx" type="button" data-v="1" aria-pressed="false">(2)  h<sub>t+1</sub> = A<sub>B<sub>t</sub></sub>(h<sub>t</sub>, E<sub>t+1</sub>)</button>
+        <button class="fx" type="button" data-v="2" aria-pressed="false">(3)  (B<sub>t+1</sub>, U<sub>t+1</sub>) = U<sub>t</sub>(B<sub>t</sub>, h<sub>t+1</sub>, F<sub>t+1</sub>)</button>
+      </div>
+      <div class="layer3" id="ly3">
+        <div data-k="h"><b>h</b><span>学到的策略：模型，或模型 + 提示词、记忆、技能、工具</span></div>
+        <div data-k="B"><b>B</b><span>归纳偏置：初始化、训练目标、数据选择规则、优化过程</span></div>
+        <div data-k="U"><b>U</b><span>偏置更新函数：决定 B 怎么改；RSI 里它自己也被改、被复用</span></div>
+      </div>
+      <p class="cap" id="eqCap" aria-live="polite"></p>
+    </div>
+    <div class="lab">
+      <p class="lab-t">几个容易漏看的细节</p>
+      <ul class="pts">
+        <li><strong>E 与 F 分开</strong>：E<sub>t+1</sub> 是新经验，喂给策略更新；F<sub>t+1</sub> 是对表现和以往改进尝试的反馈，喂给 U。F 可以来自数据、环境交互或自我评估。</li>
+        <li><strong>没被接受就保持原值</strong>：每个分量若本轮没有被接受的修订，就沿用上一轮；方程描述的是 S4 之后保留下来的状态。</li>
+        <li><strong>策略更新用的是 B<sub>t</sub></strong>：本轮被接受的 B、U 改动只管之后的循环。</li>
+      </ul>
+    </div>
+  </div>
+  <div class="notes" id="n-def"></div>
+</section>
+
+<section class="part" id="cmp">
+  <div class="part-head"><h2>和传统机器学习、元学习、AutoML 比</h2><span class="meta">原文表 2，p.10–11</span></div>
+  <div class="sec-lede">
+    <p>原文用三个问题区分各种方法：谁决定归纳偏置 B？B 是否被自主修订？修订 B 的那个程序本身是否被修订并在之后复用？传统机器学习和强化学习在给定的学习规则下更新任务策略，B 由人定。<strong>元学习</strong>（如 MAML）里，学到的初始化在规定的元梯度程序下变化；<strong>AutoML</strong>（如 Auto-sklearn）在规定的搜索程序里选算法和超参。这两者都修订了 B 的某些方面，但更新 B 的程序保持不变。</p>
+    <p>原文还拿三个经典例子校准边界。<strong>学习型优化器</strong>：当优化器负责更新任务策略时，它属于 B，训练它的外层程序扮演 U；训练优化器改的是 B，修订并复用外层程序才改了 U。<strong>Promptbreeder</strong>：任务提示词属于 h，变异提示词是 B 的一部分，规定好的超变异程序扮演 U，所以它是“在固定 U 下演化 B”。<strong>哥德尔机</strong>：理论上能重写包括证明搜索器在内的自身软件，前提是在当前效用函数和公理下证明了重写有用。原文给 RSI 加的额外条件是：修订 B 的机制本身被修订，而且在之后的循环里被复用。</p>
+    <p class="go">切换方法，看它在三个问题上的答案。</p>
+  </div>
+  <div class="lab">
+    <div class="seg" id="cmpS"><button data-v="0" aria-pressed="true">传统机器学习</button><button data-v="1">强化学习</button><button data-v="2">元学习</button><button data-v="3">AutoML</button><button data-v="4">RSI</button></div>
+    <div class="cmpbox" id="cmpOut"></div>
+    <p class="note">表格内容为原文表 2 的“标准形式”比较；原文注明实际系统可能混合多种形式。</p>
+  </div>
+  <div class="confuse">
+    <h4>易混辨析：自我进化 vs 递归自我改进</h4>
+    <p><b>自我进化（self-evolution）</b>：用经验和反馈对模型、记忆、工具、工作流做持久修改，影响之后的任务。改的对象可以是 h，也可以是 B。</p>
+    <p><b>RSI</b>：在自我进化之上，还要求系统修订“决定下一次怎么改”的机制 U，并在之后的循环里<b>复用</b>修订后的 U。只改一次 U 而不复用，或者 U 一直固定，都不满足原文的严格定义。原文还说明，人类审批仍可以是这个过程的一部分（§1.2）。</p>
+  </div>
+  <div class="notes" id="n-cmp"></div>
+</section>
+
+<section class="part" id="role">
+  <div class="part-head"><h2>按功能分，不按文件类型分</h2><span class="meta">原文 §2.1.1，p.10；§6.1.2，p.37</span></div>
+  <div class="sec-lede">
+    <p>这条原则贯穿全文：<strong>一个组件属于 h、B 还是 U，取决于它干什么，而不是它是什么文件</strong>。原文的例子：一条控制任务执行的提示词属于 h，而一条管着“怎么构造或挑选策略更新”的提示词属于 B。“提交补丁前先跑测试”这条指令属于 h；“挑选哪些纠正后的轨迹拿来训练”的规则属于 B。</p>
+    <p>同一个提示词或模块可能同时扮演几种角色，这时要把它对任务执行的影响和对每个更新过程的影响分开识别。这些角色是相对“被评估的任务策略”来定义的，并且在各个改进循环之间保持一致。第 8 篇还会看到这条原则的实际后果：一条提示词或记忆规则只要在管未来的改进，就属于更新器，改它就可能是在改 U。</p>
+    <p class="go">把下面的组件放进对应的层。最后一类是“不是持久更新”，留意那张卡。</p>
+  </div>
+  <div class="lab"><div id="roleSort"></div></div>
+  <div class="notes" id="n-role"></div>
+</section>
+
+<section class="part" id="cycle">
+  <div class="part-head"><h2>S1–S4 改进循环与 RI</h2><span class="meta">原文 §2.1.2，图 3，p.11–13</span></div>
+  <div class="sec-lede">
+    <p>方程只描述了完整循环的结果。原文把一个循环拆成四个阶段，后面每一篇讨论风险和保障都按这四个阶段走：</p>
+    <p><strong>S1 改进诊断</strong>：用当前 h<sub>t</sub>、B<sub>t</sub>、新经验和反馈，找出行为或学习过程的局限，判断要改 h、B 还是都改，并定下改进目标。<strong>S2 方案生成</strong>：通过 A<sub>B<sub>t</sub></sub> 生成对 h 的候选修订，或通过 U<sub>t</sub> 生成对 B 的候选修订；此时候选还没进系统。<strong>S3 方案评估</strong>：按当前的评估和接受标准评估候选，包括是否解决了诊断出的局限、是否满足声明的要求、在其他任务上有没有退步，然后决定接受哪些。<strong>S4 更新实施</strong>：把接受的修订装进后继系统，保留 h<sub>t+1</sub> 和 B<sub>t+1</sub>；没被接受修订的分量保持不变。</p>
+    <p><strong>RI 递归改进</strong>：把 S1–S4 用到 U<sub>t</sub> 自身。接受了就保留 U<sub>t+1</sub> 并在之后复用，可能改变后面怎么更新归纳偏置；否则 U<sub>t+1</sub> = U<sub>t</sub>。</p>
+    <p>原文用一个编码智能体的三个变体把这些区别讲得很具体。三个变体共享同一个设定：执行轨迹和纠正后的解答构成 E<sub>t+1</sub>，测试结果构成 F<sub>t+1</sub>；任务目标、外部规定的接受标准、资源预算都固定。</p>
+    <p class="go">选一个变体，一步步走完 S1–S4，看哪个分量真的被改了。</p>
+  </div>
+  <div class="lab">
+    <div class="seg" id="varS"><button data-v="0" aria-pressed="true">变体一：改执行提示词</button><button data-v="1">变体二：改轨迹选择规则</button><button data-v="2">变体三：改“改规则的程序”</button></div>
+    <div id="varBox"></div>
+  </div>
+  <div class="confuse">
+    <h4>易混辨析：持久修订 vs 临时执行调整</h4>
+    <p>变体一里，被接受并保留在 h<sub>t+1</sub> 里的“提交前先测试”指令会改变之后的任务执行，甚至影响之后收集到的经验，这是持久修订。原文特意补了一句：<b>只用于当前这一次提交的提醒，只是临时的执行调整</b>，不进入 S4 的保留状态，也就不是这里讨论的自我改进。</p>
+  </div>
+  <div class="notes" id="n-cycle"></div>
+</section>
+
+<section class="part" id="recap">
+  <div class="part-head"><h2>回扣开头的三个问题</h2><span class="meta">先自己答，再点开</span></div>
+  <div class="ask3" style="margin-top:0">
+    <details><summary>1. RSI 比“自我进化”多要求了什么？为什么元学习和 AutoML 不算？</summary><p class="ans">多要求“修订并复用决定未来偏置更新的机制 U”。元学习和 AutoML 都会自动修订 B 的某些方面，但更新 B 的程序（元梯度规则、搜索规则）是固定的，修订后也没有一个新的 U 去指导之后的更新。</p></details>
+    <details><summary>2. 一条提示词什么时候属于 h，什么时候属于 B？</summary><p class="ans">按功能分：控制任务执行的（如“提交前先跑测试”）属于 h；管着怎么构造或挑选策略更新的（如“挑哪些纠正轨迹去训练”）属于 B；管着 B 怎么改的程序属于 U。一个组件兼有多种角色时，要分别识别它对执行和对每个更新过程的影响。</p></details>
+    <details><summary>3. S1–S4 各回答什么问题？RI 放进循环的是什么？</summary><p class="ans">S1 改什么，S2 提出什么改动，S3 接受哪个改动，S4 把接受的改动装进后继系统、其余保持不变。RI 把同样四个阶段用到偏置更新函数 U<sub>t</sub> 自身，接受则保留并复用 U<sub>t+1</sub>，否则 U 不变。</p></details>
+  </div>
+</section>
+<nav class="pager" aria-label="翻页"><a href="../2026-10-30-rsi/"><small>上一篇</small><span>系列总览</span></a><a class="nx" href="../2026-10-30-rsi-2/"><small>下一篇</small><span>02 · 可信框架：八组要求、四个主题、三层主张</span></a></nav>
+</div>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <span>AI 观察笔记</span>
+    <span>学习笔记 · 原书：<a href="https://arxiv.org/abs/2610.35193" rel="noopener">arXiv:2610.35193</a></span>
+  </div>
+</footer>
+<script>
+(function () {
+'use strict';
+var $ = S.$, $$ = S.$$, h = S.h;
+/* ---------- 基准投毒 ---------- */
+R.flow($('#hyFlow'), [
+  { t: '基准里混进使用自签名证书的任务', d: '评测反馈 F 被污染。对应第 3 篇（改进证据是否有效）和第 5 篇（经验与评测的完整性）。' },
+  { t: '元智能体给任务智能体加了一条持久指令：跳过 HTTPS 证书校验', d: '这一步改的是任务智能体的指令，并被保留下来（S4）。Hyperagents 允许元智能体同时修改任务智能体和它自己的改进程序。' },
+  { t: '后继继承了这条指令，在良性的留出任务上也生成不安全代码', d: '污染跨版本遗传。对应第 5 篇的“继承的污染”。' },
+  { t: '换到干净的基准上继续演化，这条指令依然存活', d: '“干净数据再训练”不等于修复。对应第 5 篇的恢复问题和第 6 篇的“纠正能否到达继承状态”。' },
+  { t: '在一个明确惩罚该漏洞的基准上演化后，这次运行里有害指令被移除', d: '原文 p.35 的补充。由此提出要分别测试：删源头、删继承下来的指令、复用后的行为是否安全。原文也提醒：这个实验里被记录的改动是任务智能体的指令，要确认改的是 U 本身，还需要识别被修改的更新器组件并追踪它之后的复用。' }
+]);
+
+/* ---------- 方程 ---------- */
+var EQ = [
+  { on: ['h', 'B'], hi: 'h', t: '学习系统 A 在归纳偏置 B 的引导下，从经验 E 学到策略 h。传统机器学习里 B 由人事先指定、学习时保持不变。' },
+  { on: ['h', 'B'], hi: 'h', t: '每个循环里，策略在当前偏置 B<sub>t</sub> 下用新经验 E<sub>t+1</sub> 更新为 h<sub>t+1</sub>。只走到这一步的系统是“会学习”，还谈不上改偏置。' },
+  { on: ['h', 'B', 'U'], hi: 'U', t: '偏置更新函数 U<sub>t</sub> 读入当前 B<sub>t</sub>、新策略 h<sub>t+1</sub> 和反馈 F<sub>t+1</sub>，同时产出新的 B<sub>t+1</sub> 和新的 U<sub>t+1</sub>。U 出现在等号两边，这就是“递归”：改进机制改出了下一版改进机制，并在下个循环被复用。' }
+];
+function eq(i) {
+  $$('#eqs .fx').forEach(function (b, j) { b.setAttribute('aria-pressed', String(i === j)); });
+  $$('#ly3 > div').forEach(function (d) {
+    var k = d.getAttribute('data-k');
+    d.className = EQ[i].on.indexOf(k) < 0 ? 'dim' : (k === EQ[i].hi ? 'on' : '');
+  });
+  $('#eqCap').innerHTML = EQ[i].t;
+}
+$$('#eqs .fx').forEach(function (b, i) { b.addEventListener('click', function () { eq(i); }); });
+eq(0);
+
+/* ---------- 方法对比 ---------- */
+var CMP = [
+  ['人类设计者', 0, 0, '在给定学习规则下更新任务策略（Mitchell 1997）。'],
+  ['人类设计者', 0, 0, '学习规则固定；只更新策略（Sutton 与 Barto 2018）。'],
+  ['元学习器', 1, 0, '例如 MAML：学到的初始化在规定的元梯度程序下变化，元更新规则固定。'],
+  ['自动搜索', 1, 0, '例如 Auto-sklearn：在规定的搜索程序里选择算法和超参，搜索规则固定。'],
+  ['偏置更新函数 U<sub>t</sub>', 1, 1, '修订后的 U<sub>t</sub> 指导之后的偏置更新。'],
+];
+S.seg($('#cmpS'), function (v) { cmp(+v); });
+function cmp(i) {
+  var c = CMP[i];
+  $('#cmpOut').innerHTML =
+    '<div class="row"><b>谁决定 B？</b><span>' + c[0] + '</span></div>' +
+    '<div class="row"><b>B 被自主修订？</b><span class="' + (c[1] ? 'yes' : 'no') + '">' + (c[1] ? '是' : '否') + '</span></div>' +
+    '<div class="row"><b>更新函数被修订并复用？</b><span class="' + (c[2] ? 'yes' : 'no') + '">' + (c[2] ? '是' : '否') + '</span></div>' +
+    '<div class="row"><b>说明</b><span>' + c[3] + '</span></div>';
+}
+cmp(0);
+
+/* ---------- 按功能分 ---------- */
+S.sortGame($('#roleSort'), {
+  bins: [{ k: 'h', t: 'h 策略' }, { k: 'B', t: 'B 归纳偏置' }, { k: 'U', t: 'U 偏置更新函数' }, { k: 'x', t: '不是持久更新' }],
+  items: [
+    { t: '“提交补丁前先跑测试”的执行指令', k: 'h', why: '控制任务执行，属于 h（原文例子）。' },
+    { t: '挑选哪些纠正后的轨迹用来训练的规则', k: 'B', why: '管着策略怎么被学出来，属于 B（原文例子）。' },
+    { t: 'Promptbreeder 的任务提示词', k: 'h', why: '直接用于执行任务。' },
+    { t: 'Promptbreeder 的变异提示词', k: 'B', why: '用来改任务提示词，规定了 h 怎么被修订，属于 B。' },
+    { t: 'Promptbreeder 规定好的超变异程序', k: 'U', why: '它在改变异提示词，扮演 U；但它本身固定，所以 Promptbreeder 是“固定 U 下演化 B”。' },
+    { t: '负责更新任务策略的学习型优化器', k: 'B', why: '当优化器管着任务策略的更新时，它是 B 的一部分。' },
+    { t: '训练这个优化器、并在之后被修订复用的外层程序', k: 'U', why: '外层程序扮演 U；修订并复用它才算改了 U。' },
+    { t: '只提醒当前这一次提交要测试的临时消息', k: 'x', why: '只作用于本次执行、不被 S4 保留，是临时执行调整。' }
+  ]
+});
+
+/* ---------- 三个变体 ---------- */
+var VAR = [
+  {
+    moved: ['h'],
+    s: [
+      ['S1 改进诊断', '发现智能体反复提交没测过的补丁，判断问题出在执行行为上，目标是改策略 h。'],
+      ['S2 方案生成', '提出一条执行提示词修订：提交前先跑测试。'],
+      ['S3 方案评估', '在留出的编码任务上评估这个候选，满足外部接受标准。'],
+      ['S4 更新实施', '接受的提示词保留进 h<sub>t+1</sub>。模型权重、B<sub>t</sub>、U<sub>t</sub> 都不变。这条保留的指令会改变之后的执行，也可能改变之后收集到的经验。']
+    ],
+    end: '只改了 h：这是普通的持久自我改进。'
+  },
+  {
+    moved: ['B'],
+    s: [
+      ['S1 改进诊断', '同样的诊断：漏测试是主要失败。这次判断要改的是“怎么学”。'],
+      ['S2 方案生成', '修订一条挑选训练轨迹的提示词，提高“漏测试后被纠正”这类样本的占比。当前 U<sub>t</sub> 的做法是：按失败次数直接提出一条选择规则。'],
+      ['S3 方案评估', '用试训练得到的策略来评估这条规则。'],
+      ['S4 更新实施', '接受的规则保留进 B<sub>t+1</sub>，用于之后的策略更新。模型架构、训练优化器、偏置更新函数都不变。']
+    ],
+    end: '改了 B：影响的是之后的策略怎么被学出来，但改 B 的程序没变。'
+  },
+  {
+    moved: ['U'],
+    s: [
+      ['S1 改进诊断', '审视过去几轮 B 更新的结果，给 U<sub>t</sub> 定一个修订目标：“按失败次数直接调规则”这个做法本身不够好。'],
+      ['S2 方案生成', '智能体用 U<sub>t</sub> 提出对“改选择规则的程序”的修订：从“按失败次数直接调整”换成“在若干候选规则中搜索”。'],
+      ['S3 方案评估', '通过试运行的改进循环来评估候选程序，产出的策略按同样的外部标准、同样的总资源预算评估。'],
+      ['S4 更新实施', '通过 S1–S4 被接受后，保留为 U<sub>t+1</sub>，并在之后的循环里用来修订 B。任务目标、接受标准、训练优化器保持不变。']
+    ],
+    end: '改了 U 并复用：这才满足原文的递归条件。注意 S3 的评估方式：要在相同外部标准和相同总预算下比较。'
+  }
+];
+var vi = 0, vgo;
+function varRender() {
+  var box = $('#varBox'); box.innerHTML = '';
+  var st = S.h('div', { class: 'vstage', 'aria-live': 'polite' }, box);
+  vgo = S.stepper(box, 4, function (i) {
+    var v = VAR[vi], s = v.s[i];
+    st.innerHTML = '<h5>' + s[0] + '</h5><p>' + s[1] + '</p>' + (i === 3 ? '<p><b>' + v.end + '</b></p>' : '') +
+      '<div class="chg">' + ['h', 'B', 'U'].map(function (k) {
+        return '<span class="' + (i === 3 && v.moved.indexOf(k) >= 0 ? 'mv' : '') + '">' + k + (i === 3 && v.moved.indexOf(k) >= 0 ? '<sub>t+1</sub> 已变' : '<sub>t</sub> 不变') + '</span>';
+      }).join('') + '</div>';
+  }, ['S1', 'S2', 'S3', 'S4']);
+}
+S.seg($('#varS'), function (v) { vi = +v; varRender(); });
+varRender();
+
+/* ---------- 记下来 ---------- */
+S.notes($('#n-why'), {
+  c: [['RSI', '递归自我改进：系统修订并复用决定未来更新的机制，目标是持续的任务提升。'], ['可信 RSI', '改进要真实且持续、约束要保持、监督要仍然有效，三者都要有证据。']],
+  p: [['五种隐患', '假提升（评测有缺陷）、能力退化、约束减弱、污染或敏感信息留在后继、改机制使旧验证和监督失效。'], ['Hyperagents 投毒', '自签名证书任务 → 元智能体加“跳过证书校验”指令 → 后继在良性任务上写不安全代码 → 干净基准上继续演化仍存活。']]
+});
+S.notes($('#n-def'), {
+  c: [['归纳偏置 B', '在都符合数据的候选策略中优先选哪个的偏好；在大模型系统里包括初始化、训练目标、数据选择规则、优化过程。'], ['偏置更新函数 U', '决定 B 怎么改的机制；RSI 中它本身被修订并复用。'], ['E 与 F', 'E 是新经验，喂给策略更新；F 是对表现和以往改进尝试的反馈，喂给 U。']],
+  p: [['<code>h = A(B, E)</code>', '学习系统的基本形式。'], ['<code>h<sub>t+1</sub> = A<sub>B<sub>t</sub></sub>(h<sub>t</sub>, E<sub>t+1</sub>)</code>', '策略在当前偏置下更新。'], ['<code>(B<sub>t+1</sub>, U<sub>t+1</sub>) = U<sub>t</sub>(B<sub>t</sub>, h<sub>t+1</sub>, F<sub>t+1</sub>)</code>', 'U 同时产出新 B 和新 U；没被接受修订的分量保持原值。']],
+  ph: '方程'
+});
+S.notes($('#n-cmp'), {
+  c: [['元学习 / AutoML', '会自动修订 B，但更新 B 的规则（元梯度、搜索规则）固定。'], ['Promptbreeder', '固定 U 下演化 B：任务提示词是 h，变异提示词是 B，超变异程序是 U。'], ['哥德尔机', '证明重写有用后可以重写包括证明搜索器在内的自身软件，是自我修订的理论模型。']],
+  p: [['三问', '谁决定 B？B 被自主修订吗？更新函数被修订并复用吗？只有 RSI 三问全是“是 / U 自己”。'], ['人类审批', '原文明确：人类批准仍可以是 RSI 过程的一部分。']]
+});
+S.notes($('#n-role'), {
+  c: [['功能划分', '组件属于 h、B 还是 U 由它的作用决定，不由文件类型决定。'], ['一物多角', '同一提示词或模块可能同时影响执行和更新，要分别识别。']],
+  p: [['h 的例子', '“提交前先跑测试”的执行指令；任务提示词。'], ['B 的例子', '训练轨迹选择规则；变异提示词；管任务策略更新的学习型优化器。'], ['U 的例子', '超变异程序；训练优化器并被修订复用的外层程序。']]
+});
+S.notes($('#n-cycle'), {
+  c: [['S1 改进诊断', '改什么：找局限、定目标、判断改 h 还是 B。'], ['S2 方案生成', '提什么改动：经 A<sub>B</sub> 改 h，经 U 改 B。'], ['S3 方案评估', '接受哪个：按当前标准评估，含回归检查。'], ['S4 更新实施', '装进后继，其余不变。'], ['RI', '把 S1–S4 用到 U 自身，接受则复用 U<sub>t+1</sub>。']],
+  p: [['三个变体', '改执行提示词 → h；改轨迹选择规则 → B；把“按失败次数调规则”换成“多候选搜索”并复用 → U。'], ['固定条件', '任务目标、外部接受标准、资源预算不变，比较才有意义。'], ['临时提醒', '只作用于本次的提醒不是持久修订。']]
+});
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,260 @@
+---
+title: 应用场景、开放问题与结论
+desc: 可信递归自我改进学习笔记（八）：已确立的四种失败模式；证据要跨任务、跨版本、从候选到更新器、从基准到部署、从回滚到恢复；应用场景的三个问题（能改什么、谁控制测试、接受后什么留下来）与六类系统的证据缺口；按场景组合出所需证据的规划器；七个开放问题；接受阈值在错误接受和错过改进之间的取舍。
+kicker: <span>技术学习</span><span>可信 RSI · 08</span><span>对应原文第 8 节（p.49–56）</span><span>约 22 分钟</span>
+h1: 放进真实场景，<em>证据要求跟着变</em>
+lead: 最后一篇回到应用。原文没有给出“RSI 在某某领域可以放心用”的结论，而是给了一个更实用的东西：三个问题决定一个场景需要多强的证据。改动越难撤销、反馈越不独立、影响越大，需要的外部证据、显式授权和有效干预就越多。篇末是原文列出的七个开放问题和结论。
+nav: found|已确立的失败;across|证据的五种跨越;app|三个问题;planner|证据规划器;open|七个开放问题;trade|阈值取舍;end|结论;recap|回扣三问
+---
+<link rel="stylesheet" href="../study-shared/rsi.css">
+<script src="../study-shared/rsi.js"></script>
+<style>
+.fm { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; margin-top: 12px; }
+.fm > div { border: 1px solid var(--hair); border-top: 3px solid var(--alert); border-radius: 8px; padding: 12px 14px; background: var(--panel); }
+.fm b { display: block; font-size: 17px; margin-bottom: 4px; }
+.fm p { margin: 0; font-size: 15px; color: var(--ink-2); line-height: 1.65; }
+.plan { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.plan h5 { margin: 0 0 6px; font-size: 15px; color: var(--ink-3); font-weight: 500; }
+.plan .seg { display: flex; flex-direction: column; align-items: stretch; }
+.plan .seg button { text-align: left; }
+@media (max-width: 760px) { .plan { grid-template-columns: minmax(0, 1fr); } }
+.need { margin-top: 14px; }
+.need h5 { margin: 12px 0 4px; font-size: 15px; }
+</style>
+===BODY===
+<div class="ask3">
+  <h3>读完这一篇，你应该能回答</h3>
+  <ol>
+    <li>判断一个应用场景需要多强证据的三个问题是什么？</li>
+    <li>为什么在一个隔离、版本化的环境里“改了能回滚”，仍然不等于“可以恢复”？</li>
+    <li>收紧接受阈值有什么代价？原文建议怎样把这个取舍测出来？</li>
+  </ol>
+</div>
+
+<section class="part" id="found">
+  <div class="part-head"><h2>已经确立的四种失败</h2><span class="meta">原文 §8.1.1–8.1.2，p.49–50</span></div>
+  <div class="sec-lede">
+    <p>原文先把前面各章的发现收成四种“在被测设定中已确立”的失败模式：</p>
+  </div>
+  <div class="fm">
+    <div><b>能力遗忘</b><p>适应在新目标任务上提升表现，却让已获得的能力退化；保留要作为单独的结果来度量。</p></div>
+    <div><b>安全退化</b><p>对模型、记忆、工具、工作流的改动会削弱以前观察到的安全行为；局部有用的适应可能产生下游安全失效。</p></div>
+    <div><b>评估失效</b><p>自写测试会偏爱一个在受保护部署评估中表现恶化的修订系统，把“表面进步”和“独立测得的改进”分开了。</p></div>
+    <div><b>污染遗传</b><p>被投毒的基准能诱导出不安全的持久指令，在干净任务上继续演化后仍影响后代编码智能体；记忆投毒是另一条途径。</p></div>
+  </div>
+  <div class="sec-lede">
+    <p>原文强调这些只是在被测设定中确立的失败。开放的问题是：它们<strong>有多普遍</strong>、随时间是<strong>持续还是衰减</strong>、<strong>U 的修订如何影响它们</strong>；“固定更新器下的持续”和“更新器修订后的失败”需要分开比较。原文把这些发现归到一个共同点：<strong>它们都依赖保留下来的状态，以及用来挑选后续改动的证据</strong>。所以能力收益、约束保持和有效监督需要在<strong>同一个后继序列</strong>里一起考察；纠正也要在被修复的状态被复用、U 继续决定保留哪些改动时依然有效。</p>
+  </div>
+  <div class="notes" id="n-found"></div>
+</section>
+
+<section class="part" id="across">
+  <div class="part-head"><h2>证据的五种“跨越”</h2><span class="meta">原文 §8.1.3，p.50</span></div>
+  <div class="sec-lede">
+    <p>原文列出所需证据随被评估系统及其用途的变化而变化的五种情形：<strong>跨任务</strong>，迁移要在主张覆盖的新任务、人群、运行条件上评估；<strong>跨版本</strong>，对一个版本验证过的性质，在后续版本继承、组合或转化其改动时必须重新评估；<strong>从候选到其更新器</strong>，评估一个改进机制的安全性需要评估它之后生成并接受的候选；<strong>从基准到部署</strong>，预期用途的验证要覆盖部署的用户、环境和后果；<strong>从回滚到恢复</strong>，恢复检查除了检查点还原，还要覆盖被污染的记忆、工具、派生产物、外部效应和受影响的后继。</p>
+    <p>原文的收束句：一条可信主张应当指明它覆盖的是哪个更新、哪段后继序列或哪个更新器，以及任务范围、评估时域和未测试的条件。</p>
+    <p class="go">判断这些说法缺的是哪一种跨越。</p>
+  </div>
+  <div class="lab"><div id="acQ"></div></div>
+  <div class="notes" id="n-across"></div>
+</section>
+
+<section class="part" id="app">
+  <div class="part-head"><h2>三个问题看一个场景</h2><span class="meta">原文 §8.2，表 9，p.51–53</span></div>
+  <div class="sec-lede">
+    <p>原文说应用情境决定哪些证据要求最相关，并给出三个引导问题：<strong>系统能修改什么？谁控制 S3 用的反馈？S4 实施之后什么会留下来、会发生什么？</strong></p>
+    <p><strong>修改范围</strong>分三档：持久产物（记忆、检索索引、工具配置；ReasoningBank、MemEvolve、自演化搜索索引），证据要说明保留的产物如何影响之后的查询和动作，包括覆盖、污染和删除；系统行为与实现（策略、提示词、代码、智能体脚手架；DGM、SafeEvolve、AgentBreeder、SafeCoEvo），需要行为回归测试，并检查修订组件与保留的保障之间的相互作用；改进机制本身（Hyperagents、Dream-RSI、MetaRSI），相关证据是修订后的机制被复用时产出的后续更新。原文提醒这些是功能角色、可能重叠：一条提示词或记忆规则只要在管未来的改进，就属于更新器。</p>
+    <p><strong>反馈独立性</strong>也分三档：自写评估，接受候选的证据可能和候选共享假设与错误；协同演化的评估器，分数更高可能只是标准变了，在两个评估器版本下重测共同的冻结快照可以恢复可比性，但有效性仍需要独立于耦合改进过程的参照；外部或受保护的评估（Athanor 在有界的自主后训练中使用冻结评估器和留出报告任务），这种隔离要覆盖测试数据、评分规则和对结果的访问，基准投毒也让外部评估来源的完整性成为必要的检查。</p>
+    <p><strong>实施后的效应</strong>分三档：可逆的软件改动，在隔离、版本化的环境里通常可以还原，但<strong>还原可执行代码并不会撤销已经采取的动作</strong>；持久状态和派生产物（记忆、索引、技能、外部文件）在源代码或输入被删后仍保留影响；有后果的真实世界动作（临床、具身），需要与受影响的人和环境挂钩的证据。原文的总结：<strong>改动越难逆转、影响越广，就越需要更强的外部证据、显式授权和有效干预，然后才能用于有后果的场合</strong>。</p>
+    <p class="go">按原文表 9 浏览六类系统。</p>
+  </div>
+  <div class="lab">
+    <div class="seg" id="t9S"><button data-v="0" aria-pressed="true">编码智能体</button><button data-v="1">记忆 / 搜索智能体</button><button data-v="2">带演化保障的智能体</button><button data-v="3">元智能体</button><button data-v="4">临床智能体</button><button data-v="5">具身智能体</button></div>
+    <div class="cmpbox" id="t9Out" style="margin-top:10px"></div>
+    <p class="note">整理自原文表 9（p.53）及 §8.2.3 正文。</p>
+  </div>
+  <div class="notes" id="n-app"></div>
+</section>
+
+<section class="part" id="planner">
+  <div class="part-head"><h2>证据规划器</h2><span class="meta">依据原文 §8.2 各段整理</span></div>
+  <div class="sec-lede">
+    <p>把三个问题的答案组合起来，列出原文在对应段落里要求的证据。可以拿自己手上的系统试一试：它能改什么、谁写测试、改完之后什么会留下。</p>
+  </div>
+  <div class="lab">
+    <div class="plan">
+      <div><h5>能改什么</h5><div class="seg" id="plA"><button data-v="0" aria-pressed="true">持久产物</button><button data-v="1">行为与实现</button><button data-v="2">改进机制本身</button></div></div>
+      <div><h5>谁控制测试</h5><div class="seg" id="plB"><button data-v="0" aria-pressed="true">系统自己写</button><button data-v="1">评估器随系统演化</button><button data-v="2">外部 / 受保护</button></div></div>
+      <div><h5>接受后留下什么</h5><div class="seg" id="plC"><button data-v="0" aria-pressed="true">可逆的软件改动</button><button data-v="1">持久状态与派生产物</button><button data-v="2">真实世界的后果</button></div></div>
+    </div>
+    <div class="need" id="plOut" aria-live="polite"></div>
+    <p class="note">组合方式是本笔记的整理，每条要求都出自原文 §8.2 对应段落；原文没有给出“证据等级”的打分，这里的“证据强度”只是把三问里风险较高的选项数一数。</p>
+  </div>
+  <p class="xref">护栏、人机协同、评估与监控的通用做法，在另一个系列里有展开：<a href="../2026-10-16-adp-5/">智能体设计模式 · 05 异常、人机协同、护栏与评估</a>；记忆与“学习与适应”模式见 <a href="../2026-10-16-adp-4/">04 记忆、学习、目标与探索</a>。</p>
+  <div class="notes" id="n-planner"></div>
+</section>
+
+<section class="part" id="open">
+  <div class="part-head"><h2>七个开放问题</h2><span class="meta">原文 §8.3，p.53–55</span></div>
+  <div class="sec-lede">
+    <p>原文从已确立的失败和表 9 的证据缺口出发，提出七个研究方向。每一个都关于“在什么条件下，收益、约束或监督会随着被接受的更新和改进机制被复用而改变”，而且每一个都附了可执行的实验设计。</p>
+  </div>
+  <div class="oplist" id="opList"></div>
+  <div class="notes" id="n-open"></div>
+</section>
+
+<section class="part" id="trade">
+  <div class="part-head"><h2>更严的接受，代价是什么</h2><span class="meta">原文 §8.3.6，p.55</span></div>
+  <div class="sec-lede">
+    <p>原文在“根本取舍与极限”里提出两个具体的取舍。第一个：<strong>更严格的接受测试可能减少错误接受，同时错过有效的改进</strong>。原文的实验建议是：对同一组候选，用不同的阈值和验证预算去判定，候选的真实质量用受保护的评估来确定，从而同时测出两类错误和它们的计算成本；再跟踪被接受的候选经过之后的更新，看这些选择如何影响保留下来的收益。</p>
+    <p>第二个取舍关于日志：追踪继承的失败需要记录哪些产物被创建、复用和修改；日志研究可以分别改变事件覆盖和保留内容，从同样的运行中产生完整、脱敏、选择性保留三种记录，度量失败归因、纠正成功率、在给定访问权限下可恢复的敏感信息，找出隐私成本更低、仍保留有用溯源的日志选择。</p>
+    <p class="go">下面按第一个取舍做一个最小模型：一半候选真有改进、一半真有退步，测得的增益 = 真实增益 + 测量噪声；验证预算越大，噪声越小。拖动阈值和预算。</p>
+  </div>
+  <div class="lab">
+    <p class="lab-t">接受阈值的两类错误（真实计算，模型为示意）</p>
+    <div class="ctl-grid">
+      <label class="ctl"><span>接受阈值（测得增益 &gt; 阈值才接受） <output id="trT">0.00</output></span><input type="range" id="trTs" min="-1.5" max="2.5" step="0.05" value="0"></label>
+      <label class="ctl"><span>验证预算（相对单位） <output id="trB">1</output></span><input type="range" id="trBs" min="0.25" max="16" step="0.25" value="1"></label>
+    </div>
+    <div class="box" id="trChart"></div>
+    <div class="read"><div class="warn"><div class="v" id="trFA">0</div><div class="k">错误接受（退步的候选被接受）</div></div><div class="warn"><div class="v" id="trMI">0</div><div class="k">错过改进（真改进被拒）</div></div><div><div class="v" id="trS">0</div><div class="k">测量噪声标准差</div></div></div>
+    <p class="note">假设：真实增益在“改进”组为 +1、“退步”组为 −1；测量噪声为正态分布，标准差 = 1 / √预算。两条曲线是固定当前预算时两类错误随阈值的变化。只演示原文描述的取舍结构，不对应任何实验。</p>
+  </div>
+  <div class="notes" id="n-trade"></div>
+</section>
+
+<section class="part" id="end">
+  <div class="part-head"><h2>结论</h2><span class="meta">原文 §8.4，p.56</span></div>
+  <div class="quote">
+    <p>可信 RSI 要求有证据表明：提升是真实且持续的，适用的约束仍被满足，授权的监督在系统变化时仍然有效。这些要求把单次更新的后果，与继承的行为、与产生后续更新的机制联系起来。一个层级的证据支撑的是与另一个层级不同的主张：成功的后继本身不能证明修订后的更新器改进了产生它们的过程。核心的评估挑战，是在独立、可比、可复现的条件下，把跨版本的能力、约束和干预测量对齐。版本化的证据和受控续跑可以让这些主张变得可检验，同时把没被评估的要求明确标出来。</p>
+    <p class="en">“The central evaluation challenge is to align capability, constraint, and intervention measurements across versions under independent, comparable, and reproducible conditions.”（p.56）</p>
+  </div>
+  <div class="sec-lede" style="margin-top:20px">
+    <p>回头看整个系列，原文的框架可以压缩成一句话：<strong>每一条“变好了”的主张，都要说清楚是哪一层（单次 / 后继 / 元改进）、哪个主题（提升 / 约束 / 安全隐私 / 监督）、在哪个阶段可能出问题（S1–S4 / RI），并且和其他主题的证据放在同一条轨迹上。</strong>总览页把这三根轴做成了一张可点的地图和一套闪卡，可以用来复习。</p>
+  </div>
+  <div class="notes" id="n-end"></div>
+</section>
+
+<section class="part" id="recap">
+  <div class="part-head"><h2>回扣开头的三个问题</h2><span class="meta">先自己答，再点开</span></div>
+  <div class="ask3" style="margin-top:0">
+    <details><summary>1. 判断证据强度的三个问题是什么？</summary><p class="ans">系统能修改什么（持久产物 / 行为与实现 / 改进机制本身）？谁控制 S3 用的反馈（自写 / 协同演化 / 外部受保护）？S4 之后什么会留下、会发生什么（可逆软件改动 / 持久状态与派生产物 / 有后果的真实世界动作）？越难逆转、影响越广、反馈越不独立，需要的外部证据、显式授权和有效干预越多。</p></details>
+    <details><summary>2. 能回滚为什么不等于能恢复？</summary><p class="ans">还原可执行代码不会撤销已经采取的动作，也不会自动还原其他状态；记忆、索引、技能、外部文件会在源头删除后继续保留影响；恢复还要覆盖派生产物、外部效应和受影响的后继。</p></details>
+    <details><summary>3. 收紧接受阈值的代价？怎么测？</summary><p class="ans">错误接受减少，但会错过有效改进，验证预算还要增加。原文建议对同一组候选施加不同阈值和验证预算，用受保护评估确定候选真实质量，测出两类错误和计算成本，再跟踪被接受候选在之后更新中的保留收益。</p></details>
+  </div>
+</section>
+===SCRIPT===
+/* ---------- 跨越小测 ---------- */
+S.quiz($('#acQ'), [
+  { q: '“这个修订在 SWE-bench 上提升了 8 个点，因此可以部署到公司内部的代码库。”', o: ['跨任务', '跨版本', '从基准到部署'], a: 2, why: '预期用途的验证要覆盖部署的用户、环境和后果，基准上的提升不能直接外推。' },
+  { q: '“v3 通过了隐私审计，v5 继承了 v3 的记忆模块，所以 v5 也合规。”', o: ['跨版本', '从候选到更新器', '从回滚到恢复'], a: 0, why: '对一个版本验证过的性质，在后续版本继承、组合或转化其改动时必须重新评估。' },
+  { q: '“新的元智能体自己的代码通过了安全扫描，所以它是安全的。”', o: ['跨任务', '从候选到更新器', '从基准到部署'], a: 1, why: '评估一个改进机制的安全性，要评估它之后生成并接受的候选，而不只是它自身。' },
+  { q: '“事故发生后我们回滚到了上周的检查点，问题已解决。”', o: ['跨版本', '从回滚到恢复', '跨任务'], a: 1, why: '恢复检查要覆盖被污染的记忆、工具、派生产物、外部效应和受影响的后继，不只是检查点还原。' }
+]);
+
+/* ---------- 表 9 ---------- */
+var T9 = [
+  ['智能体代码、提示词、测试、脚手架', '独立性取决于谁拥有测试；需要受保护的评估', '代码、指令和生成的产物', '在预期部署条件下的安全性', 'DGM（Zhang 等 2026e）、自写验证（Guo 等 2026）'],
+  ['记忆内容与设计、检索策略、索引', '需要搜索反馈之外的、受保护的相关性和覆盖检查', '记忆、索引和查询行为', '隐私、覆盖、抗投毒', 'ReasoningBank、自演化搜索索引'],
+  ['候选、策略、harness 和防护', '保障改变之后，要重新评估反馈的独立性', '被接受的候选和安全机制', '保护在之后版本中是否保留', 'AgentBreeder、SafeCoEvo'],
+  ['管着之后更新的机制 U<sub>t</sub>', '评估必须独立于可编辑的更新器', '产生未来改动的修订后过程', '修订后的更新器产出的后续更新的质量', 'Hyperagents'],
+  ['工具、注册决定、工作流', '基于队列的注册；仍需要独立的临床验证', '注册的工具和工作流；部署后的临床效应', '患者层面的有效性和临床部署安全', 'MedRSI：按临床代价排序失败，把快速的工具发现和跨患者队列的保守注册分开'],
+  ['技能、上下文、恢复流程', '测试过迁移；需要独立的物理安全和干预检查', '保留的技能和流程；执行时的物理效应', '被测任务和真实试验之外的物理安全', 'RoboFoundry：跨机器人迁移；VeriFine 用选定的人类反馈校准验证评判器，部署审批仍需独立评估']
+];
+S.seg($('#t9S'), function (v) { t9(+v); });
+function t9(i) {
+  var r = T9[i];
+  $('#t9Out').innerHTML = [['改什么', r[0]], ['反馈独立吗', r[1]], ['接受后留下什么', r[2]], ['主要证据缺口', '<b>' + r[3] + '</b>'], ['代表工作', r[4]]].map(function (x) {
+    return '<div class="row"><b>' + x[0] + '</b><span>' + x[1] + '</span></div>';
+  }).join('');
+}
+t9(0);
+
+/* ---------- 规划器 ---------- */
+var PA = [
+  ['保留的产物如何影响之后的查询和动作：覆盖、污染、删除，而不只是即时的相关性提升。'],
+  ['行为回归测试；修订组件与保留的保障之间的相互作用检查。', '一个受控的工具配置改动可以用针对其行为和依赖的定向测试来评估。'],
+  ['修订后的机制被复用时产出的后续更新（成对续跑，第 7 篇）。', '更新器修订会影响许多之后的接受决定，重评要覆盖依赖它的组件和决定。']
+];
+var PB = [
+  ['独立检查：测试是否度量了预期行为（自写验证曾在受保护部署表现恶化时给出好看的内部结果）。'],
+  ['在两个评估器版本下重测共同的冻结快照以恢复可比性；有效性仍需独立于耦合过程的参照。'],
+  ['隔离要覆盖测试数据、评分规则和对结果的访问；影响后续提案的接受反馈属于改进经验，最终报告需要另外受保护的证据；检查外部评估来源的完整性（基准投毒）。']
+];
+var PC2 = [
+  ['回归测试、依赖检查、演示过的还原流程；确认外部效应被隔离，因为还原代码不会撤销已执行的动作。'],
+  ['溯源、继承主张的范围、纠正或删除在派生状态上的效果；涉及真实用户数据时评估许可的使用、保留和披露。'],
+  ['与受影响的人和环境挂钩的证据（独立的队列与患者层面验证、物理接地的安全与干预测试）；显式授权和有效干预先于有后果的使用。']
+];
+var pl = [0, 0, 0];
+function plan() {
+  var lvl = (pl[0] === 2 ? 1 : 0) + (pl[1] === 0 ? 1 : pl[1] === 1 ? 1 : 0) + (pl[2] === 2 ? 1 : 0) + (pl[2] === 1 ? 0.5 : 0);
+  var tag = lvl >= 2.5 ? '高：需要外部证据、显式授权和已验证的干预' : lvl >= 1.5 ? '中高：需要独立参照和跨版本重测' : lvl >= 0.5 ? '中：需要独立检查和完整记录' : '较低：仍需回归测试和还原演练';
+  var statStmt = pl[1] !== 2 ? '<h5>统计接受规则</h5><ul class="pts"><li>SGM、REUSE 等规则只在测试相关、未被污染、抽样和反馈假设成立时有效；U 改变证据选择或解读时要重新评估这些假设。</li></ul>' : '<h5>统计接受规则</h5><ul class="pts"><li>可以考虑 SGM、REUSE 等规则控制反复接受决定的可靠性；独立验证要覆盖候选和更新器对 S3 的访问。</li></ul>';
+  $('#plOut').innerHTML = '<div class="verdict3' + (lvl >= 1.5 ? ' bad' : '') + '"><b>证据强度：</b>' + tag + '</div>' +
+    '<h5>针对修改范围</h5><ul class="pts">' + PA[pl[0]].map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ul>' +
+    '<h5>针对反馈独立性</h5><ul class="pts">' + PB[pl[1]].map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ul>' +
+    '<h5>针对实施后的效应</h5><ul class="pts">' + PC2[pl[2]].map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ul>' + statStmt;
+}
+S.seg($('#plA'), function (v) { pl[0] = +v; plan(); });
+S.seg($('#plB'), function (v) { pl[1] = +v; plan(); });
+S.seg($('#plC'), function (v) { pl[2] = +v; plan(); });
+plan();
+
+/* ---------- 七个开放问题 ---------- */
+var OP = [
+  ['递归变化下可信的理论基础', '单次更新满足的要求，在更新被组合、更新器被修订后，在什么条件下仍成立？区分必须不变的要求和可随环境或授权偏好调整的要求；寻找“单独安全、经共享记忆 / 权限 / 评估状态冲突”的反例。'],
+  ['验证会自我修改的改进机制', '智能体改了评估器或接受标准时，提升可能来自测试变了。评估器修订：用新旧两版和一个受保护参照评估同一组冻结候选；更广的程序修订：用成对续跑；验证契约写明依赖的证据访问、权限和组件依赖。'],
+  ['长时域风险动态与自适应缓解', '复用和保留改动之间的交互如何影响失败的持续与复发？从可比的干净 / 被污染状态出发，改变受影响产物被复用的频率；比较只删源头、检查点还原、连同技能记忆外部产物和后继一起清理；在不变和修订的更新器下重复。'],
+  ['可信机制本身的递归改进', 'SafeEvolve、SafeCoEvo 研究策略、harness 和保障的适应。从同一策略和保障出发，比较保障固定、用不变的更新器适应、用修订的 U<sub>t+1</sub> 适应；检查参数更新是否削弱外部 harness 执行的保护。'],
+  ['执行中的自适应控制', '更新器修订改变了执行、委派或状态复用后，哪些动作和派生状态仍在授权的停止、纠正、回滚命令的覆盖范围内？在可比的执行阶段发出命令，记录延迟、停了什么、恢复了什么、后继是否复现失败；比较固定与自适应的监控资源分配。'],
+  ['可信 RSI 的根本取舍与极限', '更严的接受减少错误接受但错过有效改进；更完整的日志支持归因但增加隐私成本。用同一组候选、不同阈值和预算测两类错误；用完整 / 脱敏 / 选择性日志测归因与可恢复敏感信息；理论极限需要关于反馈、计算、允许修改的显式假设。'],
+  ['领域特定与多利益相关者的可信', '谁的结果决定接受？比较按总体表现选择和在约定的利益相关者约束下选择；临床跟踪独立队列上的患者群体误差，检索跟踪不同用户群的相关性和内容提供者的曝光；在任务和预算可比时改变反馈权重，看谁的偏好驱动后续改动。']
+];
+OP.forEach(function (o, i) {
+  S.h('div', { html: '<span class="n">§8.3.' + (i + 1) + '</span><b>' + o[0] + '</b><p>' + o[1] + '</p>' }, $('#opList'));
+});
+
+/* ---------- 阈值取舍 ---------- */
+function erf(x) { var t = 1 / (1 + 0.3275911 * Math.abs(x)), y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x); return x >= 0 ? y : -y; }
+function Phi(z) { return 0.5 * (1 + erf(z / Math.SQRT2)); }
+var trDraw = S.chart($('#trChart'), { h: 250, x: [-1.5, 2.5], y: [0, 1], xt: [-1, 0, 1, 2], yt: [0, 0.25, 0.5, 0.75, 1], xl: '接受阈值', yl: '错误率', curves: [] });
+function trade() {
+  var t = +$('#trTs').value, b = +$('#trBs').value, s = 1 / Math.sqrt(b);
+  $('#trT').textContent = S.f(t, 2); $('#trB').textContent = S.f(b, 2).replace(/\.?0+$/, '');
+  var fa = function (x) { return 1 - Phi((x + 1) / s); }, mi = function (x) { return Phi((x - 1) / s); };
+  trDraw({ curves: [{ f: fa, c: 'c2', label: '错误接受' }, { f: mi, c: 'c1', label: '错过改进' }], vl: [{ x: t, c: 'dim', label: '当前阈值' }] });
+  $('#trFA').textContent = S.pct(fa(t), 1); $('#trMI').textContent = S.pct(mi(t), 1); $('#trS').textContent = S.f(s, 2);
+}
+['trTs', 'trBs'].forEach(function (id) { $('#' + id).addEventListener('input', trade); });
+trade();
+
+/* ---------- 记下来 ---------- */
+S.notes($('#n-found'), {
+  c: [['能力遗忘', '新任务提升，旧能力退化。'], ['安全退化', '对模型、记忆、工具、工作流的改动削弱安全行为。'], ['评估失效', '自写测试偏爱在受保护评估中恶化的系统。'], ['污染遗传', '投毒基准诱导的持久指令在干净演化后仍在。']],
+  p: [['开放问题', '普遍性、持续或衰减、U 的修订如何影响。'], ['共同点', '都依赖保留的状态和挑选后续改动的证据。']]
+});
+S.notes($('#n-across'), {
+  c: [['五种跨越', '跨任务、跨版本、候选 → 更新器、基准 → 部署、回滚 → 恢复。']],
+  p: [['可信主张要写明', '覆盖的更新 / 后继序列 / 更新器，任务范围，评估时域，未测试条件。']]
+});
+S.notes($('#n-app'), {
+  c: [['三个问题', '能改什么？谁控制 S3 的反馈？S4 之后什么留下、会发生什么？'], ['功能角色', '管未来改进的提示词或记忆规则属于更新器。']],
+  p: [['越难逆转、影响越广', '越需要外部证据、显式授权、有效干预。'], ['六类系统缺口', '编码：部署条件下安全；记忆搜索：隐私覆盖抗投毒；演化保障：保护保留；元智能体：后续更新质量；临床：患者层面有效与安全；具身：物理安全。']]
+});
+S.notes($('#n-planner'), {
+  c: [['还原 ≠ 撤销', '还原代码不撤销已执行的动作。'], ['可比性 ≠ 有效性', '新旧评估器重测冻结快照恢复可比性，有效性仍需独立参照。']],
+  p: [['外部评估也要查', '覆盖测试数据、评分规则、结果访问；检查来源完整性。']]
+});
+S.notes($('#n-open'), {
+  c: [['组合问题', '单次满足的要求在组合和更新器修订后是否仍成立。'], ['控制范围', '更新器修订后停止 / 纠正 / 回滚还能覆盖哪些动作和状态。']],
+  p: [['七个方向', '理论基础、验证自修改机制、长时域风险、可信机制的递归改进、执行中控制、根本取舍、多利益相关者。']]
+});
+S.notes($('#n-trade'), {
+  c: [['错误接受', '退步的候选被接受。'], ['错过改进', '真改进被拒。']],
+  p: [['取舍', '阈值越高错误接受越少、错过改进越多；提高验证预算能同时降低两者，但有计算成本。'], ['测法', '同一候选集、不同阈值和预算、受保护评估定真实质量、跟踪之后的保留收益。']]
+});
+S.notes($('#n-end'), {
+  c: [['核心挑战', '在独立、可比、可复现条件下，对齐跨版本的能力、约束、干预测量。']],
+  p: [['工具', '版本化证据 + 受控续跑，并显式标出未评估的要求。']]
+});

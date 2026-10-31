@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>可信递归自我改进（Trustworthy RSI）：学习笔记</title>
+<meta name="description" content="综述论文《Trustworthy Recursive Self-Improvement in the Era of Large Models》的八篇互动学习笔记：h、B、U 三层定义与 S1–S4 / RI 循环，四个可信主题与三层主张，每个主题按阶段的风险与保障，成对续跑与联合判据等评估设计，应用场景的证据要求与七个开放问题。总览页有主题 × 阶段地图、闪卡、按问题反查和全系列速记。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 4a8 8 0 1 1-7.4 5' fill='none' stroke='%2313171C' stroke-width='2.2' stroke-linecap='round'/%3E%3Cpath d='M2 6l2.6 3 3-2.4' fill='none' stroke='%2313171C' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='12' cy='12' r='3.2' fill='%232340D6'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../assets/site.css">
+<link rel="stylesheet" href="../study-shared/series.css">
+<script src="../../assets/site.js"></script>
+<script src="../study-shared/series.js"></script>
+<script src="../study-shared/agentevo.js"></script>
+<link rel="stylesheet" href="../study-shared/rsi.css">
+<script src="../study-shared/rsi.js"></script>
+<style>
+.howto { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+.howto div { background: var(--panel); border: 1px solid var(--hair); border-radius: 8px; padding: 14px 16px; }
+.howto b { display: block; font-size: 17px; margin-bottom: 4px; }
+.howto p { margin: 0; font-size: 15px; color: var(--ink-2); line-height: 1.65; }
+@media (max-width: 760px) { .howto { grid-template-columns: minmax(0, 1fr); } }
+.pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; margin-top: 12px; }
+.pgrid a { display: block; background: var(--panel); border: 1px solid var(--hair); border-radius: 8px; padding: 10px 12px; color: inherit; text-decoration: none; }
+.pgrid a:hover { border-color: var(--s1); }
+.pgrid a.done { border-left: 4px solid var(--ok); }
+.pgrid b { font-family: var(--f-num); color: var(--s1); font-size: 14px; }
+.pgrid strong { display: block; font-size: 17px; margin: 2px 0 4px; }
+.pgrid span { font-size: 14px; color: var(--ink-2); line-height: 1.55; display: block; }
+.gmwrap { overflow-x: auto; margin-top: 12px; }
+.gmwrap .gridmap { min-width: 680px; }
+.gmdet { margin-top: 12px; border: 1px solid var(--hair); border-left: 4px solid var(--s1); border-radius: 0 8px 8px 0; padding: 10px 14px; background: var(--panel); }
+.gmdet h4 { margin: 0 0 6px; font-size: 16px; }
+.gmdet p { margin: 0 0 6px; font-size: 15px; color: var(--ink-2); line-height: 1.7; }
+.flash { max-width: 680px; margin: 0 auto; }
+.flash .card { min-height: 180px; background: var(--panel); border: 1px solid var(--hair); border-radius: 12px; padding: 22px 24px; display: flex; flex-direction: column; justify-content: center; }
+.flash .front { font-size: 18px; line-height: 1.7; color: var(--ink); }
+.flash .back { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--hair); font-size: 16px; color: var(--ink-2); line-height: 1.7; }
+.flash .back strong { font-size: 19px; color: var(--s1); display: block; margin-bottom: 4px; }
+.flash .meta2 { display: flex; justify-content: space-between; font-size: 14px; color: var(--ink-3); margin-top: 10px; flex-wrap: wrap; gap: 8px; }
+.sit { display: flex; flex-wrap: wrap; gap: 8px; }
+.sit button { font: inherit; font-size: 15px; padding: 6px 12px; border-radius: 16px; border: 1px solid var(--rule); background: var(--bg); color: var(--ink-2); cursor: pointer; }
+.sit button[aria-pressed="true"] { background: var(--s1); color: #fff; border-color: var(--s1); }
+.reco { margin-top: 14px; display: grid; gap: 8px; }
+.reco div { border: 1px solid var(--hair); border-left: 4px solid var(--s1); border-radius: 0 8px 8px 0; padding: 8px 12px; background: var(--panel); font-size: 15px; line-height: 1.65; }
+.reco div a { font-weight: 600; }
+.cflist { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 8px; }
+.cflist li { padding: 10px 12px; border: 1px dashed var(--s2); border-radius: 8px; font-size: 15px; background: color-mix(in srgb, var(--s2-soft) 30%, transparent); }
+.cflist li a { color: var(--s2); font-weight: 600; }
+</style>
+</head>
+<body data-series="rsi-series" data-rail>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="../../">
+      <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><rect x="7" y="9" width="10" height="11" rx="1.5" fill="var(--s1)"/></svg>
+      AI 观察笔记
+    </a>
+    <nav class="site-nav">
+      <a href="../../">全部文章</a>
+      <button class="theme-btn" type="button">深色</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+<section class="hero wrap">
+  <p class="kicker"><span>技术学习</span><span>系列 · 共 8 篇</span><span>arXiv 2610.35193</span><span>可当复习工具用</span></p>
+  <h1>会改自己的系统，<em>凭什么信它</em></h1>
+  <p class="lead">这篇综述讨论的是一类正在出现的系统：它们不只用经验改进自己，还修改“下一次怎么改进自己”的机制，并继续使用修改后的机制。原文的核心问题是：这样的系统声称“变好了”时，需要什么证据才能相信它，提升是真的、规矩还守着、人还管得住。八篇笔记按原文第 2–8 节展开，这一页是入口，也是复习工具。</p>
+  <p class="credit">本系列是综述论文《<a href="https://arxiv.org/abs/2610.35193" rel="noopener">Trustworthy Recursive Self-Improvement in the Era of Large Models: Foundation, Risks, Evaluation and Open Challenges</a>》（Jiayue Pu、Ang Gao 等，中国人民大学高瓴人工智能学院，2026 年 10 月 26 日 v1）的学习笔记。原文由中国人民大学高瓴人工智能学院团队撰写，项目主页和文献列表见 GitHub pujiayue/Trustworthy-RSI。本系列不复述原文的全部文献，只保留支撑论点的代表性研究；引用的研究按原文的区分标出“RSI 直接”“相关系统”“原文推论”。</p>
+<nav class="series" aria-label="系列目录">
+  <a href="../2026-10-30-rsi/" aria-current="page"><b>总览</b>复习台</a>
+  <a href="../2026-10-30-rsi-1/" data-part="1"><b>01</b>什么是 RSI</a>
+  <a href="../2026-10-30-rsi-2/" data-part="2"><b>02</b>可信框架</a>
+  <a href="../2026-10-30-rsi-3/" data-part="3"><b>03</b>真实提升</a>
+  <a href="../2026-10-30-rsi-4/" data-part="4"><b>04</b>约束与对齐</a>
+  <a href="../2026-10-30-rsi-5/" data-part="5"><b>05</b>安全与隐私</a>
+  <a href="../2026-10-30-rsi-6/" data-part="6"><b>06</b>透明与可控</a>
+  <a href="../2026-10-30-rsi-7/" data-part="7"><b>07</b>怎么评估</a>
+  <a href="../2026-10-30-rsi-8/" data-part="8"><b>08</b>应用与难题</a>
+</nav>
+</section>
+
+
+<div class="wrap">
+<section class="part" id="use">
+  <div class="part-head"><h2>这个系列怎么用</h2><span class="meta">三种用法</span></div>
+  <div class="howto">
+    <div><b>按篇读</b><p>每篇开头列三个问题，篇末回扣。第 3–6 篇都有一个“按阶段切换”的对照框（风险 / 失败证据 / 已有保障 / 局限），配一两个真实计算或示意模拟；每节末尾的“记下来”可以遮住解释自测。</p></div>
+    <div><b>用地图复习</b><p>原文的框架是“主题 × 阶段 × 层级”三根轴。下面的地图把前两根轴摊成 4 × 5 的格子，点一格看这一格的核心风险和保障，再跳到对应篇目。</p></div>
+    <div><b>按问题反查</b><p>做自我改进类系统时遇到具体疑问，用“选择器”勾选，得到原文对应的论点和篇目。闪卡记录只存在你自己的浏览器里。</p></div>
+  </div>
+</section>
+
+<section class="part" id="map">
+  <div class="part-head"><h2>八篇地图</h2><span class="meta">读过的篇目左侧会标绿</span></div>
+  <div class="pgrid" id="pgrid"></div>
+  <p class="xref">同一领域的另外两个系列可以交叉读：<a href="../2026-10-16-adp/">智能体设计模式（七篇）</a>里的“学习与适应”“护栏”“评估与监控”模式，<a href="../2026-10-16-agent/">深入理解 AI Agent（十篇）</a>里的记忆和评估。这个系列关心的是这些机制被系统自己反复修改之后，还能不能被信任。</p>
+</section>
+
+<section class="part" id="grid">
+  <div class="part-head"><h2>主题 × 阶段地图</h2><span class="meta">原文图 4–7 的压缩版</span></div>
+  <div class="sec-lede">
+    <p>行是四个可信主题（第 3–6 篇），列是 S1–S4 四个阶段和 RI。每格写的是原文在这一格最核心的一个风险；点开看对应的保障和局限。第三根轴（单次更新 / 后继 / 元改进）在下面的“三层主张”里。</p>
+  </div>
+  <div class="gmwrap"><table class="gridmap" id="gm"></table></div>
+  <div class="gmdet" id="gmD" aria-live="polite"></div>
+</section>
+
+<section class="part" id="levels">
+  <div class="part-head"><h2>三层主张</h2><span class="meta">原文 §2.3、§7.2</span></div>
+  <div class="trio">
+    <div><b><span class="lv u">单次更新</span></b><p>这一次被接受的修订满足要求吗？<br>证据：开发、接受、独立报告三分开；声明条件下的前后对比；事先设定阈值；完整资源记账。</p></div>
+    <div><b><span class="lv s">后继</span></b><p>改动被继承、被使用后，要求还成立吗？<br>证据：版本化记录；初始 / 中间 / 最终快照；保留失败分支；到首次严重失败的时间、累计违规。</p></div>
+    <div><b><span class="lv m">元改进</span></b><p>修订后的更新器产出更好的、可信的后续更新吗？<br>证据：成对续跑（同一起点、每臂更新器固定、匹配预算）；总成本效率另算。</p></div>
+  </div>
+  <div class="quote">
+    <p>成功的后继本身不能证明修订后的更新器改进了产生它们的过程。</p>
+    <p class="en">“Successful successors alone do not establish that a revised updater improves the process that generates them.”（p.56）</p>
+  </div>
+</section>
+
+<section class="part" id="flash">
+  <div class="part-head"><h2>闪卡</h2><span class="meta">先说出答案再翻面</span></div>
+  <div class="flash">
+    <div class="card"><div class="front" id="fcF"></div><div class="back" id="fcB" hidden></div></div>
+    <div class="ctrls" style="margin-top:12px"><button class="btn pri" type="button" id="fcShow">翻面</button><button class="btn" type="button" id="fcOk" disabled>想起来了</button><button class="btn" type="button" id="fcNo" disabled>没想起来</button><button class="btn" type="button" id="fcReset">清空记录</button></div>
+    <div class="meta2"><span id="fcPos"></span><span id="fcStat"></span></div>
+  </div>
+</section>
+
+<section class="part" id="chooser">
+  <div class="part-head"><h2>选择器：我想知道……</h2><span class="meta">可多选</span></div>
+  <div class="sit" id="sit"></div>
+  <div class="reco" id="reco"></div>
+</section>
+
+<section class="part" id="confuse">
+  <div class="part-head"><h2>易混辨析索引</h2><span class="meta">散落在各篇的对比框</span></div>
+  <ul class="cflist">
+    <li><a href="../2026-10-30-rsi-1/#cmp">自我进化 vs 递归自我改进</a>：只改 h 或 B，还是连 U 也改并复用。</li>
+    <li><a href="../2026-10-30-rsi-1/#cycle">持久修订 vs 临时执行调整</a>：被 S4 保留的才算。</li>
+    <li><a href="../2026-10-30-rsi-2/#req">数据治理 vs 治理；人类控制 vs 可纠正性</a>：管数据 vs 管整个系统；有没有开关 vs 配不配合开关。</li>
+    <li><a href="../2026-10-30-rsi-4/#def">授权的目标变化 vs 未授权的漂移</a>：人批准改要求 vs 改进者自己改成功的定义。</li>
+    <li><a href="../2026-10-30-rsi-6/#def">解释忠实性 vs 干预有效性</a>：理由是否真解释了行为 vs 编辑是否真控制了结果。</li>
+    <li><a href="../2026-10-30-rsi-7/#valid">PACE vs SGM vs REUSE</a>：单次决定 / 一连串更新的错误预算 / 反复用同一评估集。</li>
+  </ul>
+</section>
+
+<section class="part" id="nums">
+  <div class="part-head"><h2>全系列速记：关键数字</h2><span class="meta">均为原文数据</span></div>
+  <div class="kv">
+    <div><b>17% → 53%</b><span>SICA 在 50 个 SWE-bench 任务上从初始到峰值；15 次自我编辑；约 7000 美元；无固定更新器消融（p.21）</span></div>
+    <div><b>约 3300 万</b><span>Hyperagents 每 100 次迭代的自我编辑 token，不含评估（p.21）</span></div>
+    <div><b>59.9% / 25.3%</b><span>TeSearch 测试集 vs 仓库测试拒绝“改变行为”的修订；TeSearch 误报 4.0%（p.20）</span></div>
+    <div><b>114 → 26 → 4</b><span>被回顾研究 → 声称改进了改进程序的 RSI 研究 → 用相同起点和匹配预算比较前后改进器（p.47）</span></div>
+    <div><b>8 / 4 / 3</b><span>八组可信要求、四个主题、三个分析角色（p.13–15）</span></div>
+    <div><b>S1–S4 + RI</b><span>诊断、生成、评估、实施，加上对 U 的递归改进（p.12）</span></div>
+  </div>
+</section>
+<nav class="pager" aria-label="翻页"><a class="nx" href="../2026-10-30-rsi-1/"><small>下一篇</small><span>01 · RSI 的定义：h、B、U 三层与 S1–S4 循环</span></a></nav>
+</div>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <span>AI 观察笔记</span>
+    <span>学习笔记 · 原书：<a href="https://arxiv.org/abs/2610.35193" rel="noopener">arXiv:2610.35193</a></span>
+  </div>
+</footer>
+<script>
+(function () {
+'use strict';
+var $ = S.$, $$ = S.$$, h = S.h;
+/* ---------- 八篇地图 ---------- */
+var PG = [
+  ['1', '什么是 RSI', 'h、B、U 三层；和元学习、AutoML 的边界；S1–S4 与 RI；编码智能体三变体。'],
+  ['2', '可信框架', '八组要求 → 四主题 → 三角色；单次更新、后继、元改进三层主张。'],
+  ['3', '真实提升', '稀有模式先消失；多试几次的假进步；五项研究谁隔离了更新器。'],
+  ['4', '约束与对齐', '代理过优化；拒绝经验的两难；公平的留存反馈环；RI 改保障。'],
+  ['5', '安全与隐私', '污染谱系与清理演练；删除主张的范围；差分隐私的累加账本。'],
+  ['6', '透明与可控', '诊断定位哪种失败；相关评审者的上限；干预能否到达继承状态；三种归因。'],
+  ['7', '怎么评估', '开发 / 接受 / 报告三分开；成对续跑；成本分摊；联合判据。'],
+  ['8', '应用与难题', '三个问题看场景；证据规划器；七个开放问题；阈值取舍。']
+];
+var read = S.readList();
+PG.forEach(function (p) {
+  S.h('a', { href: '../2026-10-30-rsi-' + p[0] + '/', class: read.indexOf(p[0]) >= 0 ? 'done' : '', html: '<b>0' + p[0] + '</b><strong>' + p[1] + '</strong><span>' + p[2] + '</span>' }, $('#pgrid'));
+});
+
+/* ---------- 主题 × 阶段 ---------- */
+var THM = [['真实提升', '3'], ['约束与对齐', '4'], ['安全与隐私', '5'], ['透明与可控', '6']];
+var STG = ['S1 诊断', 'S2 生成', 'S3 评估', 'S4 实施', 'RI'];
+var GM = [
+  [
+    ['有偏的诊断', '经验和反馈看不见真正的弱点：生成样本替换旧数据，稀有模式先消失。', '保留真实样本、照顾不同技能、结果过滤；只拓宽可用证据，不保证覆盖没见过的情况。'],
+    ['捷径与额外计算', '钻代理奖励或测试的空子；尝试越多越容易碰到好候选，让没变的机制看起来更好。', '多样候选、匹配提案 + 执行 + 验证的总成本、开发条件外评估。'],
+    ['误导性接受分数', '自评奖励、共享错误、自写测试、评分者变宽松。', '留出任务、TeSearch 式测试质量、种子匹配重打分、PACE / SGM；依赖测试有效。'],
+    ['无效的更新', '遗忘、共享提示词干扰、技能变多妨碍检索；改动没被调用或遵循。', '旧技能表现作为接受标准、持续交互中测试、可恢复状态；只保护被测技能。'],
+    ['归因难题', '改了 U 可能只换了改进方式；提升可能来自额外计算或别处改动。', '固定更新器对照（Hyperagents、Evo2）；完整资源记账含训练和回放。']
+  ],
+  [
+    ['错误的规范目标', '反馈代表的规则不完整、偏向一方、漏掉缺席群体；成功执行 ≠ 恰当行为。', '目标可追溯到规则和群体；记录偏好数据的参与者与聚合方式；执行与拒绝样本一起评估。'],
+    ['代理过优化', '目标误泛化、代理过优化、奖励篡改；harness 编辑改变工具权限或安全记忆。', '区分性能目标与约束；契约检查；限制优化压力；帕累托搜索。'],
+    ['评估器被利用', '测试漏掉情境伤害或奖励过度拒绝；评估器在优化中被规避或被修改。', '独立接受测试、固定锚点、分群体报告；依赖生成器与分类器的覆盖。'],
+    ['继承的不安全行为', '微调削弱安全；保留的经验改变执行与拒绝；谄媚、欺骗在后继中持续。', '在部署配置（含记忆、工具策略、工作流）上评估；独立于选择分数评估后继。'],
+    ['重新定义成功', '修订后的机制改偏好、放宽接受标准；对 U<sub>t</sub> 的保证要重查。', '标准独立于被修订规则；区分授权变化与未授权漂移。']
+  ],
+  [
+    ['记忆投毒与过度收集', '低可信输入持续影响诊断；超出任务需要的获取。', '来源绑定（TMA-NM、PerMIT）、一个来源族一票、脱敏与精确值分离；依赖标签与背书可靠。'],
+    ['恶意或敏感的派生资产', '污染被转成技能并在源删除后存活、经副本传播；人设技能泄露属性。', '沙箱、信息流策略、技能包扫描；组合使用仍需测试。'],
+    ['篡改的接受证据', '候选删掉检测器需要的日志；评估接口成为记忆提取通道。', '绑定候选、输入、输出、评估器、决策；BenchShield；MemPot。'],
+    ['继承的载荷与跨版本泄露', '源头改后资产仍活跃；删除主张不说明范围就无法检验。', '记录来源、父代、版本、权限、依赖；隔离后代并测残余；差分隐私基本组合。'],
+    ['保护边界被改', '修订改变证据、权限、检查和数据规则。', '最终批准、权限根、恢复权限放在可修改范围外（原文推论）；改日志重测覆盖。']
+  ],
+  [
+    ['定位了哪种失败', '最初错误、首个不可恢复点、被忽视的恢复机会不一定重合；解释可能不忠实。', '注入故障回放、匹配回放、忠实性测试。'],
+    ['理由与效果脱节', '看似有信息量的理由未必解释行为；干预达不到预期效果。', '回路定位 + 基线比较；记录每次编辑的增删与效应；适配器做替换和消融。'],
+    ['依赖的审查证据', '评审者错误相关；智能体控制实验与报告；惩罚可见推理只压制了证据。', '智能体控制之外的证据；混合监控与选择性升级；观测通道变了就重测。'],
+    ['干预够不着', '运行配置与批准的不一致；停止命令到不了委派进程和继承状态。', 'AI Control、外部仲裁；纠正要到达记忆、合并权重、委派进程；外部效应单独补救。'],
+    ['控制边界被挪动', '改搜索或证据选择让审查失效；改批准或停止权限挪动边界。', 'AHE 保护验证器与追踪器；L3M 由优化者之外的行动者控制规格；证明与安全论证随假设重做。']
+  ]
+];
+var gm = $('#gm');
+var hr = S.h('tr', null, gm); S.h('th', null, hr);
+STG.forEach(function (s) { S.h('th', { text: s }, hr); });
+var cells = [];
+GM.forEach(function (row, i) {
+  var tr = S.h('tr', null, gm);
+  S.h('th', { text: THM[i][0] }, tr);
+  row.forEach(function (c, j) {
+    var td = S.h('td', null, tr);
+    var b = S.h('button', { type: 'button', 'aria-pressed': 'false', text: c[0] }, td);
+    b.addEventListener('click', function () { pickCell(i, j); });
+    cells.push(b);
+  });
+});
+function pickCell(i, j) {
+  cells.forEach(function (b, k) { b.setAttribute('aria-pressed', String(k === i * 5 + j)); });
+  var c = GM[i][j];
+  $('#gmD').innerHTML = '<h4>' + THM[i][0] + ' × ' + STG[j] + '：' + c[0] + '</h4><p><b>风险</b>：' + c[1] + '</p><p><b>保障与局限</b>：' + c[2] + '</p><p><a href="../2026-10-30-rsi-' + THM[i][1] + '/#stages">去第 ' + THM[i][1] + ' 篇的分阶段对照 →</a></p>';
+}
+pickCell(0, 2);
+
+/* ---------- 闪卡 ---------- */
+var FC = [
+  ['原文对 RSI 的定义比“自我进化”多了哪个条件？', 'U 被修订并复用', '系统不只更新 h 和 B，还修订决定未来偏置更新的机制 U，并在之后的循环里复用它。', '1'],
+  ['一条“挑哪些纠正轨迹去训练”的提示词，属于 h、B 还是 U？', 'B（归纳偏置）', '它管着策略怎么被学出来；控制任务执行的“提交前先测试”才属于 h。按功能分，不按文件类型分。', '1'],
+  ['Promptbreeder 里，规定好的超变异程序扮演哪个角色？', 'U，但它是固定的', '所以 Promptbreeder 是“固定 U 下演化 B”，不满足原文 RSI 的递归条件。', '1'],
+  ['S3 方案评估回答的问题是？', '接受哪个改动', '按当前评估和接受标准评估候选，包括是否解决诊断出的局限、是否满足要求、其他任务上有没有退步。', '1'],
+  ['三个分析角色是什么？是不是三个阶段？', '改进有效性、约束保持、有效监督', '它们是互补的分析视角，不是流程阶段；同一次修订可能同时影响多个主题。', '2'],
+  ['后继层主张比单次更新层多要什么证据？', '改动被继承且被实际使用', '然后在得到的系统上重新评估；跟踪多个后继看持续多久、迁移多远。', '2'],
+  ['p = 10%，尝试从 1 次加到 20 次，至少一个够好的概率？', '约 87.8%', '1 − 0.9²⁰。单次提案质量没变，“挑最好的”让结果看起来变强；证明搜索变好要匹配总成本。', '3'],
+  ['在五项代表性研究里，哪两项最能隔离更新器的贡献？', 'Hyperagents 和 Evo2', 'Hyperagents：可编辑 vs 固定元智能体；Evo2：训练 vs 未训练演化器，执行器、父 harness、搜索固定。', '3'],
+  ['SICA 的提升为什么不能归因到更新器修订？', '没有固定更新器的消融', '它复用编辑后的智能体做后续修改，但没有单独把更新器固定下来对照。', '3'],
+  ['拒绝经验加进记忆后，两个指标怎么变？', '不安全动作 ↓，过度拒绝 ↑', 'Zhao 等 2026b；所以执行和拒绝样本要一起评估，行为约束同时管“别做坏事”和“别无理拒绝”。', '4'],
+  ['对齐允许目标变化吗？', '允许授权的变化，不允许单方面重定义成功', '改进者自己改评分标准、放宽接受条件，属于未授权漂移。', '4'],
+  ['评估器–技能协同演化去掉锚点后发生了什么？', '报告生成指标几乎全判通过', '另一个技能分数还在涨；说明评估器可改时分数不再说明行为变好（Zhang 等 2026l）。', '4'],
+  ['SkillJack 说明了什么？', '删源记录后，派生技能里的后门仍在', '恢复要覆盖派生资产、副本、凭据、待执行动作、检查点和外部效应。', '5'],
+  ['10 个版本、每次都用私有数据训练、每次 ε = 0.5，基本组合下累计 ε？', '5', '基本自适应组合直接相加；后处理不计预算，所以成本由接触私有数据的发布次数决定，不由后继数量决定。', '5'],
+  ['RI 下原文建议把哪些权力放在候选者能修改的范围之外？', '最终变更批准、权限根、恢复权限', '候选可以提出新保障，但不能是唯一批准者（原文推论）。', '5'],
+  ['MAST、AgentRx、TraceElephant 分别定位什么？', '失败类型 / 首个不可恢复点 / 角色恢复职责', '最初错误、可恢复性丧失、被忽视的恢复机会不一定重合。', '6'],
+  ['惩罚被检测到的推理会怎样？', '压制可见证据，不一定消除不当行为', 'Baker 等 2025；观测通道变了，接受后续修订所用的证据也变了。', '6'],
+  ['三种归因分别是？', '技术贡献、运行职责、治理问责', '哪些改动影响结果；哪些职责适用、是否履行；谁必须解释和补救。', '6'],
+  ['26 项声称改进了改进程序的 RSI 研究里，几项用相同起点和匹配预算比较前后改进器？', '4 项', 'Chen 等 2026j 回顾 114 项研究的统计。', '7'],
+  ['成对续跑的核心设定？', '同一起点，一臂 U<sub>t</sub> 一臂 U<sub>t+1</sub>', '每臂内更新器固定；匹配任务流、权限、续跑预算；同一报告任务；配套改动一起算作干预。', '7'],
+  ['联合判据什么时候算满足？', '每项强制要求在每次预定评估都成立', '中间版本一次未授权披露，整条轨迹就失败，哪怕首尾都通过。', '7'],
+  ['REUSE 怎样处理评估集被反复使用？', '只把晋升决定给搜索程序', '并在可能的决策历史上分配错误；前提是初始独立的评估集。', '7'],
+  ['判断一个场景需要多强证据的三个问题？', '能改什么；谁控制测试；接受后什么留下', '越难逆转、影响越广、反馈越不独立，越需要外部证据、显式授权和有效干预。', '8'],
+  ['“还原了代码”为什么不等于“恢复了”？', '已执行的动作不会被撤销', '持久状态和派生产物在源头删除后仍保留影响；外部效应要单独补救。', '8']
+];
+var FK = 'rsi-series-fc';
+var fw; try { fw = JSON.parse(S.store.get(FK) || 'null'); } catch (e) { fw = null; }
+if (!fw || fw.length !== FC.length) fw = FC.map(function () { return 1; });
+var fi = 0, seen = 0, got = 0;
+function fpick() {
+  var tot = fw.reduce(function (a, b) { return a + b; }, 0), r = Math.random() * tot, k = 0;
+  for (; k < fw.length - 1; k++) { r -= fw[k]; if (r <= 0) break; }
+  if (k === fi && FC.length > 1) k = (k + 1) % FC.length;
+  return k;
+}
+function fshow(k) {
+  fi = k; var c = FC[k];
+  $('#fcF').innerHTML = c[0];
+  $('#fcB').innerHTML = '<strong>' + c[1] + '</strong>' + c[2] + ' <a href="../2026-10-30-rsi-' + c[3] + '/">第 ' + c[3] + ' 篇</a>';
+  $('#fcB').hidden = true; $('#fcShow').disabled = false; $('#fcOk').disabled = true; $('#fcNo').disabled = true;
+  $('#fcPos').textContent = '共 ' + FC.length + ' 张 · 来自第 ' + c[3] + ' 篇';
+  $('#fcStat').textContent = seen ? '本次已翻 ' + seen + ' 张，想起 ' + got + ' 张' : '没想起来的卡会更常出现';
+}
+$('#fcShow').addEventListener('click', function () { $('#fcB').hidden = false; $('#fcShow').disabled = true; $('#fcOk').disabled = false; $('#fcNo').disabled = false; });
+function fnext(ok) {
+  seen++; if (ok) got++;
+  fw[fi] = ok ? Math.max(0.3, fw[fi] * 0.5) : Math.min(8, fw[fi] * 2);
+  S.store.set(FK, JSON.stringify(fw));
+  fshow(fpick());
+}
+$('#fcOk').addEventListener('click', function () { fnext(true); });
+$('#fcNo').addEventListener('click', function () { fnext(false); });
+$('#fcReset').addEventListener('click', function () { fw = FC.map(function () { return 1; }); S.store.set(FK, JSON.stringify(fw)); seen = got = 0; fshow(fpick()); });
+fshow(fpick());
+
+/* ---------- 选择器 ---------- */
+var SIT = [
+  ['我的系统算不算 RSI？', '对照三个问题：B 被自主修订吗？修订 B 的机制 U 被修订了吗？修订后的 U 在之后的循环里被复用了吗？组件按功能归入 h / B / U。', '1', 'cmp'],
+  ['分数涨了，但我不确定是真变强', '检查四处：诊断经验是否有偏（S1）、是否钻了测试空子或只是多试了几次（S2）、接受分数是否被共享错误或宽松评分抬高（S3）、改动是否被调用和遵循（S4）。', '3', 'stages'],
+  ['我想证明新的更新器更好', '用成对续跑：同一起点、每臂更新器固定、匹配任务流 / 权限 / 预算、同一报告任务；一次性发现成本另算总成本效率。', '7', 'meta'],
+  ['自我改进后安全或拒答行为变了', '有害服从和过度拒绝一起测；在部署配置（含记忆、工具策略、工作流）上评估；后继要独立于选择分数评估。', '4', 'refuse'],
+  ['系统可以修改自己的评估器或评分细则', '分数可能只反映标准变了：保留固定锚点和独立参照；在新旧评估器下重测同一组冻结快照；区分授权变更与未授权漂移。', '4', 'ri'],
+  ['怀疑经验或技能库被投毒了', '按谱系清理：源记录、派生技能、副本、持久指令、后继、外部效应；依赖记录不全就隔离不全；同时确认良性服务恢复。', '5', 'lineage'],
+  ['要对用户承诺“数据已删除”', '写明覆盖的派生资产、可访问的历史版本、辅助信息、之前的披露；测试的访问条件就是主张的边界；更新器复用后重测。', '5', 'delete'],
+  ['想用多个 LLM 评审来保证独立性', '错误相关时多数票有上限；研究型智能体控制实验和报告时，评审看的是同一份叙述；需要产出者控制之外的证据。', '6', 'judges'],
+  ['出了事故，要定位原因和责任', '先说明定位的是最初错误、首个不可恢复点还是被忽视的恢复机会；归因分技术贡献、运行职责、治理问责三层，各要不同证据。', '6', 'diag'],
+  ['要设计一份长期的评估报告', '版本化记录、初始 / 中间 / 最终快照、保留失败分支、跨运行不确定性；按联合判据报告同一轨迹上全部强制要求。', '7', 'joint'],
+  ['要把这类系统用到真实业务里', '回答三个问题：能改什么、谁控制测试、接受后什么留下；越难逆转影响越广，越需要外部证据、显式授权和有效干预。', '8', 'planner']
+];
+var sel = [];
+SIT.forEach(function (s, i) {
+  var b = S.h('button', { type: 'button', 'aria-pressed': 'false', text: s[0] }, $('#sit'));
+  b.addEventListener('click', function () {
+    var k = sel.indexOf(i);
+    if (k >= 0) sel.splice(k, 1); else sel.push(i);
+    b.setAttribute('aria-pressed', String(k < 0));
+    reco();
+  });
+});
+function reco() {
+  var r = $('#reco'); r.innerHTML = '';
+  if (!sel.length) { S.h('div', { html: '勾选上面的一项或几项。' }, r); return; }
+  sel.forEach(function (i) {
+    var s = SIT[i];
+    S.h('div', { html: '<b>' + s[0] + '</b><br>' + s[1] + ' <a href="../2026-10-30-rsi-' + s[2] + '/#' + s[3] + '">第 ' + s[2] + ' 篇 →</a>' }, r);
+  });
+}
+reco();
+})();
+</script>
+</body>
+</html>
