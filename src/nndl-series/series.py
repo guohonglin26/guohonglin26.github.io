@@ -22,3 +22,4 @@ AUTHOR = '邱锡鹏 著，开放出版前电子稿，本笔记依据 2026 年 7 
 BOOK_KIND = '教材'
 CREDIT = '原书以数学推导为主，这里按“先建直觉、再看公式、最后动手”重新组织：每节先用几段话说清楚它解决什么问题，再给一个可以拖动参数、亲手训练的小实验。公式、定义和例子以原书为准，标注了对应的节号和页码；为演示设的数据和参数会标注“示意”。'
 ICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='5' cy='6' r='2.5' fill='none' stroke='%2313171C' stroke-width='2'/%3E%3Ccircle cx='5' cy='18' r='2.5' fill='none' stroke='%2313171C' stroke-width='2'/%3E%3Ccircle cx='19' cy='12' r='3' fill='%232340D6'/%3E%3Cpath d='M7.3 7l9 4M7.3 17l9-4' stroke='%2313171C' stroke-width='2'/%3E%3C/svg%3E"
+RAIL = True

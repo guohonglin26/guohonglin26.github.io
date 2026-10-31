@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="../study-shared/series.css">
 <script src="../../assets/site.js"></script>
 <script src="../study-shared/series.js"></script>
+<script src="../study-shared/rlevo.js"></script>
 <style>
 main sub, main sup { font-size: 15px; line-height: 0; }
 .part-head .meta { overflow-wrap: anywhere; }
@@ -22,7 +23,7 @@ main sub, main sup { font-size: 15px; line-height: 0; }
 @media (max-width: 640px) { .tokrow { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 </style>
 </head>
-<body data-series="modernrl-series" data-part="7">
+<body data-series="modernrl-series" data-part="7" data-rail>
 
 <header class="site-head">
   <div class="wrap">
@@ -147,6 +148,13 @@ main sub, main sup { font-size: 15px; line-height: 0; }
   <div class="part-head"><h2>PPO-RLHF：四个模型和一条“安全绳”</h2><span class="meta">原文 docs/chapter15_rlhf/ppo-rlhf-loop.md（13.9 节）</span></div>
   <div class="sec-lede">
     <p>经典 RLHF 的 PPO 阶段有四个角色：<strong>Actor</strong>（从 SFT 模型继续训练，生成回答、被更新）、<strong>Reference</strong>（冻结的 SFT 模型，提供 KL 约束）、<strong>Reward Model</strong>（冻结，给回答打分）、<strong>Critic</strong>（通常从 Actor 初始化，估计价值、降低方差）。原文的一句话总结：Reward Model 给方向，Reference 拉住边界，Critic 降低方差，PPO 控制更新幅度。四个模型同时占资源，7B 模型的 PPO 至少要几张 80GB 卡——这正是 DPO 和 GRPO 想省掉的东西。</p>
+    <div class="eqx"><div class="eqx-f">max<sub>θ</sub> 𝔼<sub>x∼D, <span data-t="4">y∼π<sub>θ</sub>(·|x)</span></sub>[ <span data-t="1">r<sub>RM</sub>(x, y)</span> ] − <span data-t="2">β</span> <span data-t="3">KL(π<sub>θ</sub>(·|x) ‖ π<sub>ref</sub>(·|x))</span></div>
+    <ul class="eqx-k">
+      <li data-t="4"><b>y ∼ π<sub>θ</sub>(·|x)</b>回答由正在训练的模型自己现场生成<em>在线采样：这正是 PPO 阶段慢的原因</em></li>
+      <li data-t="1"><b>r<sub>RM</sub>(x, y)</b>奖励模型给整段回答打的分<em>从“A 比 B 好”的偏好数据学来，训练时冻结</em></li>
+      <li data-t="2"><b>β</b>绳子的松紧：越大越不敢偏离参考模型<em>人为设定，也可以按目标 KL 自适应调</em></li>
+      <li data-t="3"><b>KL(π<sub>θ</sub> ‖ π<sub>ref</sub>)</b>当前模型离 SFT 参考模型有多远<em>实现中拆成每个 token 扣 β(log π<sub>θ</sub> − log π<sub>ref</sub>)</em></li>
+    </ul></div>
     <p>RM 只给整段一个分，PPO 却要在 token 级更新。工程上把奖励拆成两部分：<strong>每个 token 都扣一点 KL</strong>：−β(log π<sub>θ</sub>(y<sub>t</sub>) − log π<sub>ref</sub>(y<sub>t</sub>))；<strong>最后一个 token 再加上 RM 分数</strong>。原文的直觉：“你可以尝试写得更好，但每一步都要为偏离原来的 SFT 模型付一点成本；只有整段完成后裁判才给总分。”然后 Critic 估计每个位置的 V，GAE 把末尾的分数沿 token 序列传回去，每个 token 得到自己的优势。</p>
     <p>原文专门对比了<strong>序列级</strong>与<strong>token 级</strong>：序列级把总分 R 平均摊给每个 token，“答案是 21”里的“21”和开头的“这”获得同样的更新；token 级通过 Critic + GAE 让关键 token 拿到更强的信号。原文的结论是 token 级优于序列级、序列越长优势越大，TRL、OpenRLHF、veRL 默认都用 token 级损失。为什么一定要 Reference？RM 是在 SFT 模型附近的回答上训练的，Actor 离得太远，RM 就进入分布外——<strong>分布外的高分最危险，因为 PPO 会把它当真奖励继续放大</strong>。</p>
     <p class="go">原文的例子“这 道 题 的 答 案 是 2 1”：调 β、RM 分数和 λ，看每个 token 拿到的奖励和优势（logprob 与 V 为示意值）。</p>
@@ -172,6 +180,12 @@ main sub, main sup { font-size: 15px; line-height: 0; }
     </tbody>
   </table></div>
   <p class="book-ref">原文 13.9 节两张角色表合并。框架选型（原文）：135M–1B 用 TRL 理解流程；7B–32B 用 OpenRLHF（Ray + vLLM + ZeRO）；70B+ 用 NeMo RL。</p>
+  <div class="lab fig">
+    <p class="lab-t">四个模型怎么连起来；拿掉一个会怎样</p>
+    <p class="lab-s">实线蓝框要训练，灰色虚线框冻结。点下面的零件把它拿掉，图里对应的框会变淡，下方写出后果和它通向的那条路。后果是本笔记依据原文第 13–15 章整理的定性判断。</p>
+    <div class="figw" style="max-width:780px"><div style="min-width:620px"><svg viewBox="0 0 770 430" role="img" aria-label="PPO-RLHF 中四个模型的数据流：Actor 生成回答，Reference、奖励模型、Critic 分别给出 log π_ref、分数和 V，合成 token 奖励和优势后由 PPO 更新 Actor 与 Critic"><defs><marker id="ah7" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0 0L10 5L0 10z"/></marker></defs><path class="ln" d="M110 190H136" marker-end="url(#ah7)"/><path class="ln" d="M310 190H341" marker-end="url(#ah7)"/><path class="ln" d="M445 190H468"/><path class="ln" d="M468 72V308"/><path class="ln" d="M468 72H486" marker-end="url(#ah7)"/><path class="ln" d="M468 190H486" marker-end="url(#ah7)"/><path class="ln" d="M468 308H486" marker-end="url(#ah7)"/><path class="ln" d="M740 72H756"/><path class="ln" d="M740 190H756"/><path class="ln" d="M740 308H756"/><path class="ln" d="M756 72V395"/><path class="ln" d="M756 395H704" marker-end="url(#ah7)"/><path class="ln" d="M420 395H384" marker-end="url(#ah7)"/><path class="ln" d="M225 366V234" marker-end="url(#ah7)"/><g data-k="x"><rect class="bx " x="10" y="162" width="100" height="56" rx="8"/><text x="24" y="189" font-size="17" font-weight="650">提示 x</text><text class="sub" x="24" y="211" font-size="15">一批问题</text></g><g data-k="actor"><rect class="bx train" x="140" y="150" width="170" height="80" rx="8"/><text x="154" y="177" font-size="17" font-weight="650">Actor π<tspan dy="4" font-size="13">θ</tspan></text><text class="sub" x="154" y="199" font-size="15">训练 · 生成回答</text></g><g data-k="y"><rect class="bx " x="345" y="162" width="100" height="56" rx="8"/><text x="359" y="189" font-size="17" font-weight="650">回答 y</text><text class="sub" x="359" y="211" font-size="15">逐 token</text></g><g data-k="ref"><rect class="bx frozen" x="490" y="40" width="250" height="64" rx="8"/><text x="504" y="67" font-size="17" font-weight="650">Reference π<tspan dy="4" font-size="13">ref</tspan></text><text class="sub" x="504" y="89" font-size="15">冻结 · 每个 token 的 log π_ref</text></g><g data-k="rm"><rect class="bx frozen" x="490" y="158" width="250" height="64" rx="8"/><text x="504" y="185" font-size="17" font-weight="650">Reward Model</text><text class="sub" x="504" y="207" font-size="15">冻结 · 给整段回答打一个分</text></g><g data-k="critic"><rect class="bx train" x="490" y="276" width="250" height="64" rx="8"/><text x="504" y="303" font-size="17" font-weight="650">Critic V</text><text class="sub" x="504" y="325" font-size="15">训练 · 估每个位置的价值</text></g><g data-k="mix"><rect class="bx " x="420" y="366" width="284" height="58" rx="8"/><text x="434" y="393" font-size="17" font-weight="650">token 奖励 + GAE</text><text class="sub" x="434" y="415" font-size="15">逐 token 扣 KL，末尾加 RM 分 → Â</text></g><g data-k="ppo"><rect class="bx train" x="150" y="366" width="234" height="58" rx="8"/><text x="164" y="393" font-size="17" font-weight="650">PPO 裁剪更新</text><text class="sub" x="164" y="415" font-size="15">更新 Actor 和 Critic</text></g></svg></div></div>
+    <div id="abR" style="margin-top:12px"></div>
+  </div>
   <div class="card2 algo" data-algo="PPO-RLHF">
     <h3>算法卡 · PPO-RLHF</h3><p class="en">InstructGPT 式三阶段：SFT → RM → PPO</p>
     <dl>
@@ -373,6 +387,16 @@ S.notes($('#n-log'), {
     ['先修奖励', 'reward 与长度强相关时，先改奖励，不要只调 PPO']
   ]
 });
+/* ---------- 四个模型：拿掉一个 ---------- */
+S.ablate($('#abR'), { parts: [
+  { k: 'ref', t: 'Reference 与 KL', role: '拉住，别离 SFT 太远', off: 'Actor 会被推到奖励模型没见过的区域，那里的高分最不可信，PPO 却把它当真奖励继续放大：回答越来越长、套话越来越多、语言能力退化。', sign: 'KL 一路上升，reward 在涨，人工抽检却变差（第 12 篇的三联征）。' },
+  { k: 'rm', t: '奖励模型', role: '给整段回答打分', off: '没有奖励，PPO 就没有学习信号。', to: '直接从偏好对里学：KL 约束下奖励能写成对数概率比，奖励模型和 Critic 一起省掉，就是 DPO（第 8 篇）；或者换成规则验证器（答案对不对、测试过不过），就是 RLVR（第 9 篇）。' },
+  { k: 'critic', t: 'Critic', role: '估 V，算优势、降方差', off: '每个 token 没了自己的基线，只能把整段分数平摊或减一个粗糙的均值，方差变大，关键 token 拿不到更强的信号。', to: '同一道题采一组回答、用组内均值当基线，就是 GRPO（第 9 篇），原文给的经验是显存比 PPO 省约 30–40%。' },
+  { k: 'ppo', t: 'PPO 裁剪', role: '每一步别走太远', off: '一次坏更新可能毁掉已经学会的语言能力。这也是 LLM 里 ε 常取 0.1 甚至更小的原因（第 4 篇）。', sign: 'clip fraction、approx_kl 突然变大，接着 reward 暴跌。' },
+  { k: 'sft', t: 'SFT 起点', role: 'Actor 与 Reference 的初始化', off: '直接从基座模型开始，它还不会按对话格式回答，大多数回答拿低分，RL 很难起步；Reference 也失去了“像个好助手”这个锚点。', to: '在答案可以自动验证的数学和代码任务上，DeepSeek-R1-Zero 确实从基座直接做 RL，但可读性差、语言混杂，R1 又补回了冷启动 SFT（第 9 篇）。' }
+], onChange: function (off) {
+  S.$$('.fig g[data-k]').forEach(function (g) { g.classList.toggle('gone', !!off[g.getAttribute('data-k')]); });
+} });
 })();
 </script>
 </body>

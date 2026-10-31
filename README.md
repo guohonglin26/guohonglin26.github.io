@@ -17,13 +17,33 @@ src/infra-series/       AI Infra 系列
 src/nndl-series/        神经网络与深度学习（第二版）系列（ch0 由 gen_ch0.py 按 ch0.tpl.html 汇总各章生成，改章节后先运行它再 build）
 src/handbook-series/    AI Agent Handbook 系列（专用组件在 posts/study-shared/handbook.js/.css；ch0 同样由 gen_ch0.py 汇总生成）
 src/easyvibe-series/    Easy-Vibe 系列（专用组件在 posts/study-shared/easyvibe.js/.css：提示词卡、模板填空、请求流、动手清单；ch0 由 gen_ch0.py 汇总三问、易混、提示词库和清单进度）
+src/rsi-series/         可信递归自我改进（Trustworthy RSI 综述）系列（专用组件在 posts/study-shared/rsi.js/.css：分阶段对照、证据标记、分步流程、研究条目列表）
+演进链与通用新组件（RL 两个系列先行试点）：series.py 里 HEAD 给每页追加标签、RAIL = True 启用阅读进度与宽屏侧栏目录；
+                        posts/study-shared/rlevo.js 是两个 RL 系列共用的演进链数据（每站做了什么 / 卡在哪，每篇一张“为什么需要这一篇”卡），series.js 自动插到三问前；
+                        正文里写 <div class="eqx"> 即彩色拆解公式（data-t="1".."5" 对应图例），S.ablate 是“拿掉一个零件会怎样”，.pipe 是流程图
 ```
+
+## 首页的主题地图
+
+首页默认“按主题”看，数据在 index.html 末尾的 TOPICS（另有“按时间”的发布列表）。分类原则（以后内容多了可以再调）：
+
+- 大类参照 Chrome 收藏夹的文件夹：AI 基础 → 大模型 → 智能体 → AI 编程 → 6G 与通信 → 工程开发，从底层到应用排列。
+- 每个大类下的方向按学习顺序从左到右排；还没写的方向也列出来，标“待补”，首页同时就是待写清单。
+- 同一方向有多套系列时，用 seq 标先读、后读；有演进链的主题用 chain 链到演进链所在页。
+- 新文章写好后两处都要加：按时间列表最上面一条，以及 TOPICS 里对应的方向。
+
+## 学习链与全站搜索
+
+- 主题学习链：posts/study-shared/rlevo.js（强化学习演进链，按篇写卡）、agentevo.js（智能体能力链，卡写在站上、同站各篇共用）；全览页 posts/topic-rl/、posts/topic-agent/。系列要显示篇首位置卡，就在它的 series.py 里用 HEAD 加载对应的数据文件。
+- 全览页上的篇名来自 posts/study-shared/evo-titles.js：新增系列或改篇名后运行 `python3 src/gen_evo_titles.py`。
+- 全站搜索（页眉“搜索”按钮，⌘K / Ctrl+K 或 /）：索引 assets/search-index.js 由 `python3 src/gen_search.py` 生成，发布新文章后要重新运行；收录篇名、小节、速记、易混辨析、公式卡和正文里的加粗要点。
 
 ## 新增文章
 
 1. 新建 `posts/<日期-主题>/index.html`，引用 `../../assets/site.css` 和 `../../assets/site.js`，沿用页眉页脚结构。
-2. 在 `index.html` 的文章列表最上面加一条 `<li class="post" data-kind="learn|report">`，标签第一个用分类徽章（`<span class="cat">技术学习</span>` 或 `<span class="cat rep">报告解读</span>`），并更新"共 N 篇"。文章页 kicker 第一项也写分类名。
-3. 推送到 GitHub，Pages 自动发布。
+2. 在 `index.html` 的 TOPICS 里把它挂到对应方向，并在文章列表最上面加一条 `<li class="post" data-kind="learn|report">`，标签第一个用分类徽章（`<span class="cat">技术学习</span>` 或 `<span class="cat rep">报告解读</span>`），并更新"共 N 篇"。文章页 kicker 第一项也写分类名。
+3. 运行 `python3 src/gen_search.py` 更新搜索索引。
+4. 推送到 GitHub，Pages 自动发布。
 
 ## 本地预览
 

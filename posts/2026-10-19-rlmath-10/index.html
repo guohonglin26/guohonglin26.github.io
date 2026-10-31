@@ -10,10 +10,11 @@
 <link rel="stylesheet" href="../study-shared/series.css">
 <script src="../../assets/site.js"></script>
 <script src="../study-shared/series.js"></script>
+<script src="../study-shared/rlevo.js"></script>
 <link rel="stylesheet" href="../study-shared/rlmath.css">
 <script src="../study-shared/rlmath.js"></script>
 </head>
-<body data-series="rlmath-series" data-part="10">
+<body data-series="rlmath-series" data-part="10" data-rail>
 
 <header class="site-head">
   <div class="wrap">
@@ -182,9 +183,9 @@
   <div class="sec-lede">
     <p>原书开篇的地图把十章分成两部分：<strong>基本工具</strong>（第 1–3 章：概念、贝尔曼方程、贝尔曼最优方程；以及第 6 章随机近似）和<strong>算法</strong>（第 4–10 章）。算法部分有三次关键跳跃：第 4 → 5 章<strong>从有模型到无模型</strong>（策略迭代 → MC）；第 7 → 8 章<strong>从表格到函数</strong>（TD → 值函数近似）；第 8 → 9 章<strong>从基于值到基于策略</strong>（策略梯度），第 10 章再把两者合起来。作者反复强调：这些章节高度相关，要学 MC 先得懂策略迭代，要懂策略迭代先得懂值迭代，值迭代来自贝尔曼最优方程，而它又建立在贝尔曼方程之上。</p>
     <p>原书最后列出了本书没能覆盖的方向：SAC、TRPO、PPO、TD3 等更先进的策略梯度 / actor-critic 算法，多智能体强化学习，用经验数据拟合模型的有模型强化学习，分布式强化学习，以及强化学习与控制理论的关系。作者希望这本书打下的基础能帮读者去学它们。</p>
-    <p class="go">最后一个练习：把全书的算法归到它们所属的家族里。</p>
+    <p class="go">最后把全书放回一条更长的链上：每一站做了什么、卡在哪、被下一站怎么接住。前十章走到 Actor-Critic 为止；原书没覆盖的 PPO、SAC、离线 RL，以及大模型时代的 RLHF、DPO、GRPO，在同站的《动手学现代强化学习》系列里接着讲（虚线框）。</p>
   </div>
-  <div class="lab"><p class="lab-t">分一分：算法属于哪一类</p><div id="rvG"></div></div>
+  <div class="evo-full" aria-label="强化学习演进链全览"></div>
   <div class="notes" id="n-review"></div>
 </section>
 
@@ -429,23 +430,6 @@ S.notes($('#n-dpg'), {
   ph: '公式'
 });
 
-/* ---------- 全书回顾 ---------- */
-S.sortGame($('#rvG'), {
-  bins: [{ k: 'dp', t: '有模型（动态规划）' }, { k: 'mc', t: '无模型 · 蒙特卡罗' }, { k: 'td', t: '无模型 · TD（表格或值函数近似）' }, { k: 'pg', t: '基于策略（策略梯度 / AC）' }],
-  items: [
-    { t: '值迭代', k: 'dp', why: '第 4 章，迭代求解 BOE，需要模型。' },
-    { t: '截断策略迭代', k: 'dp', why: '第 4 章，统一值迭代与策略迭代。' },
-    { t: 'MC ε-Greedy', k: 'mc', why: '第 5 章，用回报平均估计动作值。' },
-    { t: 'MC Exploring Starts', k: 'mc', why: '第 5 章，每次访问 + 逐回合改进。' },
-    { t: 'Sarsa', k: 'td', why: '第 7 章，求解动作值贝尔曼方程。' },
-    { t: 'Q-learning', k: 'td', why: '第 7 章，求解贝尔曼最优方程，off-policy。' },
-    { t: 'DQN', k: 'td', why: '第 8 章，神经网络 + 目标网络 + 经验回放。' },
-    { t: 'TD-Linear', k: 'td', why: '第 8 章，线性特征的 TD 状态值估计。' },
-    { t: 'REINFORCE', k: 'pg', why: '第 9 章，MC 估计 q 的策略梯度。' },
-    { t: 'A2C', k: 'pg', why: '第 10 章，TD 误差作优势的 actor-critic。' },
-    { t: '确定性 actor-critic', k: 'pg', why: '第 10 章，确定性策略梯度，天然 off-policy。' }
-  ]
-});
 S.notes($('#n-review'), {
   c: [
     ['基本工具', '第 1–3 章（概念、BE、BOE）和第 6 章（随机近似）。'],

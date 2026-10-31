@@ -501,6 +501,131 @@
   };
   S.sigmoid = function (x) { return 1 / (1 + Math.exp(-x)); };
 
+  // ---------- 彩色拆解公式、拿掉一环、演进链（RL 系列起用，页面自动初始化） ----------
+
+  // 彩色拆解公式：<div class="eqx"><div class="eqx-f">… <span data-t="1">项</span> …</div><ul class="eqx-k"><li data-t="1"><b>项</b>含义<em>由谁决定</em></li></ul></div>
+  // 悬停或聚焦一项时公式和图例里同号的项一起高亮；点击固定
+  S.eqx = function (box) {
+    var terms = S.$$('[data-t]', box), pinned = '';
+    function on(t) {
+      box.classList.toggle('focus', !!t);
+      terms.forEach(function (e) { e.classList.toggle('hot', !!t && e.getAttribute('data-t') === t); });
+    }
+    terms.forEach(function (e) {
+      var t = e.getAttribute('data-t');
+      if (e.tagName === 'LI') { e.tabIndex = 0; e.setAttribute('role', 'button'); }
+      e.addEventListener('mouseenter', function () { on(t); });
+      e.addEventListener('mouseleave', function () { on(pinned); });
+      e.addEventListener('focus', function () { on(t); });
+      e.addEventListener('blur', function () { on(pinned); });
+      e.addEventListener('click', function () { pinned = pinned === t ? '' : t; on(pinned); });
+      e.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); e.click(); } });
+    });
+  };
+
+  // 拿掉一环：S.ablate(root, {parts: [{k, t, role, off, sign, to}], none, onChange(off)})
+  S.ablate = function (root, o) {
+    var off = {};
+    var chips = S.h('div', { class: 'abl-chips', role: 'group', 'aria-label': '零件' }, root);
+    var out = S.h('div', { class: 'abl-out', 'aria-live': 'polite' }, root);
+    o.parts.forEach(function (p) {
+      var b = S.h('button', { type: 'button', class: 'abl-chip', 'aria-pressed': 'true', html: '<b>' + p.t + '</b><span>' + p.role + '</span>' }, chips);
+      b.addEventListener('click', function () { off[p.k] = !off[p.k]; b.setAttribute('aria-pressed', String(!off[p.k])); draw(); });
+    });
+    function draw() {
+      var gone = o.parts.filter(function (p) { return off[p.k]; });
+      out.innerHTML = gone.length ? gone.map(function (p) {
+        return '<div class="abl-it"><h4>拿掉' + p.t + '</h4><p>' + p.off + '</p>' +
+          (p.sign ? '<p class="abl-sub"><b>日志里会看到</b>' + p.sign + '</p>' : '') +
+          (p.to ? '<p class="abl-sub"><b>顺着这条路</b>' + p.to + '</p>' : '') + '</div>';
+      }).join('') : '<p class="abl-none">' + (o.none || '上面每个零件都在用。点一个把它拿掉，看会发生什么。') + '</p>';
+      if (o.onChange) o.onChange(off);
+    }
+    draw();
+  };
+
+  // 演进链：数据在 window.EVO = {series: {key: {prefix, name}}, stages: [[阶段名, [节点 id]]],
+  //   nodes: {id: {t, what, pain, at: [[系列 key, 篇号]]}}, cards: {'系列 key:篇号': {node: [id], q, naive, why, fix}}}
+  function evoHref(E, at) { return '../' + E.series[at[0]].prefix + (at[1] ? '-' + at[1] : '') + '/'; }
+  function evoAt(E, id, key) {
+    var at = E.nodes[id].at, mine = at.filter(function (a) { return a[0] === key; });
+    return (mine.length ? mine : at)[0];
+  }
+  function evoOrder(E) { return E.stages.reduce(function (a, s) { return a.concat(s[1]); }, []); }
+  function evoName(E, at, full) {
+    var sr = E.series[at[0]];
+    if (!at[1]) return sr.name;
+    var nm = sr.name + ' · ' + (at[1] < 10 ? '0' : '') + at[1], tt = full && window.EVO_TITLES && EVO_TITLES[at[0]];
+    return tt && tt[at[1]] ? nm + ' ' + tt[at[1]] : nm;
+  }
+  // 篇卡：先找按篇写的卡（cards），没有就用这一篇所在站点的站卡（node.card，同站各篇共用）
+  function evoCardData(E, key, part) {
+    var c = E.cards && E.cards[key + ':' + part];
+    if (c) return c;
+    var ids = evoOrder(E).filter(function (id) { return E.nodes[id].at.some(function (a) { return a[0] === key && String(a[1]) === String(part); }); });
+    if (!ids.length || !E.nodes[ids[0]].card) return null;
+    var nc = E.nodes[ids[0]].card;
+    return { node: ids, q: nc.q, naive: nc.naive, why: nc.why, fix: nc.fix };
+  }
+
+  S.evoCard = function (E, key, part) {
+    var c = evoCardData(E, key, part);
+    if (!c) return null;
+    var order = evoOrder(E), first = order.indexOf(c.node[0]), last = order.indexOf(c.node[c.node.length - 1]);
+    var box = S.h('aside', { class: 'evo-card', 'aria-label': '这一篇在演进链上的位置' });
+    S.h('div', { class: 'evo-top', html: '<h3>这一篇在' + (E.name || '演进链') + '上的位置</h3><span>实线框 = 本系列的篇目，虚线框 = 在另一个系列；点哪站跳哪篇</span>' }, box);
+    var strip = S.h('div', { class: 'evo-strip' }, box);
+    E.stages.forEach(function (st) {
+      var g = S.h('div', { class: 'evo-stage' }, strip);
+      S.h('span', { class: 'evo-sn', text: st[0] }, g);
+      var row = S.h('div', { class: 'evo-pills' }, g);
+      st[1].forEach(function (id) {
+        var at = evoAt(E, id, key), cur = c.node.indexOf(id) >= 0;
+        var a = S.h(cur ? 'span' : 'a', { class: 'evo-pill' + (cur ? ' cur' : '') + (at[0] !== key ? ' other' : ''), text: E.nodes[id].t }, row);
+        if (cur) a.setAttribute('aria-current', 'step');
+        else { a.href = evoHref(E, at); a.title = evoName(E, at); }
+      });
+    });
+    var why = S.h('div', { class: 'evo-why' }, box);
+    [[first > 0 ? '上一站卡在哪' : '出发点', c.q], ['最朴素的想法', c.naive], ['为什么不够', c.why], [E.cards && E.cards[key + ':' + part] ? '这一篇怎么解' : '这一站怎么解', c.fix]].forEach(function (x, i) {
+      S.h('div', { class: 'evo-q' + (i === 3 ? ' fix' : ''), html: '<h4>' + x[0] + '</h4><p>' + x[1] + '</p>' }, why);
+    });
+    var tail = [];
+    if (last < order.length - 1) {
+      var nx = order[last + 1], nat = evoAt(E, nx, key);
+      tail.push('<p><b>留下的新问题</b>' + E.nodes[order[last]].pain + '下一站：<a href="' + evoHref(E, nat) + '">' + E.nodes[nx].t + '</a>' + (nat[0] !== key ? '（' + evoName(E, nat) + '）' : '') + '</p>');
+    }
+    var also = [];
+    c.node.forEach(function (id) {
+      E.nodes[id].at.forEach(function (a) { if (!(a[0] === key && String(a[1]) === String(part))) also.push('<a href="' + evoHref(E, a) + '">' + evoName(E, a, true) + '</a>'); });
+    });
+    if (also.length) tail.push('<p><b>同一站还可以读</b>' + also.join('、') + '</p>');
+    if (E.hub) tail.push('<p><b>整条链</b><a href="' + E.hub + '">' + (E.name || '演进链') + '全览</a></p>');
+    if (tail.length) S.h('div', { class: 'evo-tail', html: tail.join('') }, box);
+    requestAnimationFrame(function () {
+      var cur = S.$('.evo-pill.cur', strip);
+      if (cur && strip.scrollWidth > strip.clientWidth) strip.scrollLeft = cur.offsetLeft - 16;
+    });
+    return box;
+  };
+
+  // 全链纵览：每站一行，站与站之间写出“卡在哪”
+  S.evoFull = function (E, box, key) {
+    var order = evoOrder(E);
+    E.stages.forEach(function (st) {
+      S.h('h4', { class: 'evo-fs', text: st[0] }, box);
+      st[1].forEach(function (id) {
+        var n = E.nodes[id], i = order.indexOf(id);
+        var row = S.h('div', { class: 'evo-fn' }, box);
+        S.h('div', { class: 'evo-fh', html: '<b>' + n.t + '</b>' + n.at.map(function (a) {
+          return '<a class="evo-pill' + (key && a[0] !== key ? ' other' : '') + '" href="' + evoHref(E, a) + '">' + evoName(E, a, true) + '</a>';
+        }).join('') }, row);
+        S.h('p', { html: n.what }, row);
+        if (i < order.length - 1) S.h('p', { class: 'evo-fp', html: '<b>卡在</b>' + n.pain }, box);
+      });
+    });
+  };
+
   document.addEventListener('DOMContentLoaded', function () {
     // 系列目录条：标出读过的篇目
     var read = S.readList();
@@ -534,14 +659,48 @@
       });
       io.observe(pager);
     }
+    // 彩色拆解公式
+    S.$$('.eqx').forEach(S.eqx);
+    // 演进链：篇首位置卡（插在三问前）与全链纵览
+    var E = window.EVO, skey = document.body.getAttribute('data-series');
+    if (E) {
+      var card = me && S.evoCard(E, skey, me), anchor = S.$('.q3, .ask3');
+      if (card && anchor) anchor.parentNode.insertBefore(card, anchor);
+      S.$$('.evo-full').forEach(function (b) { S.evoFull(E, b, skey); });
+    }
     // 章节导航高亮
     var links = S.$$('.secnav a');
     if (!links.length) return;
     var secs = links.map(function (a) { return document.querySelector(a.getAttribute('href')); });
+    // 阅读进度与宽屏侧栏目录（body 带 data-rail 的系列才启用）
+    var rail = null, prog = [];
+    if (document.body.hasAttribute('data-rail')) {
+      prog.push(S.h('i', null, S.h('div', { class: 'readbar', 'aria-hidden': 'true' }, S.$('.secnav'))));
+      rail = S.h('aside', { class: 'rail', 'aria-label': '本篇目录' }, document.body);
+      S.h('p', { class: 'rail-h', text: '本篇' }, rail);
+      prog.push(S.h('i', null, S.h('div', { class: 'rail-bar', 'aria-hidden': 'true' }, rail)));
+      var ol = S.h('ol', null, rail);
+      links.forEach(function (a) { S.h('li', null, ol).appendChild(a.cloneNode(true)); });
+      if (E && me && evoCardData(E, skey, me)) {
+        var order = evoOrder(E), ids = evoCardData(E, skey, me).node;
+        var i0 = order.indexOf(ids[0]), i1 = order.indexOf(ids[ids.length - 1]);
+        var ev = S.h('div', { class: 'rail-evo' }, rail);
+        S.h('p', { class: 'rail-h', text: '演进链' }, ev);
+        if (i0 > 0) { var p = evoAt(E, order[i0 - 1], skey); S.h('a', { href: evoHref(E, p), text: '上一站 ' + E.nodes[order[i0 - 1]].t }, ev); }
+        S.h('b', { text: ids.map(function (id) { return E.nodes[id].t; }).join('、') }, ev);
+        if (i1 < order.length - 1) { var q = evoAt(E, order[i1 + 1], skey); S.h('a', { href: evoHref(E, q), text: '下一站 ' + E.nodes[order[i1 + 1]].t }, ev); }
+      }
+    }
+    var rlinks = rail ? S.$$('ol a', rail) : [];
     function upd() {
       var y = scrollY + 140, cur = -1;
       secs.forEach(function (s, i) { if (s && s.offsetTop <= y) cur = i; });
       links.forEach(function (a, i) { a.classList.toggle('on', i === cur); });
+      rlinks.forEach(function (a, i) { a.classList.toggle('on', i === cur); });
+      if (prog.length) {
+        var f = S.clamp(scrollY / Math.max(1, document.documentElement.scrollHeight - innerHeight), 0, 1);
+        prog.forEach(function (e) { e.style.transform = 'scaleX(' + f + ')'; });
+      }
     }
     addEventListener('scroll', upd, { passive: true });
     addEventListener('resize', upd);

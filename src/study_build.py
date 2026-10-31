@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """通用学习系列构建脚本：把 src/<系列>/chN.html 片段拼成 posts/<前缀>[-N]/index.html。
 用法：python3 study_build.py adp-series 0 1 2 …（0 是系列总览；all 表示全部）。
-系列配置在 <系列目录>/series.py：PREFIX, PARTS, FULL, REPO, REPO_NAME, BOOK, AUTHOR, SERIES_KEY, ICON(可选)。片段格式：
+系列配置在 <系列目录>/series.py：PREFIX, PARTS, FULL, REPO, REPO_NAME, BOOK, AUTHOR, SERIES_KEY, ICON(可选)，
+HEAD(可选，每页 head 追加的标签)，RAIL(可选，True 时启用阅读进度与宽屏侧栏目录)。片段格式：
 ---
 key: value（title, desc, kicker, h1, lead, nav=id|标签;id|标签）
 ---
@@ -72,7 +73,7 @@ def build(n):
 <link rel="stylesheet" href="../{shared}/series.css">
 <script src="../../assets/site.js"></script>
 <script src="../{shared}/series.js"></script>
-{head_extra}
+{series_head}{head_extra}
 </head>
 <body data-series="{skey}"{bodyattr}>
 
@@ -121,7 +122,7 @@ var $ = S.$, $$ = S.$$, h = S.h;
 </body>
 </html>
 '''.format(title=meta['title'], desc=meta['desc'], icon=ICON, shared=SHARED, head_extra=head_extra.strip(),
-           bodyattr=(' data-part="%s"' % n) if n else '', kicker=kicker, h1=meta['h1'], lead=meta['lead'],
+           bodyattr=((' data-part="%s"' % n) if n else '') + (' data-rail' if cfg.get('RAIL') else ''), series_head=(cfg['HEAD'].strip() + '\n') if cfg.get('HEAD') else '', kicker=kicker, h1=meta['h1'], lead=meta['lead'],
            credit=credit, series=series_nav(n), nav=nav, body=body.strip(), pager=pager(n), repo=REPO, repo_name=cfg['REPO_NAME'], skey=cfg['SERIES_KEY'], script=script.strip())
     d = os.path.join(OUT, slug(n))
     os.makedirs(d, exist_ok=True)

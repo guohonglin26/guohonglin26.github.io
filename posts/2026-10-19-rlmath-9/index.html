@@ -10,10 +10,11 @@
 <link rel="stylesheet" href="../study-shared/series.css">
 <script src="../../assets/site.js"></script>
 <script src="../study-shared/series.js"></script>
+<script src="../study-shared/rlevo.js"></script>
 <link rel="stylesheet" href="../study-shared/rlmath.css">
 <script src="../study-shared/rlmath.js"></script>
 </head>
-<body data-series="rlmath-series" data-part="9">
+<body data-series="rlmath-series" data-part="9" data-rail>
 
 <header class="site-head">
   <div class="wrap">
@@ -140,7 +141,13 @@
   <div class="part-head"><h2>蒙特卡罗策略梯度：REINFORCE</h2><span class="meta">原书 9.4 节 · 第 210–213 页</span></div>
   <div class="sec-lede">
     <p>梯度上升 θ<sub>t+1</sub> = θ<sub>t</sub> + α𝔼[∇ln π(A|S, θ<sub>t</sub>)q<sub>π</sub>(S, A)] 里的期望未知，换成随机梯度：</p>
-    <div class="eq">θ<sub>t+1</sub> = θ<sub>t</sub> + α∇<sub>θ</sub>ln π(a<sub>t</sub>|s<sub>t</sub>, θ<sub>t</sub>) q<sub>t</sub>(s<sub>t</sub>, a<sub>t</sub>)<small>原书式 (9.32)</small></div>
+    <div class="eqx"><div class="eqx-f">θ<sub>t+1</sub> = <span data-t="1">θ<sub>t</sub></span> + <span data-t="2">α</span> <span data-t="3">∇<sub>θ</sub>ln π(a<sub>t</sub>|s<sub>t</sub>, θ<sub>t</sub>)</span> <span data-t="4">q<sub>t</sub>(s<sub>t</sub>, a<sub>t</sub>)</span><small>原书式 (9.32)</small></div>
+    <ul class="eqx-k">
+      <li data-t="1"><b>θ<sub>t</sub></b>策略的参数，直接被更新的对象<em>不再先更新值再读出策略</em></li>
+      <li data-t="2"><b>α</b>步长<em>人为设定</em></li>
+      <li data-t="3"><b>∇<sub>θ</sub>ln π(a<sub>t</sub>|s<sub>t</sub>, θ<sub>t</sub>)</b>让刚才那个动作 a<sub>t</sub> 的概率变大的方向<em>由策略网络自己算出，和环境无关</em></li>
+      <li data-t="4"><b>q<sub>t</sub>(s<sub>t</sub>, a<sub>t</sub>)</b>这个动作有多好：大就把概率往上推，小（或为负）就往下压<em>REINFORCE 用回报估计；换成 TD 估计就是第 10 篇的 actor-critic</em></li>
+    </ul></div>
     <p>q<sub>t</sub> 是 q<sub>π</sub>(s<sub>t</sub>, a<sub>t</sub>) 的估计。如果用蒙特卡罗（从 t 开始的折扣回报）来估计，就是 <strong>REINFORCE</strong>（也叫蒙特卡罗策略梯度），最早、最简单的策略梯度算法之一，很多算法都由它扩展而来。</p>
     <p>原书建议看它的等价形式：θ<sub>t+1</sub> = θ<sub>t</sub> + αβ<sub>t</sub>∇<sub>θ</sub>π(a<sub>t</sub>|s<sub>t</sub>, θ<sub>t</sub>)，β<sub>t</sub> = q<sub>t</sub>(s<sub>t</sub>, a<sub>t</sub>)/π(a<sub>t</sub>|s<sub>t</sub>, θ<sub>t</sub>)。这是对 π(a<sub>t</sub>|s<sub>t</sub>) 本身的梯度上升，一阶泰勒展开得 π<sub>new</sub> ≈ π<sub>old</sub> + αβ<sub>t</sub>‖∇π‖<sup>2</sup>：<strong>β<sub>t</sub> ≥ 0 时这个动作的概率增大，β<sub>t</sub> &lt; 0 时减小</strong>，|β| 越大改得越多。而 β<sub>t</sub> 同时体现了两件事：与 q<sub>t</sub> 成正比——值大的动作被加强，这是<strong>利用</strong>；q<sub>t</sub> &gt; 0 时与 π 成反比——本来很少选的动作一旦被选中且回报不错，会被大幅加强，这是<strong>探索</strong>。</p>
     <p>样本该怎么采？S 应服从 η（d<sub>π</sub> 或 ρ<sub>π</sub>，都是 π 下的长期行为），A 应服从 π(·|S, θ)：<strong>动作必须由当前策略产生，所以策略梯度是 on-policy</strong>。理想采样方式效率低，实际中并不严格遵守：算法 9.1 先按 π(θ) 生成一整个回合，再用回合中的每个样本更新 θ。</p>

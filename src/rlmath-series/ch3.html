@@ -42,7 +42,14 @@ nav: improve|改进策略;boe|最优与 BOE;contract|收缩映射;solve|解出�
   <div class="sec-lede">
     <p><strong>定义 3.1</strong>：如果对<strong>所有</strong>状态 s 和<strong>任意</strong>其他策略 π 都有 v<sub>π*</sub>(s) ≥ v<sub>π</sub>(s)，π* 就是最优策略，它的状态值叫最优状态值。注意这是逐状态的比较——要求一个策略在每个格子上都不输。这个定义立刻引出四个问题：存在吗？唯一吗？是随机的还是确定的？怎么求？</p>
     <p>分析工具是<strong>贝尔曼最优方程</strong>（BOE）：</p>
-    <div class="eq">v(s) = max<sub>π(s)</sub> Σ<sub>a</sub> π(a|s) q(s, a)，q(s, a) = Σ<sub>r</sub> p(r|s, a) r + γΣ<sub>s′</sub> p(s′|s, a) v(s′)<small>原书式 (3.1)</small></div>
+    <div class="eqx"><div class="eqx-f"><span data-t="5">v(s)</span> = <span data-t="1">max<sub>π(s)</sub></span> <span data-t="2">Σ<sub>a</sub> π(a|s)</span> <span data-t="3">q(s, a)</span>，<span data-t="3">q(s, a)</span> = <span data-t="4">Σ<sub>r</sub> p(r|s, a) r + γΣ<sub>s′</sub> p(s′|s, a)</span> <span data-t="5">v(s′)</span><small>原书式 (3.1)</small></div>
+    <ul class="eqx-k">
+      <li data-t="1"><b>max<sub>π(s)</sub></b>在每个状态挑最好的动作分布——这是它和贝尔曼方程唯一的区别<em>优化：π 不再给定，而是要找的</em></li>
+      <li data-t="2"><b>Σ<sub>a</sub> π(a|s)</b>策略对各动作值的加权平均；max 的结果是把全部概率给 q 最大的动作<em>和 max 一起，等于 max<sub>a</sub> q(s, a)</em></li>
+      <li data-t="3"><b>q(s, a)</b>动作值：先做 a，之后按最优方式走的期望回报<em>中间量，由右边那个式子定义</em></li>
+      <li data-t="4"><b>Σ<sub>r</sub> p(r|s, a) r + γΣ<sub>s′</sub> p(s′|s, a)</b>即时奖励均值，加上折扣后对下一状态的平均<em>由环境模型和 γ 决定</em></li>
+      <li data-t="5"><b>v(s)、v(s′)</b>最优状态值，等号两边都有，所以仍是自举<em>未知数；收缩映射保证解唯一</em></li>
+    </ul></div>
     <p>它和贝尔曼方程只差一个 max，但现在有两个未知数：v 和 π。原书用两个小例子说明怎么“一个方程解两个未知数”。<strong>例 3.1</strong>：x = max<sub>y</sub>(2x − 1 − y<sup>2</sup>)。不管 x 是多少，右边的最大值总在 y = 0 取到，等于 2x − 1；再解 x = 2x − 1 得 x = 1。<strong>先把 max 里的变量解掉，再解剩下的方程</strong>。<strong>例 3.2</strong>：在 c<sub>1</sub> + c<sub>2</sub> + c<sub>3</sub> = 1、c<sub>i</sub> ≥ 0 的约束下最大化 Σc<sub>i</sub>q<sub>i</sub>，最优解是把全部权重放在最大的 q<sub>i</sub> 上。套到 BOE：Σ<sub>a</sub>π(a|s)q(s, a) ≤ max<sub>a</sub> q(s, a)，等号在 π 把概率 1 给 a* = argmax<sub>a</sub> q(s, a) 时取到。</p>
     <p>于是 BOE 化为 v(s) = max<sub>a</sub> q(s, a)。写成矩阵形式：v = max<sub>π</sub>(r<sub>π</sub> + γP<sub>π</sub>v) ≐ f(v)（max 逐元素进行）。这是一个关于 v 的非线性方程 v = f(v)，下一节用收缩映射定理来分析它。</p>
     <p class="go">拖动三个权重，验证“凸组合 ≤ 最大值”；看哪种 c 能让它取到等号。</p>

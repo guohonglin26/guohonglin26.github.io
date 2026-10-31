@@ -112,6 +112,26 @@ a:hover { text-decoration-thickness: 2px; }
 }
 .theme-btn:hover { color: var(--ink); border-color: var(--ink-3); }
 
+/* 全站搜索 */
+.search-btn { font: inherit; font-size: 15px; color: var(--ink-2); background: none; border: 1px solid var(--rule); border-radius: 999px; padding: 3px 12px; cursor: pointer; }
+.search-btn:hover { color: var(--ink); border-color: var(--ink-3); }
+dialog.search { width: min(720px, calc(100vw - 32px)); max-height: min(80vh, 760px); padding: 0; border: 1px solid var(--rule); border-radius: 12px; background: var(--bg); color: var(--ink); margin: 10vh auto auto; display: none; flex-direction: column; overflow: hidden; }
+dialog.search[open] { display: flex; }
+dialog.search::backdrop { background: rgba(10, 14, 20, .45); }
+.search-top { display: flex; gap: 8px; padding: 14px 14px 0; }
+.search-top input { flex: 1; min-width: 0; font: inherit; font-size: 17px; color: var(--ink); background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 10px 12px; }
+.search-top button { font: inherit; font-size: 15px; color: var(--ink-2); background: none; border: 1px solid var(--rule); border-radius: 8px; padding: 0 12px; cursor: pointer; }
+.search-hint { margin: 8px 16px; font-size: 15px; color: var(--ink-3); }
+.search-res { list-style: none; margin: 0; padding: 0 8px 10px; overflow-y: auto; }
+.search-res a { display: grid; grid-template-columns: 3.2em minmax(0, 1fr); gap: 10px; padding: 9px 8px; border-radius: 8px; color: var(--ink); text-decoration: none; }
+.search-res a.on, .search-res a:hover { background: var(--panel); outline: 1px solid var(--rule); }
+.search-res .sk { font-size: 15px; color: var(--ink-3); padding-top: 1px; }
+.search-res .st { font-size: 16px; line-height: 1.5; min-width: 0; overflow-wrap: anywhere; }
+.search-res small, .search-res em { display: block; font-size: 15px; color: var(--ink-3); font-style: normal; }
+.search-res small { color: var(--ink-2); }
+.search-res mark { background: var(--s1-soft); color: var(--ink); border-radius: 2px; padding: 0 1px; }
+@media (max-width: 560px) { .site-nav { gap: 12px; } .site-nav a { display: none; } dialog.search { margin-top: 12px; max-height: calc(100vh - 24px); } }
+
 /* 页脚 */
 .site-foot { border-top: 1px solid var(--rule); margin-top: 96px; padding: 36px 0 56px; color: var(--ink-3); font-size: 15px; }
 .site-foot .wrap { display: flex; flex-wrap: wrap; gap: 8px 32px; justify-content: space-between; }

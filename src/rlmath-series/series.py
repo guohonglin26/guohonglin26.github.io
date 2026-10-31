@@ -19,3 +19,5 @@ AUTHOR = '赵世钰（Shiyu Zhao）著，西湖大学；Springer Nature 与清�
 BOOK_KIND = '教材'
 CREDIT = '原书仓库没有附带开源许可证，版权归作者与出版社所有；这里不转载原文和插图，而是按“先说清楚它解决什么问题、再动手算、最后记下来”的顺序用自己的话重讲，网格世界、算法与图都在浏览器里重新实现和手绘。公式、定义、例子与参数以原书为准，标注了对应的节号和页码；页面里的模拟结果标注“示意”，复现出原书图中数值的地方标注“原书数据”。'
 ICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='3' width='18' height='18' rx='2' fill='none' stroke='%2313171C' stroke-width='2'/%3E%3Cpath d='M9 3v18M15 3v18M3 9h18M3 15h18' stroke='%2313171C' stroke-width='1.5'/%3E%3Crect x='15' y='15' width='6' height='6' fill='%232340D6'/%3E%3C/svg%3E"
+HEAD = '<script src="../study-shared/rlevo.js"></script>'
+RAIL = True

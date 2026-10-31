@@ -4,21 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AI 观察笔记</title>
-<meta name="description" content="用图表和数据读懂 AI 的进展：报告图解、行业观察与实践笔记。">
+<meta name="description" content="AI 学习笔记：互动实验、速记自测，按主题串成学习线。">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='5' y='2' width='14' height='20' rx='3' fill='none' stroke='%2313171C' stroke-width='2'/%3E%3Crect x='7' y='9' width='10' height='11' rx='1.5' fill='%232340D6'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/site.css">
 <script src="assets/site.js"></script>
 <style>
-.intro { padding: 80px 0 56px; }
-.intro h1 { font-size: clamp(44px, 8vw, 96px); line-height: 1.04; font-weight: 800; letter-spacing: -0.03em; margin: 0 0 22px; }
-.intro p { font-size: clamp(17px, 1.6vw, 20px); color: var(--ink-2); max-width: 32em; margin: 0; }
+.intro { padding: 64px 0 36px; }
+.intro h1 { font-size: clamp(40px, 6.5vw, 72px); line-height: 1.05; font-weight: 800; letter-spacing: -0.03em; margin: 0 0 16px; }
+.intro p { font-size: clamp(17px, 1.6vw, 19px); color: var(--ink-2); max-width: 34em; margin: 0; }
 
-.kinds { margin: 32px 0 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px 40px; max-width: 900px; }
-.kinds div { border-top: 1px solid var(--rule); padding-top: 12px; }
-.kinds dt { font-weight: 700; font-size: 17px; display: flex; align-items: center; gap: 8px; }
-.kinds dd { margin: 4px 0 0; color: var(--ink-2); font-size: 16px; line-height: 1.7; }
-.cat-dot { width: 12px; height: 12px; border-radius: 3px; background: var(--s1); display: inline-block; }
-.cat-dot.rep { background: var(--s2); }
 .list-head { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid var(--ink); padding-bottom: 10px; }
 .list-head h2 { margin: 0; font-size: 20px; }
 .list-head span { color: var(--ink-3); font-size: 15px; }
@@ -89,6 +83,53 @@
   .thumb { height: 72px; max-width: 200px; order: -1; margin-bottom: 8px; }
   .thumb-git { height: 72px; max-width: 200px; order: -1; margin-bottom: 8px; }
 }
+
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+/* 视图切换 */
+.views { display: flex; gap: 0; margin: 0 0 8px; border: 1px solid var(--rule); border-radius: 8px; width: max-content; overflow: hidden; }
+.views button { font: inherit; font-size: 16px; color: var(--ink-2); background: none; border: 0; padding: 8px 18px; cursor: pointer; }
+.views button + button { border-left: 1px solid var(--rule); }
+.views button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.view[hidden] { display: none; }
+.view-note { color: var(--ink-3); font-size: 15px; margin: 0 0 8px; }
+
+/* 主题索引 */
+.tindex { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 18px 0 0; padding: 12px 0; border-top: 2px solid var(--ink); border-bottom: 1px solid var(--rule); }
+.tindex a { color: var(--ink); text-decoration: none; font-size: 16px; font-weight: 600; }
+.tindex a span { color: var(--ink-3); font-weight: 400; margin-left: 6px; font-size: 15px; }
+.tindex a:hover { color: var(--s1); }
+
+/* 一个主题 = 一条学习线 */
+.topic { padding: 56px 0 8px; scroll-margin-top: 16px; }
+.topic-h { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 24px; }
+.topic-h h2 { margin: 0; font-size: clamp(30px, 4.4vw, 48px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+.topic-h .sum { color: var(--ink-3); font-size: 15px; }
+.topic > p { margin: 10px 0 0; color: var(--ink-2); font-size: 17px; max-width: 40em; }
+.line { list-style: none; margin: 30px 0 0; padding: 0; display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 0 24px; position: relative; }
+.line::before { content: ""; position: absolute; left: 0; right: 0; top: 17px; height: 4px; background: var(--ink); border-radius: 2px; }
+.stn { position: relative; min-width: 0; }
+.stn h3 { position: relative; display: inline-block; margin: 0; font-size: 16px; font-weight: 700; line-height: 1; padding: 10px 14px; border-radius: 999px; background: var(--ink); color: var(--bg); border: 2px solid var(--ink); }
+.stn.empty h3 { background: var(--bg); color: var(--ink-3); border: 2px dashed var(--dim); font-weight: 600; }
+.stn .todo { margin: 12px 0 0; font-size: 15px; color: var(--ink-3); }
+.its { margin-top: 14px; display: grid; gap: 14px; }
+.it { border-left: 3px solid var(--s1); padding: 2px 0 2px 12px; }
+.it.rep { border-left-color: var(--s2); }
+.it a.t { color: var(--ink-2); text-decoration: none; font-size: 15px; font-weight: 500; line-height: 1.5; display: block; }
+.it a.t:hover { color: var(--s1); text-decoration: underline; }
+.it .seq { display: inline-block; font-size: 15px; color: var(--s1); font-weight: 600; margin-right: 6px; }
+.it .bar { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 2px; max-width: calc(var(--n) * 14px); margin-top: 6px; }
+.it .bar i { height: 10px; border-radius: 2px; background: var(--hair); border: 1px solid var(--rule); }
+.it .bar i.on { background: var(--ok, #1E7F4F); border-color: var(--ok, #1E7F4F); }
+.it .m { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 4px; font-size: 15px; color: var(--ink-3); }
+.it .m .rk { color: var(--s2); }
+.it a.chain { color: var(--s1); }
+.topic > p a.hub { color: var(--s1); font-size: 16px; margin-left: 6px; white-space: nowrap; }
+@media (max-width: 760px) {
+  .line { grid-template-columns: minmax(0, 1fr); gap: 0; padding-left: 22px; }
+  .line::before { left: 0; right: auto; top: 8px; bottom: 8px; width: 4px; height: auto; }
+  .stn { padding: 0 0 24px; }
+  .stn h3::before { content: ""; position: absolute; left: -24px; top: 50%; width: 22px; height: 3px; background: var(--ink); }
+}
 </style>
 </head>
 <body>
@@ -108,30 +149,39 @@
 
 <main class="wrap">
   <section class="intro">
-    <h1>把 AI 的进展<br>画出来看</h1>
-    <p>读报告、看数据、做实验。这里记录我对 AI 的观察，尽量用图表和数字说话，每篇都注明出处。</p>
-    <dl class="kinds">
-      <div><dt><span class="cat-dot"></span>技术学习</dt><dd>把一个具体技术拆开学懂：用交互实验讲清原理和易混概念，每节末尾有“记下来”，方便复习。</dd></div>
-      <div><dt><span class="cat-dot rep"></span>报告解读</dt><dd>快速掌握行业报告、白皮书的观点和新动向：尊重原文、标注页码和数据来源，突出原作的判断，个人整理单独分开。</dd></div>
-    </dl>
+    <h1>AI 观察笔记</h1>
+    <p>读书、读论文、读报告时做的互动笔记：能拖动的实验、能自测的速记，按主题串成学习线。栏目和分类会随内容慢慢调整。</p>
   </section>
 
-  <section aria-labelledby="list-h">
-    <div class="list-head"><h2 id="list-h">文章</h2><span id="count">共 15 篇</span></div>
+  <div class="views" role="group" aria-label="浏览方式" id="views">
+    <button type="button" aria-pressed="true" data-v="time">按时间</button>
+    <button type="button" aria-pressed="false" data-v="topic">按主题</button>
+  </div>
+
+  <section class="view" id="v-time" aria-labelledby="list-h">
+    <div class="list-head"><h2 id="list-h">最近发布</h2><span id="count">共 16 项</span></div>
     <div class="filter" role="group" aria-label="按类型筛选" id="filter">
-      <button type="button" aria-pressed="true" data-k="all">全部</button>
-      <button type="button" aria-pressed="false" data-k="learn">技术学习</button>
-      <button type="button" aria-pressed="false" data-k="report">报告解读</button>
     </div>
     <ul class="posts">
-      <!-- 新文章加在最上面；data-kind：learn 技术学习 / report 报告解读 -->
+      <!-- 新文章加在最上面；data-kind 的取值和名称见页尾 KINDS，新类型先在那里登记 -->
+      <li class="post" data-kind="learn">
+        <a href="posts/2026-10-30-rsi/">
+          <time datetime="2026-10-30">2026.10.30</time>
+          <div>
+            <h3>可信递归自我改进（Trustworthy RSI）：八篇互动学习笔记</h3>
+            <p>人大高瓴 82 页综述《Trustworthy Recursive Self-Improvement in the Era of Large Models》重排为八篇：用策略 h、归纳偏置 B、更新函数 U 三层定义 RSI，把八组可信要求归成真实提升、行为约束与对齐、安全与隐私、透明与可控四个主题，按 S1–S4 / RI 逐格看风险、失败证据和保障；再到成对续跑、成本分摊、联合判据等评估设计，以及应用场景的证据要求和七个开放问题。配稀有模式消失、代理过优化、污染谱系清理、相关评审者上限等模拟和先估再算；总览页有主题 × 阶段地图、闪卡和按问题反查。</p>
+            <div class="tags"><span class="cat">学习笔记</span><span>系列</span><span>自我改进</span><span>AI 安全</span></div>
+          </div>
+          <svg class="thumb-agent" viewBox="0 0 220 120" aria-hidden="true"><path d="M110 22a38 38 0 1 1-34 21"/><path class="thin" d="M66 34l10 9 11-8"/><circle cx="110" cy="60" r="12" class="hi"/><path class="thin" d="M30 100H190"/></svg>
+        </a>
+      </li>
       <li class="post" data-kind="learn">
         <a href="posts/2026-10-24-easyvibe/">
           <time datetime="2026-10-24">2026.10.24</time>
           <div>
             <h3>Easy-Vibe：从 Vibe Coding 到产品上线，十五篇互动学习笔记</h3>
             <p>Datawhale 开源教程 Easy-Vibe 的三阶段正文重排为十五篇：从产品工程师的定位出发，找点子、用双钻 / JTBD / Mom Test 验证需求、写一页需求说明、做原型并接 AI；再补上设计到代码、Supabase 与 RLS、部署与 Stripe 支付、Dify 知识库和 PRD 大作业；最后是 Claude Code 工作流、Spec Coding、Skills 与 MCP、长任务与 Agent Teams、RAG 进阶和多端发布。配模拟器、判断题和先估再算，每篇收录可复制的提示词和可勾选的动手清单；总览页有产品闭环地图、按问题反查、提示词库、清单进度与闪卡。</p>
-            <div class="tags"><span class="cat">技术学习</span><span>系列</span><span>Vibe Coding</span><span>产品</span></div>
+            <div class="tags"><span class="cat">学习笔记</span><span>系列</span><span>Vibe Coding</span><span>产品</span></div>
           </div>
           <svg class="thumb-agent" viewBox="0 0 220 120" aria-hidden="true"><rect x="30" y="18" width="160" height="84" rx="8"/><path d="M52 48l14 12-14 12" class="hi"/><path class="thin" d="M78 72H112"/><circle cx="160" cy="44" r="8" class="hi"/><path class="thin" d="M126 88H168M160 52V70"/></svg>
         </a>
@@ -142,7 +192,7 @@
           <div>
             <h3>Claude How To：Claude Code 七件套与速查卡</h3>
             <p>把开源教程 Claude How To 重讲成十二篇互动笔记：先用一篇讲清斜杠命令、CLAUDE.md、Skills、Subagents、MCP、Hooks、Plugins 各管什么，再逐个拆开，每个功能按“解决什么问题、最小可用配置放在哪个路径、什么时候不该用”来写；另有回退与会话、规划与权限、后台与远程、CLI 脚本化。配“读配置猜行为”、场景判定题和“今天就能试”清单，总览页可按“我想要……”反查功能、文件路径和关键字段。</p>
-            <div class="tags"><span class="cat">技术学习</span><span>系列</span><span>Claude Code</span><span>工具</span></div>
+            <div class="tags"><span class="cat">学习笔记</span><span>系列</span><span>Claude Code</span><span>工具</span></div>
           </div>
           <svg class="thumb-agent" viewBox="0 0 220 120" aria-hidden="true"><rect x="30" y="16" width="160" height="88" rx="8"/><path class="thin" d="M30 34H190"/><path d="M52 56l14 10-14 10" class="hi"/><path class="thin" d="M76 76H118M52 92H160"/></svg>
         </a>
@@ -153,7 +203,7 @@
           <div>
             <h3>Hello-Agents：从零构建智能体，十三篇互动学习笔记</h3>
             <p>Datawhale 开源教程 Hello-Agents 重排为十三篇：从五十行的“思考—行动—观察”循环出发，手写 ReAct、Plan-and-Solve、Reflection，对比低代码平台与 AutoGen、AgentScope、CAMEL、LangGraph，自己搭框架 HelloAgents，再加上记忆与 RAG、上下文工程、MCP / A2A / ANP、SFT 与 GRPO、BFCL / GAIA 评估和三个综合案例。代码做成可逐行走读、可填空回忆的互动，每篇配面试演练并可自评；总览页有全系列地图、按问题反查、面试题库、闪卡与易混辨析。</p>
-            <div class="tags"><span class="cat">技术学习</span><span>系列</span><span>Agent</span><span>教程</span></div>
+            <div class="tags"><span class="cat">学习笔记</span><span>系列</span><span>Agent</span><span>教程</span></div>
           </div>
           <svg class="thumb-agent" viewBox="0 0 220 120" aria-hidden="true"><circle cx="110" cy="60" r="42"/><path class="thin" d="M110 18V34M152 60H136M110 102V86M68 60H84"/><circle cx="110" cy="60" r="12" class="hi"/><path class="thin" d="M140 30a42 42 0 0 1 10 14"/></svg>
         </a>
@@ -164,7 +214,7 @@
           <div>
             <h3>AI Agent Handbook：十五篇互动学习笔记</h3>
             <p>阿里云开源白皮书 AI Agent Handbook 按“架构 → 构建 → 运行 → 治理 → 调优 → 实践”重组为十五篇：Agent = Model + Harness 与参考架构，任务、信息、行动三类工程契约，运行时与状态存储、AI 网关、异步与多 Agent 通信，可观测、安全、资产管理与仿真验证，模型调优、Agent 数据飞轮，以及企业实践与 Agentic OS。每节都有可以点、可以分类、可以走流程的互动；厂商方案单独标注，总览页有全书地图、按问题反查、问答闪卡、易混辨析与全系列速记。</p>
-            <div class="tags"><span class="cat">技术学习</span><span>系列</span><span>Agent</span><span>白皮书</span></div>
+            <div class="tags"><span class="cat">学习笔记</span><span>系列</span><span>Agent</span><span>白皮书</span></div>
           </div>
           <svg class="thumb-agent" viewBox="0 0 220 120" aria-hidden="true"><rect x="40" y="14" width="140" height="18" rx="3"/><rect x="40" y="38" width="140" height="18" rx="3"/><rect x="40" y="62" width="140" height="18" rx="3" class="hi"/><rect x="40" y="86" width="140" height="18" rx="3"/><path class="thin" d="M20 23H40M20 47H40M20 71H40M20 95H40M20 23V95M180 71H204"/><circle cx="204" cy="71" r="6" class="hi"/></svg>
         </a>
@@ -175,7 +225,7 @@
           <div>
             <h3>强化学习的数学原理：十篇互动学习笔记</h3>
             <p>赵世钰《强化学习的数学原理》按章拆成十篇：基本概念、贝尔曼方程与贝尔曼最优方程、值迭代与策略迭代、蒙特卡罗、随机近似、TD / Sarsa / Q-learning、值函数近似与 DQN、策略梯度、Actor-Critic。原书的网格世界搬进浏览器真算，复现原书图中数值；每节可手算对答案、可自测，总览页有算法演化地图、按问题反查、速记卡、易混辨析索引和公式速查。</p>
-            <div class="tags"><span class="cat">技术学习</span><span>系列</span><span>强化学习</span><span>教材</span></div>
+            <div class="tags"><span class="cat">学习笔记</span><span>系列</span><span>强化学习</span><span>教材</span></div>
           </div>
           <svg class="thumb-agent" viewBox="0 0 220 120" aria-hidden="true"><path class="thin" d="M70 20H190M70 40H190M70 60H190M70 80H190M70 100H190M70 20V100M94 20V100M118 20V100M142 20V100M166 20V100M190 20V100"/><path class="thin" d="M82 30H106V54H130V78H154"/><circle cx="82" cy="30" r="7"/><circle cx="154" cy="78" r="9" class="hi"/><circle cx="34" cy="60" r="9"/><path class="thin" d="M43 60H70"/></svg>
         </a>
@@ -186,7 +236,7 @@
           <div>
             <h3>动手学现代强化学习：十二篇互动学习笔记</h3>
             <p>开源课程 Hands-On Modern RL 按章重组为十二篇：CartPole 训练闭环、DQN 家族、策略梯度与 Actor-Critic、PPO 与 GAE、连续控制与基于模型的 RL、离线 / 模仿 / 探索、RLHF、DPO 家族、GRPO 与 RLVR、推理模型与过程奖励、Agentic RL、奖励黑客与评测。CartPole 的 DQN 和 PPO 在浏览器里真实训练，其余公式都能拖动实时计算；总览页有算法演化地图、按问题选算法、算法卡索引、速记卡、易混辨析与公式速查。</p>
-            <div class="tags"><span class="cat">技术学习</span><span>系列</span><span>强化学习</span><span>LLM 后训练</span></div>
+            <div class="tags"><span class="cat">学习笔记</span><span>系列</span><span>强化学习</span><span>LLM 后训练</span></div>
           </div>
           <svg class="thumb-agent" viewBox="0 0 220 120" aria-hidden="true"><path d="M30 96H190"/><rect x="88" y="78" width="44" height="18" rx="3"/><path d="M110 78L134 26"/><circle cx="134" cy="26" r="9" class="hi"/><path class="thin" d="M40 40Q70 20 100 40M150 60Q175 45 196 58"/></svg>
         </a>
@@ -197,7 +247,7 @@
           <div>
             <h3>神经网络与深度学习（第二版）：十六篇互动学习笔记</h3>
             <p>邱锡鹏教材第二版按章拆成十六篇：机器学习基础、线性模型、前馈 / 卷积 / 循环网络、优化与正则化、Transformer、图神经网络、无监督与自监督、集成 / 迁移 / 元学习、深度强化学习、大模型与智能体、概率图模型、深度信念网络、VAE / GAN / 扩散 / 流匹配。每节都有能拖动、能训练的小实验，总览页带阅读路径、概念速记卡、易混辨析索引和公式速查。</p>
-            <div class="tags"><span class="cat">技术学习</span><span>系列</span><span>深度学习</span><span>教材</span></div>
+            <div class="tags"><span class="cat">学习笔记</span><span>系列</span><span>深度学习</span><span>教材</span></div>
           </div>
           <svg class="thumb-agent" viewBox="0 0 220 120" aria-hidden="true"><path class="thin" d="M48 24L110 18M48 24L110 60M48 24L110 102M48 60L110 18M48 60L110 60M48 60L110 102M48 96L110 18M48 96L110 60M48 96L110 102M110 18L172 40M110 60L172 40M110 102L172 40M110 18L172 80M110 60L172 80M110 102L172 80"/><circle cx="48" cy="24" r="9"/><circle cx="48" cy="60" r="9"/><circle cx="48" cy="96" r="9"/><circle cx="110" cy="18" r="9"/><circle cx="110" cy="60" r="9" class="hi"/><circle cx="110" cy="102" r="9"/><circle cx="172" cy="40" r="9" class="hi"/><circle cx="172" cy="80" r="9"/></svg>
         </a>
@@ -208,7 +258,7 @@
           <div>
             <h3>深入理解 AI Infra：十二篇估算式学习笔记</h3>
             <p>开源书《深入理解 AI Infra》按章拆成十二篇：模型架构、推理与训练负载、加速器、算子与运行时、超节点、数据中心网络、推理优化、分布式推理、训练系统、调度与运行环境、端边云协同。以计算器为主，先估再算，每篇带公式卡和关键数字；总览页有综合估算器和数量级速记卡。</p>
-            <div class="tags"><span class="cat">技术学习</span><span>系列</span><span>AI Infra</span><span>估算</span></div>
+            <div class="tags"><span class="cat">学习笔记</span><span>系列</span><span>AI Infra</span><span>估算</span></div>
           </div>
           <svg class="thumb-agent" viewBox="0 0 220 120" aria-hidden="true"><rect x="70" y="22" width="80" height="76" rx="6"/><rect x="92" y="44" width="36" height="32" rx="3" class="hi"/><path d="M86 8V22M110 8V22M134 8V22M86 98V112M110 98V112M134 98V112M56 40H70M56 60H70M56 80H70M150 40H164M150 60H164M150 80H164"/></svg>
         </a>
@@ -219,7 +269,7 @@
           <div>
             <h3>智能体设计模式：21 个模式的七篇学习笔记</h3>
             <p>开源书《Agentic Design Patterns》按主题重组为七篇：流程编排、反思与规划、工具 / MCP / RAG / A2A、记忆与学习、异常 / 护栏 / 评估、多智能体与调度、附录速览。每个模式一张模式卡，总览页带闪卡复习和“按问题找模式”的选择器。</p>
-            <div class="tags"><span class="cat">技术学习</span><span>系列</span><span>Agent</span><span>设计模式</span></div>
+            <div class="tags"><span class="cat">学习笔记</span><span>系列</span><span>Agent</span><span>设计模式</span></div>
           </div>
           <svg class="thumb-agent" viewBox="0 0 220 120" aria-hidden="true"><rect x="8" y="14" width="24" height="26" rx="4" class="hi"/><rect x="38" y="14" width="24" height="26" rx="4"/><rect x="68" y="14" width="24" height="26" rx="4"/><rect x="98" y="14" width="24" height="26" rx="4"/><rect x="128" y="14" width="24" height="26" rx="4"/><rect x="158" y="14" width="24" height="26" rx="4"/><rect x="188" y="14" width="24" height="26" rx="4"/><rect x="8" y="46" width="24" height="26" rx="4"/><rect x="38" y="46" width="24" height="26" rx="4"/><rect x="68" y="46" width="24" height="26" rx="4"/><rect x="98" y="46" width="24" height="26" rx="4" class="hi"/><rect x="128" y="46" width="24" height="26" rx="4"/><rect x="158" y="46" width="24" height="26" rx="4"/><rect x="188" y="46" width="24" height="26" rx="4"/><rect x="8" y="78" width="24" height="26" rx="4"/><rect x="38" y="78" width="24" height="26" rx="4" class="hi"/><rect x="68" y="78" width="24" height="26" rx="4"/><rect x="98" y="78" width="24" height="26" rx="4"/><rect x="128" y="78" width="24" height="26" rx="4"/><rect x="158" y="78" width="24" height="26" rx="4" class="hi"/><rect x="188" y="78" width="24" height="26" rx="4"/></svg>
         </a>
@@ -230,7 +280,7 @@
           <div>
             <h3>深入理解 AI Agent：十篇互动学习笔记</h3>
             <p>按开源书《深入理解 AI Agent》十章拆成十篇：上下文与 KV Cache、记忆与 RAG、工具与 MCP、Coding Agent、异步与语音、评估、后训练、持续进化、多 Agent。每节可以动手点，末尾整理成“记下来”。</p>
-            <div class="tags"><span class="cat">技术学习</span><span>系列</span><span>Agent</span></div>
+            <div class="tags"><span class="cat">学习笔记</span><span>系列</span><span>Agent</span></div>
           </div>
           <svg class="thumb-agent" viewBox="0 0 220 120" aria-hidden="true"><rect class="env" x="3" y="3" width="214" height="114" rx="10"/><rect x="18" y="34" width="54" height="56" rx="8" class="hi"/><rect x="84" y="34" width="54" height="56" rx="8"/><rect x="150" y="34" width="54" height="56" rx="8"/><path d="M72 62H84M138 62H150"/></svg>
         </a>
@@ -241,7 +291,7 @@
           <div>
             <h3>AI 进 RAN，缺的不是算法，是练兵场：读 VIAVI 智能体 RAN 白皮书</h3>
             <p>VIAVI 说运营商的 AI 卡在试点，缺的是能安全训练、验证、上线的基础设施。七个核心观点、六类挑战与解法、Claude 被关进四道护栏，以及从 L0 到 L5 的自治路线，数字逐条标注来源。</p>
-            <div class="tags"><span class="cat rep">报告解读</span><span>RAN</span><span>数字孪生</span><span>智能体</span></div>
+            <div class="tags"><span class="cat rep">报告解读</span><span>单篇</span><span>RAN</span><span>数字孪生</span><span>智能体</span></div>
           </div>
           <svg class="thumb-hex" viewBox="0 0 220 120" aria-hidden="true"><line x1="110" y1="60" x2="40" y2="22"/><line x1="110" y1="60" x2="180" y2="22"/><line x1="110" y1="60" x2="40" y2="98"/><line x1="110" y1="60" x2="180" y2="98"/><polygon class="c" points="140,60 125,86 95,86 80,60 95,34 125,34"/><polygon points="58,22 49,38 31,38 22,22 31,6 49,6"/><polygon points="198,22 189,38 171,38 162,22 171,6 189,6"/><polygon points="58,98 49,114 31,114 22,98 31,82 49,82"/><polygon points="198,98 189,114 171,114 162,98 171,82 189,82"/></svg>
         </a>
@@ -252,7 +302,7 @@
           <div>
             <h3>Agent 干活的时候，界面谁来画：<span style="white-space:nowrap">AG-UI</span>、A2UI、MCP Apps 点一遍就懂</h3>
             <p>跟着一次机票改签，把三个协议拆开再拼回去：看事件流驱动两种前端，让 Agent 出界面描述却被组件目录拦下，在沙盒 iframe 里选座，最后在一张工作台上看三者怎么配合、又会在哪里对不上。</p>
-            <div class="tags"><span class="cat">技术学习</span><span>Agent</span><span>前端</span></div>
+            <div class="tags"><span class="cat">学习笔记</span><span>单篇</span><span>Agent</span><span>前端</span></div>
           </div>
           <svg class="thumb-agui" viewBox="0 0 220 120" aria-hidden="true"><rect class="a" x="4" y="8" width="66" height="104" rx="8"/><rect class="b" x="80" y="8" width="136" height="104" rx="8"/><rect class="c" x="98" y="52" width="100" height="46" rx="6"/><path class="a" d="M16 34H58M16 52H50M16 70H58"/><path class="b" d="M96 28H170"/></svg>
         </a>
@@ -263,7 +313,7 @@
           <div>
             <h3>动手拆一个大语言模型</h3>
             <p>六篇可交互的小实验，从“猜下一个词”拆到聊天助手：猜数字讲熵、帐篷拼曲线、拖学习率下山、切换注意力头、调温度抽词、规模定律计算器。</p>
-            <div class="tags"><span class="cat">技术学习</span><span>系列</span><span>原理</span></div>
+            <div class="tags"><span class="cat">学习笔记</span><span>系列</span><span>原理</span></div>
           </div>
           <svg class="thumb-llm" viewBox="0 0 220 120" aria-hidden="true"><rect x="0" y="70" width="34" height="50" rx="3"/><rect x="46" y="18" width="34" height="102" rx="3" class="hi"/><rect x="92" y="52" width="34" height="68" rx="3"/><rect x="138" y="88" width="34" height="32" rx="3"/><rect x="184" y="104" width="34" height="16" rx="3"/></svg>
         </a>
@@ -274,7 +324,7 @@
           <div>
             <h3>AI 把代码改崩了，怎么救回来：一张能点的 Git 地图</h3>
             <p>不讲长篇原理，直接上手点：看 AI 改崩项目再被 reflog 救回来，在沙盒里开分支、合并、rebase，跟着向导选对撤销命令，再玩一局 bisect 找元凶。</p>
-            <div class="tags"><span class="cat">技术学习</span><span>Git</span><span>AI 编程</span></div>
+            <div class="tags"><span class="cat">学习笔记</span><span>单篇</span><span>Git</span><span>AI 编程</span></div>
           </div>
           <svg class="thumb-git" viewBox="0 0 220 120" aria-hidden="true"><path d="M20 80H200M70 80C100 80 100 30 130 30H160" fill="none" stroke-width="4"/><circle cx="20" cy="80" r="11"/><circle cx="70" cy="80" r="11"/><circle cx="200" cy="80" r="11"/><circle class="b" cx="130" cy="30" r="11"/><circle class="b gone" cx="160" cy="30" r="11"/></svg>
         </a>
@@ -285,12 +335,19 @@
           <div>
             <h3>题目刚出，就被做完了：图解 State of AI 2026</h3>
             <p>244 页的年度报告，挑出 30 多组关键数据重新绘制：三强格局、AI 研发 AI、1050 亿美元收入、被电力卡住的算力，以及评测中真的攻进了 Hugging Face 的智能体蜂群。</p>
-            <div class="tags"><span class="cat rep">报告解读</span><span>行业</span><span>安全</span></div>
+            <div class="tags"><span class="cat rep">报告解读</span><span>单篇</span><span>行业</span><span>安全</span></div>
           </div>
           <div class="thumb" aria-hidden="true"><i style="--v:95"></i><i style="--v:100"></i><i style="--v:63"></i><i style="--v:68"></i></div>
         </a>
       </li>
     </ul>
+  </section>
+
+  <section class="view" id="v-topic" hidden aria-labelledby="map-h">
+    <h2 id="map-h" class="visually-hidden">学习地图</h2>
+    <p class="view-note">每条线从左往右是建议的学习顺序。黑色站牌是已经写了的方向，虚线站牌是待补的方向；站牌下是这个方向的系列，一格代表一篇，绿色是这台设备上读过的。</p>
+    <nav class="tindex" id="tindex" aria-label="主题"></nav>
+    <div id="topics"></div>
   </section>
 </main>
 
@@ -302,15 +359,99 @@
 </footer>
 
 <script>
+// 学习地图：主题 → 方向（按学习顺序）→ 系列。新文章写好后在这里挂到对应方向；n 是篇数（不含总览），k 是系列的阅读记录前缀
 (function () {
+  var TOPICS = [
+    { id: 'base', t: 'AI 基础', d: '从数学到训练框架，后面所有主题的底座。', s: [
+      ['数学与机器学习', []],
+      ['深度学习', [{ h: 'posts/2026-10-18-nndl/', t: '神经网络与深度学习（第二版）', n: 16, k: 'nndl-series' }]],
+      ['强化学习', [
+        { h: 'posts/2026-10-19-rlmath/', t: '强化学习的数学原理', n: 10, k: 'rlmath-series', seq: '先读' },
+        { h: 'posts/2026-10-19-modernrl/', t: '动手学现代强化学习', n: 12, k: 'modernrl-series', seq: '后读', chain: 'posts/topic-rl/' }]],
+      ['PyTorch 与框架', []]] },
+    { id: 'llm', t: '大模型', d: '大模型怎么工作，怎么训练和部署，业内走到了哪一步。', s: [
+      ['原理', [{ h: 'posts/2026-10-15-llm/', t: '动手拆一个大语言模型', n: 6, k: 'llm-series' }]],
+      ['训练与推理基础设施', [{ h: 'posts/2026-10-16-infra/', t: '深入理解 AI Infra', n: 12, k: 'infra-series' }]],
+      ['RAG', []],
+      ['行业动态', [{ h: 'posts/2026-state-of-ai/', t: '图解 State of AI 2026', n: 1, r: 1 }]]] },
+    { id: 'agent', t: '智能体', hub: ['posts/topic-agent/', '看智能体能力链：五本书按 13 项能力对齐'], d: '从原理和设计模式，到动手搭建，再到协议与可信。', s: [
+      ['全景与原理', [
+        { h: 'posts/2026-10-16-agent/', t: '深入理解 AI Agent', n: 10, k: 'agent-series' },
+        { h: 'posts/2026-10-22-handbook/', t: 'AI Agent Handbook', n: 15, k: 'handbook-series' }]],
+      ['设计模式', [{ h: 'posts/2026-10-16-adp/', t: '智能体设计模式', n: 7, k: 'adp-series' }]],
+      ['从零构建', [{ h: 'posts/2026-10-22-helloagents/', t: 'Hello-Agents', n: 13, k: 'helloagents-series' }]],
+      ['协议', [{ h: 'posts/2026-10-15-agent-ui-protocols/', t: 'AG-UI、A2UI、MCP Apps', n: 1 }]],
+      ['可信与前沿', [{ h: 'posts/2026-10-30-rsi/', t: '可信递归自我改进', n: 8, k: 'rsi-series' }]]] },
+    { id: 'coding', t: 'AI 编程', d: '用 AI 写代码：工具怎么用，工程上怎么做，出事了怎么兜底。', s: [
+      ['工具上手', [{ h: 'posts/2026-10-22-claudehowto/', t: 'Claude How To', n: 12, k: 'claudehowto-series' }]],
+      ['工程方法', [{ h: 'posts/2026-10-24-easyvibe/', t: 'Easy-Vibe', n: 15, k: 'easyvibe-series' }]],
+      ['版本控制兜底', [{ h: 'posts/2026-git-playground/', t: '一张能点的 Git 地图', n: 1 }]]] },
+    { id: 'g6', t: '6G 与通信', d: 'AI 进入无线网络：白皮书、通信大模型、仿真与标准。', s: [
+      ['白皮书', [{ h: 'posts/2026-10-16-viavi-agentic-ran/', t: 'VIAVI 智能体 RAN 白皮书', n: 1, r: 1 }]],
+      ['通信大模型', []],
+      ['仿真', []],
+      ['3GPP 标准', []]] },
+    { id: 'eng', t: '工程开发', d: '前后端与部署的基本功。', s: [
+      ['前端', []], ['后端', []], ['容器与部署', []]] }
+  ];
+  function readN(k) { try { var a = JSON.parse(localStorage.getItem(k + '-read') || '[]'); return Array.isArray(a) ? a.length : 0; } catch (e) { return 0; } }
+  var idx = document.getElementById('tindex'), box = document.getElementById('topics');
+  TOPICS.forEach(function (tp) {
+    var nSeries = 0, nPages = 0, nTodo = 0;
+    tp.s.forEach(function (st) { if (!st[1].length) nTodo++; st[1].forEach(function (it) { nSeries++; nPages += it.n; }); });
+    var sum = nSeries ? nSeries + ' 项，' + nPages + ' 篇' : '还没有内容';
+    if (nTodo) sum += '；' + nTodo + ' 个方向待补';
+    idx.insertAdjacentHTML('beforeend', '<a href="#t-' + tp.id + '">' + tp.t + '<span>' + nPages + ' 篇</span></a>');
+    var html = '<section class="topic" id="t-' + tp.id + '"><div class="topic-h"><h2>' + tp.t + '</h2><span class="sum">' + sum + '</span></div><p>' + tp.d + (tp.hub ? ' <a class="hub" href="' + tp.hub[0] + '">' + tp.hub[1] + '</a>' : '') + '</p>' +
+      '<ol class="line" style="--n:' + tp.s.length + '">';
+    tp.s.forEach(function (st) {
+      html += '<li class="stn' + (st[1].length ? '' : ' empty') + '"><h3>' + st[0] + '</h3>';
+      if (!st[1].length) { html += '<p class="todo">待补</p></li>'; return; }
+      html += '<div class="its">';
+      st[1].forEach(function (it) {
+        var r = it.k ? Math.min(readN(it.k), it.n) : 0, cells = '';
+        for (var i = 0; i < it.n; i++) cells += '<i' + (i < r ? ' class="on"' : '') + '></i>';
+        var m = [it.n > 1 ? it.n + ' 篇' : '单篇'];
+        if (r) m.push('读过 ' + r);
+        if (it.r) m.push('<span class="rk">报告解读</span>');
+        if (it.chain) m.push('<a class="chain" href="' + it.chain + '">看强化学习演进链</a>');
+        html += '<div class="it' + (it.r ? ' rep' : '') + '">' + (it.seq ? '<span class="seq">' + it.seq + '</span>' : '') +
+          '<a class="t" href="' + it.h + '">' + it.t + '</a><div class="bar" style="--n:' + it.n + '" aria-hidden="true">' + cells + '</div><div class="m"><span>' + m.join('</span><span>') + '</span></div></div>';
+      });
+      html += '</div></li>';
+    });
+    box.insertAdjacentHTML('beforeend', html + '</ol></section>');
+  });
+  // 浏览方式：记住上次的选择；默认按时间；地址带 #topic 时直接按主题看
+  var vs = document.getElementById('views'), KEY = 'home-view';
+  function show(v) {
+    vs.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.v === v)); });
+    document.getElementById('v-topic').hidden = v !== 'topic';
+    document.getElementById('v-time').hidden = v !== 'time';
+  }
+  var saved = null; try { saved = localStorage.getItem(KEY); } catch (e) {}
+  show(location.hash === '#topic' ? 'topic' : (location.hash === '#time' ? 'time' : (saved === 'topic' ? 'topic' : 'time')));
+  vs.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    show(b.dataset.v); try { localStorage.setItem(KEY, b.dataset.v); } catch (err) {}
+  });
+})();
+</script>
+<script>
+// 按时间：类型筛选。新类型在 KINDS 里登记名称，文章 li 上写 data-kind
+(function () {
+  var KINDS = { learn: '学习笔记', report: '报告解读' };
   var f = document.getElementById('filter'), posts = document.querySelectorAll('.posts .post');
-  var count = document.getElementById('count');
+  var count = document.getElementById('count'), n = {};
+  posts.forEach(function (p) { n[p.dataset.kind] = (n[p.dataset.kind] || 0) + 1; });
+  f.insertAdjacentHTML('beforeend', '<button type="button" aria-pressed="true" data-k="all">全部 ' + posts.length + '</button>');
+  Object.keys(KINDS).forEach(function (k) { if (n[k]) f.insertAdjacentHTML('beforeend', '<button type="button" aria-pressed="false" data-k="' + k + '">' + KINDS[k] + ' ' + n[k] + '</button>'); });
   f.addEventListener('click', function (e) {
     var b = e.target.closest('button'); if (!b) return;
     f.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
-    var n = 0;
-    posts.forEach(function (p) { var show = b.dataset.k === 'all' || p.dataset.kind === b.dataset.k; p.hidden = !show; if (show) n++; });
-    count.textContent = (b.dataset.k === 'all' ? '共 ' : '本类 ') + n + ' 篇';
+    var c = 0;
+    posts.forEach(function (p) { var show = b.dataset.k === 'all' || p.dataset.kind === b.dataset.k; p.hidden = !show; if (show) c++; });
+    count.textContent = (b.dataset.k === 'all' ? '共 ' : '本类 ') + c + ' 项';
   });
 })();
 </script>

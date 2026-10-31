@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="../study-shared/series.css">
 <script src="../../assets/site.js"></script>
 <script src="../study-shared/series.js"></script>
+<script src="../study-shared/rlevo.js"></script>
 <style>
 main sub, main sup { font-size: 15px; line-height: 0; }
 .part-head .meta { overflow-wrap: anywhere; }
@@ -18,7 +19,7 @@ main sub, main sup { font-size: 15px; line-height: 0; }
 textarea.field { min-height: 7.5em; font-family: var(--f-num); font-size: 15px; max-width: 100%; }
 </style>
 </head>
-<body data-series="modernrl-series" data-part="9">
+<body data-series="modernrl-series" data-part="9" data-rail>
 
 <header class="site-head">
   <div class="wrap">
@@ -73,6 +74,13 @@ textarea.field { min-height: 7.5em; font-family: var(--f-num); font-size: 15px; 
   <div class="part-head"><h2>组内相对优势：没有 Critic 怎么知道好坏</h2><span class="meta">原文 docs/chapter18_grpo/grpo-practice-and-mechanism.md（15.1 节）</span></div>
   <div class="sec-lede">
     <p>Critic 在 LLM 训练里有三个问题（原文）：<strong>吃显存</strong>——和 Actor 同等规模，PPO 要同时装 Actor + Critic + Reference + RM；<strong>不稳定</strong>——要从“写到一半的文本”预测 500 个 token 之后才出现的分数；<strong>工程复杂</strong>——四套优化器和超参。但 Critic 的本职只是提供基线来降方差（第 3 篇）。GRPO 的想法是：同一个 prompt 采 G 个回答，它们的平均分就是 V(prompt) 的 G 次蒙特卡洛估计，直接拿来当基线。</p>
+    <div class="eqx"><div class="eqx-f">Â<sub>j,i</sub> = ( <span data-t="1">r<sub>j,i</sub></span> − <span data-t="2">r̄<sub>j</sub></span> ) / ( <span data-t="3">s<sub>j</sub></span> + ε )</div>
+    <ul class="eqx-k">
+      <li data-t="1"><b>r<sub>j,i</sub></b>第 j 道题第 i 个回答的奖励<em>规则验证器（答案对不对）或奖励模型给出</em></li>
+      <li data-t="2"><b>r̄<sub>j</sub></b>同一道题 G 个回答的平均分<em>代替 Critic 的基线：V(prompt) 的 G 次蒙特卡洛估计</em></li>
+      <li data-t="3"><b>s<sub>j</sub></b>同组奖励的标准差，把难题和易题的优势拉到同一尺度<em>Dr.GRPO 认为它带来偏差，去掉了</em></li>
+    </ul>
+    <p class="eqx-n">一条回答只有一个 Â，它的所有 token 共享；比值、裁剪和 KL 仍按 token 计算，照搬 PPO。</p></div>
     <p>组内优势 Â<sub>j,i</sub> = (r<sub>j,i</sub> − r̄<sub>j</sub>) / (s<sub>j</sub> + ε)：<strong>减均值</strong>替代 Critic，保证优势的正负与“是否好于同组平均”一致、组内期望为 0；<strong>除标准差</strong>把不同难度题目的优势拉到同一尺度（z-score）。原文的苹果题：4 个回答得 1.5、1.0、0、0，均值 0.625，前两个该多生成、后两个该少生成。一条回答只有一个结果奖励，所以它的所有 token 共享同一个 Â；但比值、裁剪、KL 仍然逐 token 计算。</p>
     <p>原文用一个 diff 说明“到底换了哪几行”：生成、打分、比值、裁剪都不变，只是删掉 <code>values = critic(...)</code> 和 <code>advantages = rewards − values</code>，换成按组 reshape 后减均值、除标准差。GRPO 也<strong>没有继承 GAE</strong>：奖励只在序列末尾、又没有逐 token 的 V，多步 TD 退化为单步，和“最终奖励减均值”没有本质区别。显存上，原文给的经验是比 PPO 省约 30–40%。</p>
     <p class="go">编辑一组回答的奖励，看 GRPO 和 Dr.GRPO 的优势。</p>

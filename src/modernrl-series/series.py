@@ -20,3 +20,5 @@ AUTHOR = 'WalkingLabs 社区编写的开源课程，CC BY-NC-SA 4.0 协议；本
 BOOK_KIND = '开源教程'
 CREDIT = '原教程沿“CartPole → DQN → 策略梯度 → PPO → RLHF / DPO / GRPO → Agentic RL”一条线展开，这里按它的章节重新组织成十二篇，用自己的话重讲，并把关键实验搬进浏览器：CartPole 的 DQN 与 PPO 是用 JavaScript 真实训练的缩小版，其余公式演示的数值都在页面里实时计算。原教程数据（如训练日志 CSV、实验表格）标“原书数据”，为演示设的数值标“示意”，每节标出对应的原文路径。原教程自述“由 AI 协助生成、尚未全面审稿”，本笔记只采信能与原始论文对上的内容，存疑处单独注明。改编内容同样按 CC BY-NC-SA 4.0 分享、仅限非商业用途；数学推导部分可与同站<a href="../2026-10-19-rlmath/">《强化学习的数学原理》系列</a>对照着读。'
 ICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='15' width='18' height='4' rx='1' fill='none' stroke='%2313171C' stroke-width='2'/%3E%3Cpath d='M12 15L16 4' stroke='%2313171C' stroke-width='2.2' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='4' r='2.2' fill='%232340D6'/%3E%3C/svg%3E"
+HEAD = '<script src="../study-shared/rlevo.js"></script>'
+RAIL = True

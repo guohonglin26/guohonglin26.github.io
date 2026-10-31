@@ -52,6 +52,14 @@ main sub, main sup { font-size: 15px; line-height: 0; }
 <section class="part" id="loss">
   <div class="part-head"><h2>DPO 损失、隐式奖励与 β</h2><span class="meta">原文 dpo-objective-derivation.md 14.1.4.2、metrics.md（14.2）、dpo-hands-on.md 14.4.4</span></div>
   <div class="sec-lede">
+    <div class="eqx"><div class="eqx-f">L<sub>DPO</sub> = −𝔼 log <span data-t="1">σ</span>( <span data-t="2">β</span> [ <span data-t="3">log π<sub>θ</sub>(y<sub>w</sub>|x) / π<sub>ref</sub>(y<sub>w</sub>|x)</span> − <span data-t="4">log π<sub>θ</sub>(y<sub>l</sub>|x) / π<sub>ref</sub>(y<sub>l</sub>|x)</span> ] )</div>
+    <ul class="eqx-k">
+      <li data-t="3"><b>log π<sub>θ</sub>(y<sub>w</sub>) / π<sub>ref</sub>(y<sub>w</sub>)</b>好回答的概率比参考模型涨了多少（对数）<em>乘 β 就是 rewards/chosen</em></li>
+      <li data-t="4"><b>log π<sub>θ</sub>(y<sub>l</sub>) / π<sub>ref</sub>(y<sub>l</sub>)</b>坏回答的同一个量<em>乘 β 就是 rewards/rejected</em></li>
+      <li data-t="2"><b>β</b>和 RLHF 里的 KL 系数是同一个东西：控制能偏离参考模型多远<em>默认 0.1</em></li>
+      <li data-t="1"><b>σ</b>Bradley–Terry：把“好减坏”的差变成“好比坏更受偏好”的概率<em>外面取负 log，就是一个二分类交叉熵</em></li>
+    </ul>
+    <p class="eqx-n">π<sub>ref</sub> 冻结；4 条 logp = 2 个模型 × 2 个回答。奖励模型和 Critic 都没有出现在式子里。</p></div>
     <p>损失括号里的两项叫<strong>隐式奖励</strong>：r<sub>chosen</sub> = β log(π<sub>θ</sub>(y<sub>w</sub>)/π<sub>ref</sub>(y<sub>w</sub>))，r<sub>rejected</sub> 同理；两者之差就是 <strong>Reward Margin</strong>。它们不是真的 RM 打分，而是从概率比推出来的。训练开始时 π<sub>θ</sub> = π<sub>ref</sub>，margin = 0，σ(0) = 0.5，所以 loss 从 ln 2 ≈ 0.693 开始——原文日志第 5 步是 0.6821。梯度的大小正比于 σ(−margin)：模型已经分得很开的样本几乎不贡献梯度，还没分开（或分反了）的样本梯度最大。</p>
     <p>附录 B.3 的速记：“<strong>4 条 logp</strong>（2 个模型 × 2 个回答）：每条算‘当前 − 参考’；好减坏、乘 β、过 sigmoid、取负 log。”常见坑：用了 raw log-prob 而不是比值；参考模型的 logp 忘了 detach；chosen / rejected 弄反；手写 log σ 溢出（用 logaddexp 或 F.logsigmoid）。</p>
     <p><strong>β</strong> 是最关键的超参，作用和 RLHF 里的 KL 系数相同：控制能偏离参考模型多远。原文的经验表：0.01 几乎没有约束，快但可能语言退化；<strong>0.1 是默认</strong>；0.5 约束强、变化慢；1.0 几乎学不到东西。还有一个读日志时容易误判的现象：margin 在涨，可能是 chosen 和 rejected 的 logp <strong>都在下降</strong>、只是 rejected 降得更多——所以 TRL 会把 rewards/chosen 和 rewards/rejected 拆开记录。</p>

@@ -95,3 +95,23 @@ body[data-series="rlmath-series"] .ctl > span { display: block; }
 body[data-series="rlmath-series"] .ctl > span::after { content: ""; display: table; clear: both; }
 body[data-series="rlmath-series"] .ctl > span output { float: right; margin-left: 10px; }
 .rlmap .el { paint-order: stroke; stroke: var(--bg); stroke-width: 5px; stroke-linejoin: round; }
+
+/* 回溯图（第 7 篇统一视角） */
+.bkd { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 22px; margin-top: 10px; }
+@media (max-width: 900px) { .bkd { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.bk { margin: 0; min-width: 0; }
+.bk svg { display: block; width: 100%; max-width: 200px; height: auto; margin: 0 auto; }
+.bk figcaption { font-size: 15px; line-height: 1.6; color: var(--ink-2); margin-top: 6px; }
+.bk figcaption b { display: block; color: var(--ink); }
+.bk-l { fill: none; stroke: var(--ink-3); stroke-width: 1.6; }
+.bk-l.hot { stroke: var(--s1); stroke-width: 2.4; }
+.bk-l.faint { stroke: var(--rule); stroke-dasharray: 4 4; }
+.bk-l.dash { stroke-dasharray: 3 5; }
+.bk-s { fill: var(--bg); stroke: var(--ink); stroke-width: 2; }
+.bk-s.est { fill: var(--s2); stroke: var(--s2); }
+.bk-s.faint { stroke: var(--rule); }
+.bk-a { fill: var(--ink); }
+.bk-a.est { fill: var(--s2); }
+.bk-a.faint { fill: var(--rule); }
+.bk-t { fill: var(--ink); }
+.bk text { font-size: 15px; fill: var(--ink-2); font-family: var(--f-sans); }

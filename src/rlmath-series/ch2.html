@@ -73,7 +73,14 @@ nav: why|回报与自举;value|状态值;bellman|贝尔曼方程;matrix|矩阵�
   <div class="part-head"><h2>贝尔曼方程</h2><span class="meta">原书 2.4–2.5 节 · 第 20–25 页</span></div>
   <div class="sec-lede">
     <p>推导只用两个事实：回报可以拆成“眼前一步 + 折扣后的下一个回报”，G<sub>t</sub> = R<sub>t+1</sub> + γG<sub>t+1</sub>；以及马尔可夫性。于是 v<sub>π</sub>(s) = 𝔼[R<sub>t+1</sub>|S<sub>t</sub> = s] + γ𝔼[G<sub>t+1</sub>|S<sub>t</sub> = s]，两项分别是<strong>即时奖励的均值</strong>和<strong>未来奖励的均值</strong>。第二项里，马尔可夫性让 𝔼[G<sub>t+1</sub>|S<sub>t</sub> = s, S<sub>t+1</sub> = s′] = 𝔼[G<sub>t+1</sub>|S<sub>t+1</sub> = s′] = v<sub>π</sub>(s′)。合起来就是<strong>贝尔曼方程</strong>：</p>
-    <div class="eq">v<sub>π</sub>(s) = Σ<sub>a</sub> π(a|s) [ Σ<sub>r</sub> p(r|s, a) r + γ Σ<sub>s′</sub> p(s′|s, a) v<sub>π</sub>(s′) ]，对所有 s ∈ 𝒮<small>原书式 (2.7)</small></div>
+    <div class="eqx"><div class="eqx-f"><span data-t="5">v<sub>π</sub>(s)</span> = <span data-t="1">Σ<sub>a</sub> π(a|s)</span> [ <span data-t="2">Σ<sub>r</sub> p(r|s, a) r</span> + <span data-t="3">γ</span> <span data-t="4">Σ<sub>s′</sub> p(s′|s, a)</span> <span data-t="5">v<sub>π</sub>(s′)</span> ]，对所有 s ∈ 𝒮<small>原书式 (2.7)</small></div>
+    <ul class="eqx-k">
+      <li data-t="1"><b>Σ<sub>a</sub> π(a|s)</b>按策略给每个动作加权，把各个动作的结果平均起来<em>由策略决定；做策略评估时它是给定的</em></li>
+      <li data-t="2"><b>Σ<sub>r</sub> p(r|s, a) r</b>做了动作 a 以后，即时奖励的均值<em>由环境模型决定</em></li>
+      <li data-t="3"><b>γ</b>折扣率：下一步以后的奖励打几折<em>人为设定，0 ≤ γ &lt; 1</em></li>
+      <li data-t="4"><b>Σ<sub>s′</sub> p(s′|s, a)</b>会转到哪个下一状态、各有多大概率<em>由环境模型决定</em></li>
+      <li data-t="5"><b>v<sub>π</sub>(s)、v<sub>π</sub>(s′)</b>等号两边都是待求的状态值——用未知的值表达未知的值，这就是“自举”<em>未知数，每个状态一个</em></li>
+    </ul></div>
     <p>读法：v<sub>π</sub>(s) 和 v<sub>π</sub>(s′) 是未知数；π(a|s) 是给定的策略；p(r|s, a)、p(s′|s, a) 是模型。关键在于它<strong>不是一个方程，而是每个状态各一个、联立的一组线性方程</strong>。从中解出状态值，就叫<strong>策略评估</strong>。文献里还有两种等价写法：Σ<sub>a</sub> π(a|s) Σ<sub>s′,r</sub> p(s′, r|s, a)[r + γv<sub>π</sub>(s′)]（Sutton 的写法），以及奖励只依赖 s′ 时的 Σ<sub>a</sub> π(a|s) Σ<sub>s′</sub> p(s′|s, a)[r(s′) + γv<sub>π</sub>(s′)]。</p>
     <p>对具体例子，这个吓人的式子会变得很简单。原书图 2.4（s<sub>1</sub> 向下）的四个方程是 v(s<sub>1</sub>) = 0 + γv(s<sub>3</sub>)，v(s<sub>2</sub>) = 1 + γv(s<sub>4</sub>)，v(s<sub>3</sub>) = 1 + γv(s<sub>4</sub>)，v(s<sub>4</sub>) = 1 + γv(s<sub>4</sub>)。</p>
     <p class="go">点“下一步”逐行展开推导；然后自己手算两个例子再对答案。</p>

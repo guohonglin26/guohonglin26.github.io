@@ -16,3 +16,5 @@ BOOK = 'Agentic Design Patterns 智能体设计模式'
 AUTHOR = 'Antonio Gulli 著，xindoo 等中文翻译'
 CREDIT = '21 个模式按主题重新分成 7 篇。每个模式先讲它要解决的问题，再用一张统一格式的模式卡收住，最后配一个小实验；原书的 LangChain / ADK / CrewAI 代码不复述，建议对照原书阅读。'
 ICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='3' width='7' height='7' rx='1.5' fill='%232340D6'/%3E%3Crect x='14' y='3' width='7' height='7' rx='1.5' fill='none' stroke='%2313171C' stroke-width='2'/%3E%3Crect x='3' y='14' width='7' height='7' rx='1.5' fill='none' stroke='%2313171C' stroke-width='2'/%3E%3Crect x='14' y='14' width='7' height='7' rx='1.5' fill='none' stroke='%2313171C' stroke-width='2'/%3E%3C/svg%3E"
+RAIL = True
+HEAD = '<script src="../study-shared/agentevo.js"></script>'

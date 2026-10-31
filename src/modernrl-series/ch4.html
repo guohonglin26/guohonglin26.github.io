@@ -59,6 +59,13 @@ main sub, main sup { font-size: 15px; line-height: 0; }
 <section class="part" id="clip">
   <div class="part-head"><h2>裁剪目标：clip 管“顺方向别过冲”，min 管“反方向要纠偏”</h2><span class="meta">原文 trust-region-clipping.md“裁剪为何让梯度归零”“min 操作的作用”</span></div>
   <div class="sec-lede">
+    <div class="eqx"><div class="eqx-f">L<sup>CLIP</sup>(θ) = 𝔼<sub>t</sub>[ <span data-t="1">min</span>( <span data-t="2">r<sub>t</sub>(θ)</span> <span data-t="3">A<sub>t</sub></span>, <span data-t="4">clip(r<sub>t</sub>(θ), 1 − ε, 1 + ε)</span> <span data-t="3">A<sub>t</sub></span> ) ]</div>
+    <ul class="eqx-k">
+      <li data-t="2"><b>r<sub>t</sub>(θ) = π<sub>θ</sub>(a<sub>t</sub>|s<sub>t</sub>) / π<sub>old</sub>(a<sub>t</sub>|s<sub>t</sub>)</b>新旧策略对这个动作的概率比，等于 1 表示还没变<em>代码里是 <code>exp(logp − old_logp)</code>，old_logp 要 detach</em></li>
+      <li data-t="3"><b>A<sub>t</sub></b>优势：这个动作比平均水平好多少<em>由 Critic 和 GAE 估计（本篇后半）</em></li>
+      <li data-t="4"><b>clip(r<sub>t</sub>, 1 − ε, 1 + ε)</b>把比率夹在 [1 − ε, 1 + ε] 里，越界部分梯度为 0<em>ε 人为设定，控制常用 0.2，LLM 常用更小</em></li>
+      <li data-t="1"><b>min</b>两项里挑更悲观的一项，保证梯度只会停、不会反向<em>下面的实验专门看它</em></li>
+    </ul></div>
     <p>PPO-Clip 的目标是 L = 𝔼[min(r<sub>t</sub>A<sub>t</sub>, clip(r<sub>t</sub>, 1 − ε, 1 + ε)A<sub>t</sub>)]。clip 是一条三段折线：两端水平（斜率 0）、中间斜率 1。链式法则里只要中间这一环是 0，整条梯度链就断了——这就是“目标在该区间变成常数”的确切含义：相对 θ 是常数，不是数值不变。</p>
     <p>只有 clip 会出问题：好动作（A &gt; 0）的比率反而跌到 0.5（更新方向错了），裁剪项斜率仍是 0，策略会被<strong>卡死</strong>在错误的位置。外层的 min 解决这件事：它总挑数值更小（更悲观）的那一项，而 clip 的算术结构恰好让“更悲观”等于“方向正确”。原文把四种越界情形逐一验证，并给出一个简短证明：∂L/∂r 只可能是 0 或 A，<strong>梯度要么停止，要么与优势同号，永不反向</strong>。把 min 换成 max 则两种情形同时失效：顺方向越界时不砍虚高的奖励，反方向越界时还高估错误方向。</p>
     <p>ε 的经验取值：游戏和控制默认 0.2；LLM 对齐常用 0.1 甚至更小（参数多、更脆弱，一次坏更新可能丢掉已习得的语言能力）；0.5 原文直接说“不推荐”。原文还提醒：裁剪只约束每个样本的比率，并不直接约束整体 KL，所以 LLM 训练里会同时监控 clip_fraction 和 approx_kl。</p>
@@ -100,7 +107,15 @@ main sub, main sup { font-size: 15px; line-height: 0; }
   <div class="sec-lede">
     <p>PPO 默认用同一批 rollout 更新 K = 10 个 epoch、每个 epoch 切成若干 mini-batch。原文的解释是成本权衡：采一批数据要跑环境（LLM 里要生成几分钟），一次梯度更新只要几秒。但从重要性采样的角度看，只有第一轮是无偏的，后面 θ 离 θ_old 越来越远，估计偏差越来越大——裁剪正是为此设计的：偏离过大时梯度自动归零。所以 K 不能无限加大，原文给的常用范围是 3–10。</p>
     <p>为了直接看到裁剪在“复用”里的作用，我设了一个小实验：五臂老虎机（期望奖励 1.0、1.3、0.7、1.1、0.9，每次加标准正态噪声），softmax 策略。每轮按当前策略拉 32 次，优势 = 奖励减批内均值，然后比较三种更新：<strong>普通策略梯度只更新 1 轮</strong>；<strong>同一批数据不加裁剪更新 K 轮</strong>；<strong>PPO 裁剪后更新 K 轮</strong>。每种跑 100 个种子。</p>
-    <p class="go">先用默认学习率看，再把学习率调大到 1.5 以上。</p>
+    <p class="go">先用下面的流程图对一下 K 轮复用发生在哪一步；然后先用默认学习率看，再把学习率调大到 1.5 以上。</p>
+  </div>
+  <div class="pipe" aria-label="PPO 一轮迭代的数据流">
+    <ol>
+      <li><b>① 采样</b>用旧策略 π<sub>old</sub> 跑一批交互（CartPole 每轮 2048 步；LLM 是一批提示各生成回答），记下 s、a、r、done 和 old_logp<span class="pipe-c">慢：要跑环境或生成</span></li>
+      <li><b>② 估优势</b>Critic 给每一步一个 V，GAE 从后往前算 Â，returns = Â + V</li>
+      <li class="on"><b>③ 同一批数据更新 K 轮</b>打乱、切 mini-batch，每轮重算比率 r = π<sub>θ</sub>/π<sub>old</sub>，按 L<sup>CLIP</sup> + c₁L<sup>VF</sup> − c₂H 更新 Actor 和 Critic<span class="pipe-c">快：只有前向和反向</span><span class="pipe-n">第 1 轮 r ≡ 1、无偏；越往后 θ 离 θ<sub>old</sub> 越远，被裁剪的样本越多——下面的实验看的就是这一步</span></li>
+      <li><b>④ 丢掉这批数据</b>π<sub>old</sub> ← π<sub>θ</sub>，旧数据作废，回到 ①<span class="pipe-c">on-policy 的代价，第 5 篇从这里出发</span></li>
+    </ol>
   </div>
   <div class="lab">
     <p class="lab-t">复用一批数据 K 轮：期望奖励（100 个种子平均，示意）</p>
@@ -120,6 +135,15 @@ main sub, main sup { font-size: 15px; line-height: 0; }
   <div class="sec-lede">
     <p>PPO 目标里的 A<sub>t</sub> 怎么来？原文用一个 5 步回合贯穿（只有最后一步奖励 1，Critic 估计 V = 0.1, 0.2, 0.3, 0.5, 0.8，γ = 1），正好是“LLM 生成 5 个 token、只在最后得分”的微缩版。<strong>TD 估计</strong> A = δ<sub>t</sub>，只用一步：方差小，但 Critic 不准时偏差直接灌进来，早期步骤的优势被压成 0.1。<strong>MC 估计</strong> A = G<sub>t</sub> − V(s<sub>t</sub>)：无偏，终点奖励直接算回每一步（早期 0.9），但带着整段的随机性，还得等回合结束。</p>
     <p>原文强调一个容易忽略的事实：G<sub>t</sub> − V(s<sub>t</sub>) = Σγ<sup>k</sup>δ<sub>t+k</sub>——<strong>MC 不是和 TD 并列的另一种信号，而是 TD 误差的无限累加</strong>。所以插值应该作用在 δ 的权重上：w<sub>k</sub> = (γλ)<sup>k</sup>。λ = 0 回到 TD，λ = 1 回到 MC，中间指数衰减。指数形式的好处是可以递推：Â<sub>t</sub> = δ<sub>t</sub> + γλÂ<sub>t+1</sub>，从后往前扫一遍，O(N)。</p>
+    <div class="eqx"><div class="eqx-f">Â<sub>t</sub> = Σ<sub>k</sub> <span data-t="1">(γλ)<sup>k</sup></span> <span data-t="2">δ<sub>t+k</sub></span>，<span data-t="2">δ<sub>t</sub></span> = <span data-t="3">r<sub>t</sub></span> + <span data-t="4">γV(s<sub>t+1</sub>)</span> − <span data-t="5">V(s<sub>t</sub>)</span></div>
+    <ul class="eqx-k">
+      <li data-t="1"><b>(γλ)<sup>k</sup></b>第 k 步之后那个 TD 误差的权重：λ = 0 只留 k = 0（TD），λ = 1 全部加起来（MC）<em>λ 人为设定，默认 0.95</em></li>
+      <li data-t="2"><b>δ<sub>t</sub></b>TD 误差：走一步之后的估计比现在的估计多出多少<em>GAE 加权的对象</em></li>
+      <li data-t="3"><b>r<sub>t</sub></b>这一步的真实奖励<em>来自采样</em></li>
+      <li data-t="4"><b>γV(s<sub>t+1</sub>)</b>Critic 对下一状态的估计，自举的那一部分<em>Critic 不准时，偏差从这里进来</em></li>
+      <li data-t="5"><b>V(s<sub>t</sub>)</b>Critic 对当前状态的估计，充当基线<em>减掉它只降方差，不改期望</em></li>
+    </ul>
+    <p class="eqx-n">代码里从后往前扫一遍：<code>adv = δ + γλ·(1 − done)·adv</code>；回合结束处 done = 1，后面的优势不往前传。</p></div>
     <p>λ 怎么选？原文的思考题给了一个关键视角：如果 Critic 完全是随机噪声，λ = 0 的优势就毫无意义，而 λ = 1 退化成“带噪声基线的 MC”，主体信号还在。所以较大的 λ 对 Critic 质量的依赖更弱；代价是方差。0.95 成为默认值，就是在“Critic 准不准”和“采样噪声大不大”之间取的平衡。</p>
     <p class="go">左边复现原文的 5 步表；右边做一个偏差—方差实验：Critic 带系统误差、奖励带噪声，看 λ 改变时总误差怎样分解。</p>
   </div>
@@ -183,6 +207,11 @@ main sub, main sup { font-size: 15px; line-height: 0; }
       <dt>代价与坑</dt><dd>仍是 on-policy，样本效率低；LLM 上要四个模型同台（第 7 篇）；ratio 分母必须是采样时的旧策略、old_logp 要 detach、GAE 要倒序。</dd>
       <dt>相关</dt><dd>TRPO、GAE（本篇）；PPO-RLHF（第 7 篇）；GRPO = 去掉 Critic 的 PPO（第 9 篇）。</dd>
     </dl>
+  </div>
+  <div class="lab">
+    <p class="lab-t">拿掉一个零件会怎样</p>
+    <p class="lab-s">PPO 是几个零件拼起来的，每个零件防一种病。点一个零件把它拿掉，看会出什么问题、日志里是什么样子。这里的后果是本笔记依据原文各节整理的定性判断，不是实验结果；能在本页实验里看到的已注明。</p>
+    <div id="abP"></div>
   </div>
   <div class="notes" id="n-train"></div>
 </section>
@@ -491,3 +520,12 @@ S.notes($('#n-train'), {
     ['附录易错', 'old_logp detach；values 长 T+1；advantage 归一化；GAE 倒序']
   ]
 });
+/* ---------- 拿掉一个零件 ---------- */
+S.ablate($('#abP'), { parts: [
+  { k: 'clip', t: '裁剪', role: '比率限制在 [1 − ε, 1 + ε]', off: '同一批数据更新 K 轮时比率不再受限，后几轮在已经过时的数据上越推越远，一次就可能把策略推崩。上面“复用 K 轮”的实验里调大学习率、看“不裁剪”那条线，就是这种情形。', sign: 'approx_kl 飙升、熵骤降，reward 随后断崖式下跌。' },
+  { k: 'min', t: 'min', role: '两项里取更悲观的', off: '只剩裁剪项时，方向走错（好动作的概率反而降了）的样本梯度也是 0，策略被卡在错误的位置，没法纠偏。见“裁剪目标”一节的四种情形。', sign: '没有明显的报警信号，表现为学习停滞或变慢。' },
+  { k: 'reuse', t: '复用 K 轮', role: '同一批数据更新多次', off: 'K = 1：每批数据只更新一次，退化成普通的 Actor-Critic。更稳，但要多采好几倍的数据才能达到同样效果。', to: '反过来想把旧数据用得更狠，就要换成 off-policy 的回放池（第 5 篇的 SAC）。' },
+  { k: 'critic', t: 'Critic', role: '提供 V：基线和 GAE 都靠它', off: '没有 V，优势只能用整段回报减批内均值，退化成 REINFORCE 加简单基线：方差大，回合越长越慢。', to: '在 LLM 里用同一道题一组回答的均值当基线，就是 GRPO（第 9 篇）。' },
+  { k: 'gae', t: 'GAE 的 λ', role: '在 TD 与 MC 之间调', off: '固定 λ = 0 只用一步 TD 误差：方差小，但 Critic 不准时偏差直接进入优势；固定 λ = 1 就是 MC：无偏但方差大。0.95 是两者的折中，见 GAE 一节右边的实验。' },
+  { k: 'ent', t: '熵奖励', role: '−c₂H，保持探索', off: '策略可能过早变得确定，停在次优解。不过原文 CartPole 代码里熵系数本来就是 0：简单任务用不着，动作空间大、容易过早收敛时才加。', sign: 'entropy 很快掉到接近 0。' }
+] });
