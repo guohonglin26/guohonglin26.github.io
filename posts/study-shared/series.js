@@ -616,7 +616,7 @@
       S.h('h4', { class: 'evo-fs', text: st[0] }, box);
       st[1].forEach(function (id) {
         var n = E.nodes[id], i = order.indexOf(id);
-        var row = S.h('div', { class: 'evo-fn' }, box);
+        var row = S.h('div', { class: 'evo-fn', 'data-id': id }, box);
         S.h('div', { class: 'evo-fh', html: '<b>' + n.t + '</b>' + n.at.map(function (a) {
           return '<a class="evo-pill' + (key && a[0] !== key ? ' other' : '') + '" href="' + evoHref(E, a) + '">' + evoName(E, a, true) + '</a>';
         }).join('') }, row);

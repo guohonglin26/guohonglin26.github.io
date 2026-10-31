@@ -498,3 +498,15 @@ a.evo-pill:hover { color: var(--ink); border-color: var(--s1); }
   .pipe li:not(:last-child)::after { content: "↓"; right: auto; left: 50%; top: auto; bottom: -24px; transform: translateX(-50%); }
   .pipe ol::after { margin-top: -8px; }
 }
+
+/* 主题全览页：多书对照（hubcmp.js） */
+.cmp { margin-top: 8px; }
+.cmp summary { cursor: pointer; font-size: 15px; color: var(--s1); }
+.cmp-g { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px 18px; margin-top: 10px; }
+.cmp-c { border-top: 2px solid var(--ink); padding-top: 6px; min-width: 0; }
+.cmp-c h4 { margin: 0 0 6px; font-size: 15px; }
+.cmp-c h4 a { color: var(--ink); }
+.cmp-c dl { margin: 0; }
+.cmp-c dt { font-size: 15px; font-weight: 600; color: var(--ink); margin-top: 6px; }
+.cmp-c dd { margin: 0; font-size: 15px; line-height: 1.6; color: var(--ink-2); }
+.cmp-note { font-size: 15px; color: var(--ink-3); margin: 8px 0 0; }
