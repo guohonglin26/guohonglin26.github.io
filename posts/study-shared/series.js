@@ -544,6 +544,26 @@
     draw();
   };
 
+  // 点读配置：S.anno(root, {code, notes: {行号: 说明}})，带说明的行可以点，右侧显示这一行回答了什么问题
+  S.anno = function (root, o) {
+    root.innerHTML = '';
+    root.classList.add('anno');
+    var pre = S.h('pre', { class: 'anno-code' }, root), side = S.h('div', { class: 'anno-side', 'aria-live': 'polite' }, root);
+    var lines = o.code.replace(/^\n/, '').replace(/\s+$/, '').split('\n'), rows = [];
+    lines.forEach(function (ln, i) {
+      var n = o.notes[i + 1], r = S.h(n ? 'button' : 'span', { class: 'anno-ln' + (n ? ' has' : ''), type: n ? 'button' : null }, pre);
+      r.textContent = ln || ' ';
+      if (n) r.addEventListener('click', function () { pick(i); });
+      rows.push(r);
+    });
+    function pick(i) {
+      rows.forEach(function (r, k) { r.classList.toggle('on', k === i); });
+      side.innerHTML = '<p class="anno-k">第 ' + (i + 1) + ' 行</p><p>' + o.notes[i + 1] + '</p>';
+    }
+    side.innerHTML = '<p class="anno-k">' + (o.hint || '点左边带下划线的行，看它回答了什么问题。') + '</p>';
+    if (o.first) pick(o.first - 1);
+  };
+
   // 演进链：数据在 window.EVO = {series: {key: {prefix, name}}, stages: [[阶段名, [节点 id]]],
   //   nodes: {id: {t, what, pain, at: [[系列 key, 篇号]]}}, cards: {'系列 key:篇号': {node: [id], q, naive, why, fix}}}
   function evoHref(E, at) { return '../' + E.series[at[0]].prefix + (at[1] ? '-' + at[1] : '') + '/'; }

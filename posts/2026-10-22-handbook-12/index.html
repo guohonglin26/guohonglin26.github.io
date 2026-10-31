@@ -72,7 +72,7 @@
 </section>
 
 <nav class="secnav" aria-label="本篇小节">
-  <div class="wrap"><a href="#prompt">Prompt</a><a href="#skill">Skill</a><a href="#mcp">MCP 与 Agent</a><a href="#pipe">发布与资源中心</a><a href="#disc">稳态与动态</a><a href="#sim">为什么模拟</a><a href="#run">数据契约</a><a href="#scn">场景与证据</a><a href="#recap">回扣三问</a></div>
+  <div class="wrap"><a href="#prompt">Prompt</a><a href="#skill">Skill</a><a href="#mcp">MCP 与 Agent</a><a href="#pipe">发布与资源中心</a><a href="#disc">稳态与动态</a><a href="#manifest">两份清单</a><a href="#sim">为什么模拟</a><a href="#run">数据契约</a><a href="#scn">场景与证据</a><a href="#recap">回扣三问</a></div>
 </nav>
 <div class="wrap">
 <div class="ask3">
@@ -151,6 +151,33 @@
   <div class="notes" id="n-disc"></div>
 </section>
 
+<section class="part" id="manifest">
+  <div class="part-head"><h2>两份清单：Agent 要什么，这次实际用了什么</h2><span class="meta">原书 15.7.2、15.9.1–15.9.3、15.9.5 节</span></div>
+  <div class="sec-lede">
+    <p>上一节讲稳态和动态两种获取能力的方式，落到工程上就是两份清单。<strong>AgentSpec</strong> 写在发布之前，声明“我要什么”：哪些 Prompt、Skill、MCP Server，按精确版本还是按标签。<strong>Context Manifest</strong> 在每次调用装配完上下文之后生成，记录“这次实际用了什么”：各资源解析出的精确版本和摘要、策略版本、发现请求、实际连接的端点、内容指纹。前者保证可控，后者保证事后说得清。</p>
+    <p>两份清单之间是 Context Compiler 的装配。原书强调三点。第一，<strong>发现和执行分开</strong>：比较候选时只看名字、简介、风险等级这些摘要，选定之后才按精确版本取完整内容，摘要对应的版本如果已经撤回，就拒绝加载、重新发现，不能拿名字相近的东西顶替。第二，<strong>优先级看来源，不看位置和措辞</strong>（见下表）：发现来的 Skill 要求“忽略系统策略”，或者工具返回里出现像系统指令的文字，都仍然只是 Skill 或数据。第三，<strong>按预算渐进装配</strong>：先给各类内容分配 token 预算，核心策略和任务指令完整保留，Skill 先给步骤、参考资料延后，MCP 工具只披露当前需要的一小组，后续每次新增内容都要再过一遍版本、权限和预算检查；超出预算时，裁剪要记录保留了什么、省略了什么、为什么。</p>
+    <p class="go">点读两份清单，看每一行回答了什么问题。</p>
+  </div>
+  <div class="lab">
+    <p class="lab-t">点读清单（示例取自原书）</p>
+    <div class="seg" id="mfS"><button data-v="spec" aria-pressed="true">AgentSpec：要什么</button><button data-v="mani">Context Manifest：用了什么</button></div>
+    <div id="mfA"></div>
+  </div>
+  <div class="tblw" style="margin-top:22px"><table class="cmpt">
+    <thead><tr><th>内容来源</th><th>在上下文里的作用</th><th>处理原则</th></tr></thead>
+    <tbody>
+      <tr><td>系统策略与核心 Prompt</td><td>身份、任务边界、长期规则</td><td>受信任来源发布，优先级稳定，不允许被后面的内容覆盖</td></tr>
+      <tr><td>任务 Prompt</td><td>当前任务的目标、输入输出</td><td>经过版本解析和变量校验，与当前任务绑定</td></tr>
+      <tr><td>已批准的 Skill</td><td>某类任务的方法、步骤和限制</td><td>按需加载，只在声明的能力与权限范围内生效</td></tr>
+      <tr><td>MCP 与远程 Agent 的能力说明</td><td>可调用的能力、参数和结果类型</td><td>由运行时按当前授权生成，与实际可用端点一致</td></tr>
+      <tr><td>知识、RAG 与记忆</td><td>事实、历史和参考信息</td><td>作为数据使用，保留出处、时间和相关性</td></tr>
+      <tr><td>用户输入与调用结果</td><td>当前请求和执行反馈</td><td>视为外部数据，不自动改变更高层的指令</td></tr>
+    </tbody>
+  </table></div>
+  <p class="cap">原书 15.9.2 节的信任分级。外部内容要变成内部规则，得先做成新的 Prompt 或 Skill 候选版本，评审发布后再用。</p>
+  <div class="notes" id="n-manifest"></div>
+</section>
+
 <section class="part" id="sim">
   <div class="part-head"><h2>为什么要 Agent Simulation</h2><span class="meta">原书 16.1–16.2 节</span></div>
   <div class="sec-lede">
@@ -184,6 +211,17 @@
     <p class="verdict3" id="rsV"></p>
   </div>
   <div class="lab"><p class="lab-t">超时注入在哪个位置？（原书 16.4.3 节）</p><div id="tmo"></div></div>
+  <div class="tblw" style="margin-top:22px"><table class="cmpt">
+    <thead><tr><th>用户模拟器的检查维度</th><th>检查什么</th><th>统计单位</th></tr></thead>
+    <tbody>
+      <tr><td>角色一致性</td><td>行为是否贴合 Persona</td><td>每条消息</td></tr>
+      <tr><td>反应规则符合率</td><td>触发条件命中时是否执行了反应</td><td>每次触发</td></tr>
+      <tr><td>信息可见性遵守</td><td>是否只披露用户认知范围内的信息</td><td>每次披露</td></tr>
+      <tr><td>目标终止规则符合率</td><td>是否按规则继续、澄清或停止</td><td>每个 Run</td></tr>
+      <tr><td>行为分布多样性</td><td>分支选择是否符合目标分布</td><td>每批 Run</td></tr>
+    </tbody>
+  </table></div>
+  <p class="cap">原书 16.4.2 节。每项指标都写明适用条件和统计单位，避免“模拟器准确率 95%”这种无从核对的说法；探索运行放宽分支、回归运行锁定关键行为，生成和评分用不同模型。</p>
   <div class="notes" id="n-run"></div>
 </section>
 
@@ -511,6 +549,71 @@ S.notes($('#n-scn'), {
     ['三道证据检查', '记录完整性、运行有效性、证据充分性；不足就“不可判定”。'],
     ['Testing Gate', '汇总证据，不是发布决定者。'],
     ['假设会过期', '仿真成功率升而生产人工接管升，是信号；校准按事件驱动。']
+  ]
+});
+
+/* ---------- 两份清单 ---------- */
+(function () {
+  var D = { spec: { code: "agent: incident-summary\nresources:\n  prompts:\n    - namespace: ops\n      name: incident-summary\n      version: 2.3.1\n  skills:\n    - namespace: ops\n      name: log-normalization\n      label: stable\n  mcpServers:\n    - namespace: ops\n      name: observability\n      label: stable", notes: {
+  "1": "这是哪个 Agent 的依赖声明。稳态 Agent 事先知道自己要什么，所以不需要语义搜索，只需要把声明解析成具体版本。",
+  "4": "资源按“命名空间 + 名字”引用，而不是写死一个文件路径或地址。可见范围由命名空间和调用身份决定。",
+  "6": "写死精确版本：内容完全确定，最适合安全策略、合规相关的 Prompt。",
+  "10": "只写标签 stable：由组织决定 stable 指向哪个版本，更新 Skill 不必重新发布 Agent。但运行记录里必须保存当时解析出的精确版本，不能只留标签名。",
+  "12": "MCP Server 也一样按标签解析；除了版本，还要记录实际连上的端点，这样才能分开分析“版本变了”和“实例换了”。"
+}, first: 10 }, mani: { code: "agent_release: incident-assistant@4.2.0\nmodel: model-x@2026-08\nresources:\n  prompt: ops/incident-diagnosis@3.1.2\n  skills:\n    - ops/log-analysis@2.4.0#sha256:...\n  mcp:\n    - ops/observability@1.8.0\n  agents:\n    - commerce/order-specialist@2.1.0\npolicy_version: production-policy@7\ndiscovery_requests:\n  - ard-request-8f21\n  - rad-request-20c4\nresolved_endpoints:\n  - type: mcp\n    resource: ops/observability@1.8.0\n    endpoint_id: cn-hangzhou-prod-02\ncontext_fingerprint: sha256:...", notes: {
+  "1": "这次调用用的是哪个 Agent 版本。回放时先恢复它。",
+  "2": "模型版本单独记录：结果变了，要能分清是模型变了还是资源变了。",
+  "4": "Prompt 的精确版本。即使配置里写的是标签，这里也必须是解析后的版本号。",
+  "6": "Skill 除了版本还带内容摘要（sha256），防止同一个版本号下内容被替换。",
+  "10": "用到的远程 Agent。动态 Agent 按任务发现的协作对象也记在这里。",
+  "11": "当时生效的策略版本：权限、审批规则变了，也要能追溯。",
+  "12": "这次动态发现的请求编号，可以查到 ARD / RAD 当时为什么选中这些资源、排除了哪些。",
+  "15": "实际连接的端点。同一个 MCP 版本可能部署在多个地域，故障排查要知道连的是哪一台。",
+  "19": "整份 Context 的指纹。回放不保证模型逐字输出相同，但要能证明输入条件和当时一致。"
+}, first: 4 } };
+  function show(v) { S.anno($('#mfA'), D[v]); }
+  S.seg($('#mfS'), show); show('spec');
+})();
+S.notes($('#n-manifest'), {
+  "c": [
+    [
+      "AgentSpec",
+      "发布前的依赖声明：要哪些 Prompt、Skill、MCP、Agent，按精确版本或按标签。"
+    ],
+    [
+      "Lock Manifest",
+      "部署时把 AgentSpec 里的逻辑引用解析成精确版本后锁定的清单。"
+    ],
+    [
+      "Context Manifest",
+      "每次调用装配完上下文后生成的结构化记录：版本、摘要、策略、发现请求、端点、指纹。"
+    ],
+    [
+      "Context Compiler",
+      "按来源、优先级、权限和 token 预算把各类内容装进上下文的组件。"
+    ]
+  ],
+  "p": [
+    [
+      "声明的是标签，记录的是版本",
+      "运行记录不能只留 stable 这样的标签名。"
+    ],
+    [
+      "发现与执行分开",
+      "比较候选只看摘要；选定后按精确版本取完整内容，版本对不上就重新发现。"
+    ],
+    [
+      "优先级看来源",
+      "措辞再强硬，Skill 和外部数据也拿不到系统指令的层级。"
+    ],
+    [
+      "渐进装配，裁剪可解释",
+      "按类别分预算，逐步加载，记录保留和省略了什么。"
+    ],
+    [
+      "回放重建的是输入条件",
+      "不保证逐字相同的输出，但能分清资源、模型、端点和外部数据哪个变了。"
+    ]
   ]
 });
 })();
