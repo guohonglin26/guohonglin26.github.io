@@ -58,11 +58,12 @@ main sub, main sup { font-size: 15px; line-height: 0; }
   <a href="../2026-10-19-modernrl-10/" data-part="10"><b>10</b>推理与搜索</a>
   <a href="../2026-10-19-modernrl-11/" data-part="11"><b>11</b>Agentic RL</a>
   <a href="../2026-10-19-modernrl-12/" data-part="12"><b>12</b>奖励黑客与评测</a>
+  <a href="../2026-10-19-modernrl-13/" data-part="13"><b>13</b>工业化训练</a>
 </nav>
 </section>
 
 <nav class="secnav" aria-label="本篇小节">
-  <div class="wrap"><a href="#mdp">LLM 即策略</a><a href="#rm">奖励模型</a><a href="#ppo">PPO-RLHF</a><a href="#log">读日志与排障</a><a href="#back">回扣三问</a></div>
+  <div class="wrap"><a href="#mdp">LLM 即策略</a><a href="#rm">奖励模型</a><a href="#ppo">PPO-RLHF</a><a href="#log">读日志与排障</a><a href="#cai">AI 反馈</a><a href="#back">回扣三问</a></div>
 </nav>
 <div class="wrap">
 <div class="ask3">
@@ -221,6 +222,35 @@ main sub, main sup { font-size: 15px; line-height: 0; }
   </table></div>
   <p class="book-ref">原文 ppo-rlhf-loop.md 失败模式表。</p>
   <div class="notes" id="n-log"></div>
+</section>
+
+<section class="part" id="cai">
+  <div class="part-head"><h2>用 AI 反馈代替人类标注：Constitutional AI 与 RLAIF</h2><span class="meta">原文 docs/chapter21_cai_rlvr/hhh-practice.md（13.3 节）</span></div>
+  <div class="sec-lede">
+    <p>RLHF 的瓶颈常常不在算法，而在<strong>标注</strong>。原教程讲 Anthropic 2022 年碰到的两个具体问题：让人给“怎么制造武器”的两种回答打分，又慢、心理负担又重、还容易不一致；而且有用和无害在 RLHF 里互相拉扯，模型越想避免有害，就越倾向于回避一切稍微敏感的问题，变成什么都拒绝的助手（evasiveness，回避性）。Constitutional AI（CAI，Bai 等 2022）的思路是：不让人回答“哪个更安全”，而是给模型一组写成自然语言的<strong>原则</strong>（称为宪法，来源包括《世界人权宣言》、行业信任与安全准则等），让模型按原则评估自己的回答。</p>
+    <p>CAI 分两条路线，共用同一份宪法。<strong>SL-CAI</strong>（监督）：对红队提示先生成回答，按某条原则让模型自我批评，再写出修正版，用（提示, 修正版）做 SFT。<strong>RL-CAI</strong>：对每个提示采两个回答，让模型当裁判按原则选出更好的一个，得到偏好对，训练奖励模型，再跑和第 7 篇前面完全一样的 PPO（奖励减 KL）。唯一换掉的是“标注员”，所以 RL-CAI 也叫 <strong>RLAIF</strong>（来自 AI 反馈的强化学习）。原教程引用 Anthropic 论文的结论：CAI 训出的模型比纯 RLHF 版本更无害，有用性基本不降，缓解了两者互相拉扯的问题。</p>
+    <p>RLAIF 的好处是便宜和快：原教程的粗算是 50 万条偏好对，人工标注约百万美元、三个月，AI 裁判只要几千美元、几天（数字为原教程估算，量级可参考，具体价格会变）。代价是<strong>质量上限就是裁判本身</strong>：用模型评判同一个模型，会偏好风格更像自己的回答（自我偏好偏差）；被评的模型能力超过裁判时，RLAIF 反而可能强化错误答案，这正是第 12 篇讲的谄媚和奖励模型过度优化。所以原教程总结的实际做法是“大量 AI 反馈 + 少量高质量人类偏好”的混合。再往前一步，Meta 2024 年的 Self-Rewarding Language Models 让同一个模型既生成回答、又当裁判给自己出偏好数据，迭代训练。</p>
+    <p class="go">点读原教程的 SL-CAI 最小伪代码，看“批评 → 修正”是怎么落到数据上的。</p>
+  </div>
+  <div class="lab">
+    <p class="lab-t">SL-CAI 的数据生成（原教程伪代码）</p>
+    <div id="caiA"></div>
+  </div>
+  <div class="tblw" style="margin-top:22px"><table class="cmpt">
+    <thead><tr><th></th><th>RLHF</th><th>RLAIF（RL-CAI）</th></tr></thead>
+    <tbody>
+      <tr><td>偏好来源</td><td>人类标注员成对比较</td><td>AI 裁判按宪法原则选择</td></tr>
+      <tr><td>成本与速度</td><td>贵，周到月级</td><td>只有推理成本，天级</td></tr>
+      <tr><td>训练流程</td><td>奖励模型 + PPO（奖励减 KL）</td><td>完全相同，只换了偏好数据的来源</td></tr>
+      <tr><td>适合</td><td>价值观、风格、常识</td><td>规则清楚、裁判能力足够的领域</td></tr>
+      <tr><td>主要风险</td><td>标注不一致、标注员能力上限</td><td>自我偏好偏差、裁判能力上限、谄媚</td></tr>
+    </tbody>
+  </table></div>
+  <p class="cap">据原教程 13.3 节的对照表整理，略去了其中无法核对来源的具体数值（标注单价、一致性系数等）。</p>
+  <div class="confuse"><h4>易混辨析：CAI、RLAIF、Self-Rewarding</h4>
+    <p><b>CAI</b> 是整套方法：一份自然语言宪法，加上 SL-CAI（自我批评与修正后做 SFT）和 RL-CAI 两个阶段。<b>RLAIF</b> 特指用 AI 裁判产生偏好对、再走奖励模型 + PPO 的那一段，RL-CAI 是它的一个实例，裁判也可以不用宪法。<b>Self-Rewarding</b> 更进一步：裁判就是正在训练的模型本身，训练和出数据一起迭代。</p>
+  </div>
+  <div class="notes" id="n-cai"></div>
 </section>
 
 <section class="part" id="back">
@@ -397,6 +427,54 @@ S.ablate($('#abR'), { parts: [
 ], onChange: function (off) {
   S.$$('.fig g[data-k]').forEach(function (g) { g.classList.toggle('gone', !!off[g.getAttribute('data-k')]); });
 } });
+
+/* ---------- SL-CAI 点读 ---------- */
+S.anno($('#caiA'), { first: 6, code: "def sl_cai_generate(base_model, redteam_prompts, constitution):\n    sft_pairs = []\n    for x in redteam_prompts:\n        y0 = base_model.generate(x)\n        c = constitution.sample()\n        critique = base_model.generate(\n            f\"{x}\\n回答：{y0}\\n按以下原则批评上面的回答：{c}\\n批评：\")\n        y_star = base_model.generate(\n            f\"{x}\\n原始回答：{y0}\\n批评：{critique}\\n请按 '{c}' 改写：\")\n        sft_pairs.append({\"prompt\": x, \"response\": y_star})\n    return sft_pairs", notes: {
+  "3": "输入是红队提示：专门设计来诱导有害回答的问题。",
+  "4": "先让模型自由回答，这个原始回答往往有问题。",
+  "5": "从宪法里抽一条原则。原则是自然语言写的规则，例如“挑选最无害的回答；都无害时挑更有用的那个”。",
+  "6": "自我批评：让模型按这条原则挑自己回答的毛病。产出的是一段文字，人能读，也相当于先想清楚错在哪。",
+  "8": "自我修正：带着原始回答和批评，按原则重写。",
+  "10": "只保留（提示, 修正版回答）当 SFT 数据。这就是 SL-CAI：直接教模型写出无害回答。"
+} });
+S.notes($('#n-cai'), {
+  "c": [
+    [
+      "Constitutional AI",
+      "用一组自然语言原则让模型评估、修正自己的回答，减少对人工安全标注的依赖。"
+    ],
+    [
+      "宪法 Constitution",
+      "写成自然语言的原则清单，每条都可以拼进批评或裁判的提示词。"
+    ],
+    [
+      "SL-CAI",
+      "自我批评 → 自我修正 → 用修正版做 SFT。"
+    ],
+    [
+      "RLAIF",
+      "AI 裁判产生偏好对 → 训练奖励模型 → PPO；流程和 RLHF 相同，只换了偏好来源。"
+    ],
+    [
+      "回避性 evasiveness",
+      "模型为了避免有害而拒绝一切稍敏感的问题，有用性被牺牲。"
+    ]
+  ],
+  "p": [
+    [
+      "RLHF 的瓶颈常在标注",
+      "有害内容标注慢、伤人、不一致，有用与无害互相拉扯。"
+    ],
+    [
+      "RLAIF 便宜但有上限",
+      "质量受裁判能力限制，还有自我偏好偏差。"
+    ],
+    [
+      "实际多用混合",
+      "大量 AI 反馈 + 少量高质量人类偏好。"
+    ]
+  ]
+});
 })();
 </script>
 </body>

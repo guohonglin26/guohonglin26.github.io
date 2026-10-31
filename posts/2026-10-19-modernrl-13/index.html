@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>大模型 RL 的工业化：训推一致、异步调度、奖励与成本、四层排查</title>
+<meta name="description" content="动手学现代强化学习笔记（十三）：从单机脚本放大到训练集群时，算法没变、执行方式变了；五个角色、三个瓶颈与框架选型阶梯；同步与异步训练、经验陈旧的修正比率；训推不一致从哪里来、为什么 PPO 裁剪修不了它；veRL 的 ResourcePool、Worker、Driver；可验证奖励与偏好奖励、按通过率筛题、奖励尺度对齐；GPU 小时估算；按因果顺序的四层排查与 KL、熵的读法；一条轨迹从任务到回流的数据工程。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='15' width='18' height='4' rx='1' fill='none' stroke='%2313171C' stroke-width='2'/%3E%3Cpath d='M12 15L16 4' stroke='%2313171C' stroke-width='2.2' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='4' r='2.2' fill='%232340D6'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../assets/site.css">
+<link rel="stylesheet" href="../study-shared/series.css">
+<script src="../../assets/site.js"></script>
+<script src="../study-shared/series.js"></script>
+<script src="../study-shared/rlevo.js"></script>
+
+</head>
+<body data-series="modernrl-series" data-part="13" data-rail>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="../../">
+      <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><rect x="7" y="9" width="10" height="11" rx="1.5" fill="var(--s1)"/></svg>
+      AI 观察笔记
+    </a>
+    <nav class="site-nav">
+      <a href="../../">全部文章</a>
+      <button class="theme-btn" type="button">深色</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+<section class="hero wrap">
+  <p class="kicker"><span>技术学习</span><span>动手学现代强化学习 · 13</span><span>对应原教程第 18 章（docs/chapter16_llm_rl_industrial）</span><span>约 50 分钟</span></p>
+  <h1>算法没变，<em>执行方式变了</em></h1>
+  <p class="lead">前面十二篇的算法，在小模型上一个脚本就能把生成、打分、更新串起来。换成 7B、70B 的生产模型，问题立刻变成另一类：几个模型装不进一组 GPU，生成一条回答要几秒而更新只要几百毫秒，新权重还得及时同步回生成端；两套引擎算出的概率对不上；一批任务里最慢的那条拖住所有人；奖励涨了却不知道该先查哪里。原教程第 18 章专门讲这些“让算法在集群上跑起来”的问题。这一篇是后来对照原文补上的，放在系列最后。</p>
+  <p class="credit">本系列是开源教程《<a href="https://github.com/walkinglabs/hands-on-modern-rl" rel="noopener">Hands-On Modern RL（动手学现代强化学习）</a>》（WalkingLabs 社区编写的开源课程，CC BY-NC-SA 4.0 协议；本笔记依据 2026 年 10 月 1 日的仓库版本（docs/ 讲义与 code/ 实验代码））的学习笔记。原教程沿“CartPole → DQN → 策略梯度 → PPO → RLHF / DPO / GRPO → Agentic RL”一条线展开，这里按它的章节重新组织成十二篇，用自己的话重讲，并把关键实验搬进浏览器：CartPole 的 DQN 与 PPO 是用 JavaScript 真实训练的缩小版，其余公式演示的数值都在页面里实时计算。原教程数据（如训练日志 CSV、实验表格）标“原书数据”，为演示设的数值标“示意”，每节标出对应的原文路径。原教程自述“由 AI 协助生成、尚未全面审稿”，本笔记只采信能与原始论文对上的内容，存疑处单独注明。改编内容同样按 CC BY-NC-SA 4.0 分享、仅限非商业用途；数学推导部分可与同站<a href="../2026-10-19-rlmath/">《强化学习的数学原理》系列</a>对照着读。</p>
+<nav class="series" aria-label="系列目录">
+  <a href="../2026-10-19-modernrl/"><b>总览</b>算法地图</a>
+  <a href="../2026-10-19-modernrl-1/" data-part="1"><b>01</b>训练闭环</a>
+  <a href="../2026-10-19-modernrl-2/" data-part="2"><b>02</b>DQN 家族</a>
+  <a href="../2026-10-19-modernrl-3/" data-part="3"><b>03</b>策略梯度</a>
+  <a href="../2026-10-19-modernrl-4/" data-part="4"><b>04</b>PPO 与 GAE</a>
+  <a href="../2026-10-19-modernrl-5/" data-part="5"><b>05</b>连续控制</a>
+  <a href="../2026-10-19-modernrl-6/" data-part="6"><b>06</b>离线与模仿</a>
+  <a href="../2026-10-19-modernrl-7/" data-part="7"><b>07</b>RLHF</a>
+  <a href="../2026-10-19-modernrl-8/" data-part="8"><b>08</b>DPO 家族</a>
+  <a href="../2026-10-19-modernrl-9/" data-part="9"><b>09</b>GRPO 与 RLVR</a>
+  <a href="../2026-10-19-modernrl-10/" data-part="10"><b>10</b>推理与搜索</a>
+  <a href="../2026-10-19-modernrl-11/" data-part="11"><b>11</b>Agentic RL</a>
+  <a href="../2026-10-19-modernrl-12/" data-part="12"><b>12</b>奖励黑客与评测</a>
+  <a href="../2026-10-19-modernrl-13/" aria-current="page" data-part="13"><b>13</b>工业化训练</a>
+</nav>
+</section>
+
+<nav class="secnav" aria-label="本篇小节">
+  <div class="wrap"><a href="#scale">从脚本到集群</a><a href="#mismatch">训推不一致</a><a href="#reward">奖励与选题</a><a href="#cost">算一笔账</a><a href="#debug">四层排查</a><a href="#data">数据工程</a><a href="#back">回扣三问</a></div>
+</nav>
+<div class="wrap">
+<div class="ask3">
+  <h3>读完这一篇，你应该能回答</h3>
+  <ol>
+    <li>同一套 PPO 或 GRPO，从单机脚本放大到集群时多出了哪些问题？什么时候该用异步训练，代价是什么？</li>
+    <li>两端读的是同一份权重，为什么算出的概率还会对不上？为什么 PPO 的裁剪修不了它？</li>
+    <li>训练出问题时，为什么要按“数据与奖励 → 策略变化 → 数值更新 → 训练系统”的顺序排查？</li>
+  </ol>
+</div>
+
+<section class="part" id="scale">
+  <div class="part-head"><h2>从脚本到集群：五个角色，三个瓶颈</h2><span class="meta">原文 single-machine-to-industrial.md（18.1 节）</span></div>
+  <div class="sec-lede">
+    <p>不管 PPO 还是 GRPO，一轮训练都是五个角色接力：<strong>Actor</strong> 生成回答，<strong>奖励模型</strong>或规则验证器打分，<strong>Reference</strong> 提供 KL 参照，PPO 还要 <strong>Critic</strong> 估优势（GRPO 用组内相对分数代替），最后<strong>训练进程</strong>更新 Actor 并把新权重交给下一轮生成。模型只有几亿参数时，五个角色可以在一台机器上依次跑完。规模一大，瓶颈出在执行方式上：几个模型装不进有限的显存；生成比一次参数更新慢得多；更新后的权重还要及时同步回生成进程。任何一环等太久，其他 GPU 就在空转。原教程的一句话：<strong>训练框架没有改变算法的数学定义，只是安排这些角色在什么设备上运行、何时交换数据、何时同步参数。</strong></p>
+    <p>原教程给的选型顺序就是问题出现的顺序：第一次跑后训练，用 LlamaFactory 或 TRL，先确认数据、奖励和算法配置是对的；模型放不下、生成太慢，再上 veRL、slime、OpenRLHF 或 NeMo-Aligner，它们的区别主要在资源调度和训练、推理后端（如 slime 用 Megatron + SGLang，OpenRLHF 用 Ray + DeepSpeed + vLLM）；任务开始调用工具、轨迹长短不一，再看 AReaL、LlamaRL、AgentRL、ROLL，它们还要管理环境的创建、复位和回收。</p>
+    <p>长短不一会带来什么？假设一批里九道短数学题很快结束，一道工具任务要跑几分钟。<strong>同步训练</strong>等整批完成再更新，数据最新，但所有进程都在等最慢的那条；<strong>异步训练</strong>让完成的轨迹先进队列，训练进程持续取数据，等待少了，代价是有的轨迹由几轮之前的旧 Actor 生成，变“陈旧”了。AReaL 为每条轨迹记下生成它的策略版本，用重要性比率衡量陈旧程度，偏离 1 越远就降低权重，差太多直接丢弃。</p>
+    <div class="eqx"><div class="eqx-f">ρ<sub>t</sub><sup>stale</sup> = <span data-t="1">π<sub>θ</sub>(a<sub>t</sub>|s<sub>t</sub>)</span> / <span data-t="2">π<sub>θ<sub>gen</sub></sub>(a<sub>t</sub>|s<sub>t</sub>)</span></div>
+    <ul class="eqx-k">
+      <li data-t="1"><b>π<sub>θ</sub>(a<sub>t</sub>|s<sub>t</sub>)</b>当前正在训练的模型选这个动作的概率<em>训练端算出</em></li>
+      <li data-t="2"><b>π<sub>θ<sub>gen</sub></sub>(a<sub>t</sub>|s<sub>t</sub>)</b>当初生成这条轨迹的旧模型选这个动作的概率<em>生成时记录下来，要和轨迹一起保存</em></li>
+    </ul>
+    <p class="eqx-n">两者都是 0.2，比率为 1，经验仍然“新鲜”；0.1 对 0.2，比率 0.5，当前模型已经不太会这样做了。</p></div>
+    <p class="go">拖动最慢那条任务的耗时，看同步训练里生成 GPU 有多少时间在等。</p>
+  </div>
+  <div class="lab">
+    <p class="lab-t">同步训练的等待（一批 10 条：9 条短任务各 10 秒，1 条长任务；示意）</p>
+    <label class="ctl"><span>长任务耗时（秒） <output id="syL">120</output></span><input type="range" id="sySl" min="10" max="600" step="10" value="120"></label>
+    <div class="read" id="syR"></div>
+    <p class="cap" id="syW"></p>
+  </div>
+  <div class="notes" id="n-scale"></div>
+</section>
+
+<section class="part" id="mismatch">
+  <div class="part-head"><h2>训推不一致：同一组权重，不同的概率</h2><span class="meta">原文 distributed-sync.md（18.4 节）、modern-industrial-practice.md（18.3 节）</span></div>
+  <div class="sec-lede">
+    <p>参数同步解决的是版本问题：生成端和训练端拿到同一组权重。但<strong>同一组权重，不等于同一组概率</strong>。生成端用 vLLM 或 SGLang，配 KV Cache 和 FP8 / BF16 低精度，一切为速度服务；训练端用 FSDP 或 Megatron，BF16 / FP32，还要保留反向传播的计算图。同一个 token，生成端算出 0.30，训练端重算得 0.29，两边都“没错”。MoE 模型更麻烦：两套路由实现略有差异，同一个 token 可能激活不同的专家。这就是<strong>训推不一致</strong>（Training-Inference Mismatch）。</p>
+    <p>它为什么要紧？PPO 的比率 r<sub>t</sub> = π<sub>θ</sub> / π<sub>old</sub> 有个前提：分母必须是<strong>生成动作时真正使用的策略</strong>。如果回答来自生成引擎，训练端却用另一条计算路径重算 π<sub>old</sub>，那 r<sub>t</sub> 在更新开始之前就已经不准了。<strong>裁剪只能限制参数更新的幅度，修正不了两个引擎算出的概率差。</strong>原教程举的数字：生成端记录某 token 的对数概率是 −1.32，训练端（版本也晚了一步）重算是 −1.51，比率 e<sup>−0.19</sup> ≈ 0.83，没有任何采样随机性，却偏离了 1 约 17%，而且会安静地混进每一次更新。</p>
+    <p>排查顺序：先核对生成端用的模型版本，确认同步完成；再用同一批 token 分别记下两端的对数概率，看误差集中在哪；然后对齐精度和算子；MoE 再额外记录专家路由。修正手段包括：直接保存生成时的对数概率（不拿重算值冒充行为策略），训练前重算并逐 token 对比，用截断重要性采样（TIS）限制极端比率，以及 MoE 的路由回放（R3）。</p>
+    <p>资源安排上，原教程用 veRL（HybridFlow）说明一种常见拆法：<strong>ResourcePool</strong> 把 GPU 分组，模型可以共享一组 GPU（colocate），也可以各占一组（disaggregated）；<strong>Worker</strong> 封装一个模型实例，Actor Worker 管损失、反向和优化器，Rollout Worker 管批量生成和权重同步；<strong>Driver</strong> 是单控制器，按顺序执行算法主循环：同步权重 → 采样 → 打分 → 估值 → 更新 Actor → 更新 Critic。</p>
+    <p class="go">先估一下原教程那个例子的比率。</p>
+  </div>
+  <div class="lab-row">
+    <div class="lab"><p class="lab-t">先估再算</p><div id="mmG"></div></div>
+    <div class="lab">
+      <p class="lab-t">两端对数概率差多少，比率偏多少</p>
+      <label class="ctl"><span>训练端减生成端的对数概率差 Δ <output id="mmDv">−0.19</output></span><input type="range" id="mmD" min="-0.5" max="0.5" step="0.01" value="-0.19"></label>
+      <div class="read" id="mmR"></div>
+      <p class="cap">比率 = e<sup>差值</sup>。PPO 裁剪常用 ε = 0.2，对应的对数差区间是 [ln 0.8, ln 1.2] ≈ [−0.22, +0.18]：超出这个范围，这个 token 一进入训练就已经顶到裁剪边界。</p>
+    </div>
+  </div>
+  <div class="confuse"><h4>易混辨析：经验陈旧 vs 训推不一致</h4>
+    <p><b>经验陈旧</b>：轨迹由几轮之前的旧版本 Actor 生成，是<b>版本</b>差。异步训练必然出现，用版本号记录、重要性比率降权或丢弃来处理。</p>
+    <p><b>训推不一致</b>：版本相同，但两套引擎的精度、算子、MoE 路由不同，算出的概率不一样，是<b>计算路径</b>差。用记录真实行为概率、对齐精度、TIS 和路由回放来处理。两者会叠加，都会让 PPO 的比率在更新前就失真。</p>
+  </div>
+  <div class="notes" id="n-mismatch"></div>
+</section>
+
+<section class="part" id="reward">
+  <div class="part-head"><h2>奖励与选题：两类奖励，只练“有时对、有时错”的题</h2><span class="meta">原文 single-machine-to-industrial.md 第 2 节</span></div>
+  <div class="sec-lede">
+    <p>后训练常用两类奖励。<strong>可验证奖励</strong>（VR）来自确定性的验证函数，比如抽出最终答案和标准答案比对、运行单元测试，标注成本接近零，噪声来自解析器、测试覆盖和执行环境，要防的是测试覆盖不足和规则被绕过。<strong>偏好奖励</strong>（PPR）来自从成对偏好里学出来的奖励模型，适合开放对话、写作、安全和风格，噪声来自标注分歧和奖励模型的泛化误差，要防模型去钻奖励模型的偏差。产品模型通常两类都要，可以按任务类型加权组合；生成式奖励模型（让大模型输出“A 更好”或“B 更好”，可以带推理过程）是近两年的趋势。代码任务还可以分三层验证：规则层过滤格式和明显硬编码，公开测试验证已知行为，隐藏测试和模型裁判检查泛化。</p>
+    <p>不是所有可验证的题都值得练。原教程引用字节 Seed-Thinking 的做法：先用基座模型对每道题采 16 次，统计通过率，<strong>只保留通过率在 0.1 到 0.9 之间的题</strong>，再按难度分桶。道理和第 9 篇的 GRPO 一样：一组回答全对或全错，组内方差为零，优势为零，这道题对梯度没有贡献。DAPO 的动态采样也是持续监控组内方差，降低低方差题的采样比例。</p>
+    <p>混合多种奖励时最大的工程问题是<strong>尺度不一致</strong>：数学题是 0 / 1，代码通过率在 0 到 1 之间，生成式奖励可能在 −3 到 3，长度惩罚在 ±0.5。直接相加，大尺度的那项就主导了梯度。标准做法是按任务域在 batch 内做 z-score 归一化，再相加。</p>
+    <p class="go">拖动每题采样数 G，看通过率为 p 的题有多大概率给出非零的学习信号。</p>
+  </div>
+  <div class="lab">
+    <p class="lab-t">一组 G 个回答里“有对有错”的概率：1 − p<sup>G</sup> − (1 − p)<sup>G</sup></p>
+    <label class="ctl"><span>每题采样数 G <output id="sgGv">16</output></span><input type="range" id="sgG" min="2" max="32" step="1" value="16"></label>
+    <div id="sgC"></div>
+    <p class="cap" id="sgW"></p>
+  </div>
+  <div class="notes" id="n-reward"></div>
+</section>
+
+<section class="part" id="cost">
+  <div class="part-head"><h2>算一笔账：GPU 小时</h2><span class="meta">原文 single-machine-to-industrial.md 第 3 节</span></div>
+  <div class="sec-lede">
+    <p>估算成本不是为了精确到小时，而是快速判断一个方案在手头资源下可不可行。原教程给的公式：训练总 FLOPs 约为 6 × 激活参数量 × 训练 token 数（前向 2 倍、反向 4 倍），除以单卡峰值算力和实际利用率（MFU，典型 30%–50%），再换算成小时。MoE 模型只算每个 token 实际路由到的专家参数。</p>
+    <div class="eqx"><div class="eqx-f">GPU-hours ≈ 6 · <span data-t="1">N<sub>active</sub></span> · <span data-t="2">N<sub>tokens</sub></span> / ( <span data-t="3">GPU_FLOPS</span> · <span data-t="4">MFU</span> · 3600 )</div>
+    <ul class="eqx-k">
+      <li data-t="1"><b>N<sub>active</sub></b>每个 token 实际参与计算的参数量<em>Dense 等于总参数量；MoE 只算激活的专家</em></li>
+      <li data-t="2"><b>N<sub>tokens</sub></b>训练 token 总数<em>RL 里还要算上生成的 token</em></li>
+      <li data-t="3"><b>GPU_FLOPS</b>单卡峰值算力<em>查规格，注意精度</em></li>
+      <li data-t="4"><b>MFU</b>实际达到的算力比例<em>典型 30%–50%</em></li>
+    </ul></div>
+    <p>RL 比 SFT 难算，因为一步包含四部分：生成回答、更新 Actor、Reference 前向、计算奖励。原教程给的典型配比（7B 模型、每步 512 个提示 × 8 条回答）里，<strong>生成占总计算量的 50%–60%</strong>，这也是各家框架都要单独优化生成吞吐、异步调度和参数同步的原因。控制成本的几条：数据筛选优先于堆算力；先在小模型上验证算法和超参再放大；BF16 比 FP32 快约 2 倍，FP8 再快 1.5–2 倍但更考验稳定性；各阶段保留检查点，避免从零重训。</p>
+    <p class="go">先估一下原教程的例子，再用计算器换几组参数。</p>
+  </div>
+  <div class="lab-row">
+    <div class="lab"><p class="lab-t">先估再算</p><div id="cgG"></div></div>
+    <div class="lab">
+      <p class="lab-t">GPU 小时计算器</p>
+      <div class="ctl-grid">
+        <label class="ctl"><span>激活参数（十亿） <output id="cNv">7</output></span><input type="range" id="cN" min="1" max="70" step="1" value="7"></label>
+        <label class="ctl"><span>训练 token（十亿） <output id="cTv">1</output></span><input type="range" id="cT" min="0.1" max="20" step="0.1" value="1"></label>
+        <label class="ctl"><span>单卡峰值（TFLOPS） <output id="cFv">989</output></span><input type="range" id="cF" min="100" max="2000" step="1" value="989"></label>
+        <label class="ctl"><span>MFU <output id="cMv">40%</output></span><input type="range" id="cM" min="0.1" max="0.6" step="0.01" value="0.4"></label>
+      </div>
+      <div class="read" id="cR"></div>
+    </div>
+  </div>
+  <div class="notes" id="n-cost"></div>
+</section>
+
+<section class="part" id="debug">
+  <div class="part-head"><h2>四层排查：按因果顺序，从上往下修</h2><span class="meta">原文 modern-industrial-practice.md（18.3 节）</span></div>
+  <div class="sec-lede">
+    <p>奖励、KL 和熵、loss 与梯度、两端概率，四条曲线摆在一起先看哪条？原教程的答案在因果顺序里：<strong>数据和奖励</strong>决定模型学什么，<strong>策略指标</strong>描述模型怎样改变，<strong>数值指标</strong>反映参数能不能正常更新，<strong>训练系统</strong>决定日志里的概率是不是真的来自生成回答的那个策略。上游错了，下游曲线一定跟着乱；反过来，下游的工具修不了上游的问题，梯度裁剪只能限制步子，奖励衡量错了目标，裁剪之后每一步仍然朝着错的方向走。这和第 12 篇“由外到内”的排障顺序是同一个思路。</p>
+    <p>原教程第一层的例子：200 步里训练奖励从 0.30 涨到 0.80，MATH-500 一直是 42%，平均回答长度从 400 涨到 1200 token。奖励翻倍而独立评测不动，说明模型学到的是更容易得奖励的形式。第二层看<strong>KL 和熵要一起读</strong>：参考策略 [0.5, 0.5]，当前 [0.80, 0.20] 时 KL ≈ 0.19、熵 ≈ 0.50；集中到 [0.95, 0.05] 时 KL ≈ 0.49、熵 ≈ 0.20。KL 单独变大可能只是正常脱离 SFT，熵单独下降可能是找到了好解法；两者同时陡变，才说明模型在远离参考的同时放弃了修正的余地。但也要排除题太简单：全组全对时熵也会自然下降。第三层看 loss 尖刺和梯度暴涨，NaN 之前通常有前兆；固定一个 batch 反复跑，稳定复现说明问题在这批数据或某条确定的计算路径，随机出现则更可能是精度或优化器状态。第四层就是上一节的训推不一致。</p>
+    <p class="go">拖动当前策略选动作 A 的概率，看 KL 和熵怎样同时变化（参考策略为 [0.5, 0.5]）。</p>
+  </div>
+  <div class="lab">
+    <p class="lab-t">两动作例子里的 KL 与熵</p>
+    <label class="ctl"><span>当前策略选 A 的概率 <output id="klPv">0.80</output></span><input type="range" id="klP" min="0.5" max="0.99" step="0.01" value="0.8"></label>
+    <div class="read" id="klR"></div>
+    <div id="klC"></div>
+    <p class="cap">原教程的两个点：0.80 时 KL ≈ 0.19、熵 ≈ 0.50；0.95 时 KL ≈ 0.49、熵 ≈ 0.20。真实训练里动作是整个词表，数值不同，但读法相同：看斜率。</p>
+  </div>
+  <div class="tblw" style="margin-top:22px"><table class="cmpt">
+    <thead><tr><th>层级</th><th>主要信号</th><th>首先检查</th><th>对应工具</th></tr></thead>
+    <tbody>
+      <tr><td>数据与奖励</td><td>奖励升、独立评测不动</td><td>奖励规则、数据重复、评测污染、长度</td><td>重写奖励、清洗数据</td></tr>
+      <tr><td>策略变化</td><td>KL 快速升高、熵快速下降</td><td>更新幅度、KL 约束、采样难度、版本</td><td>降低学习率、收紧 KL</td></tr>
+      <tr><td>数值更新</td><td>loss / 梯度暴涨、NaN</td><td>学习率、精度、异常 batch、裁剪</td><td>梯度裁剪、优化器</td></tr>
+      <tr><td>训练系统</td><td>两端概率对不上、版本错位</td><td>权重同步、token、精度、MoE 路由</td><td>对齐版本与重算概率</td></tr>
+    </tbody>
+  </table></div>
+  <p class="cap">原教程 18.3 节的四层表。常见误区是“从下往上修”：看到 NaN 就加裁剪、看到 KL 大就降学习率，问题若在奖励上，只会让模型更平稳地朝着有漏洞的目标优化。</p>
+  <div class="notes" id="n-debug"></div>
+</section>
+
+<section class="part" id="data">
+  <div class="part-head"><h2>数据工程：一条轨迹的一生</h2><span class="meta">原文 data-engineering.md（18.5 节）、industrial-post-training.md（18.2 节）</span></div>
+  <div class="sec-lede">
+    <p>多机训练每小时能产生几十万条轨迹，从任务生成、环境执行、评分、存储到回流，任何一环没处理好，要么数据大量流失，要么错误轨迹反复进入训练。<strong>任务从哪来</strong>：公开基准适合冷启动和回归，合成任务扩充特定类型，交互环境任务覆盖终端、浏览器和工具，真实失败样本带来题库覆盖不到的新组合，安全与对抗数据守住边界。原教程举的公开数字：MiniCPM 5 约 3 万个高质量种子提示，三分之二是推理、数学、代码，三分之一是工具与代理任务；Qwen-AgentWorld 从 20 个领域 5000 个种子任务起步，两周扩到 3 万个。调度上优先采样近期正确率在 0.3 到 0.7 之间的任务，失败案例加权，已经大量成功的类型降频，并持续混入少量安全任务，防止能力提升时边界被遗忘。</p>
+    <p><strong>记什么</strong>：很多实现只存提示、回答、奖励和对数概率，够算一次梯度，却不够排查“奖励为什么突然下降”。原教程建议分五层保存：任务层（类型、难度、来源、环境配置、模板版本）、轨迹层（每步 token 和对数概率、采样参数、模型版本）、交互层（工具调用和返回、执行输出、错误）、奖励层（每个奖励函数的值、权重、聚合方式、测试通过数）、系统层（worker、时间戳、检查点、镜像版本、随机种子）。超时、环境错误、格式错误的轨迹单独标记，既不直接混进训练，也不直接删掉。<strong>进训练前</strong>还要过质量关：高分可能来自验证器漏洞或格式绕过，低分也可能是奖励函数报错或工具超时。合格的轨迹再<strong>回流</strong>到下一轮 SFT、奖励模型训练和任务池，形成后训练闭环。</p>
+    <p class="go">点读一条轨迹记录，看每一层字段是为了回答什么问题（记录为示意，字段分层取自原教程）。</p>
+  </div>
+  <div class="lab">
+    <p class="lab-t">一条 rollout 记录（示意）</p>
+    <div id="rcA"></div>
+  </div>
+  <div class="notes" id="n-data"></div>
+</section>
+
+<section class="part" id="back">
+  <div class="part-head"><h2>回扣开头的三个问题</h2><span class="meta">先自己答，再点开</span></div>
+  <div class="fxc">
+    <h3>本篇公式卡</h3>
+    <div class="fx">经验陈旧比率：ρ_t^stale = π_θ(a_t|s_t) / π_θgen(a_t|s_t)，偏离 1 越远越陈旧，降权或丢弃</div>
+    <div class="fx">训推偏差：两端对数概率差 Δ，比率 = e^Δ；原教程例子 e^(−1.51+1.32) = e^−0.19 ≈ 0.83</div>
+    <div class="fx">可验证奖励 r_VR = 1[extract(o) = answer(q)]；组合 R = α·R_VR + (1 − α)·R_GenRM，先按域 z-score 再相加</div>
+    <div class="fx">有学习信号的概率 1 − p^G − (1 − p)^G；保留通过率 0.1–0.9 的题</div>
+    <div class="fx">GPU-hours ≈ 6·N_active·N_tokens / (GPU_FLOPS·MFU·3600)；7B × 10 亿 token、989 TFLOPS、MFU 40% ≈ 29.5</div>
+    <div class="fx">KL = Σ π_θ ln(π_θ/π_ref)，H = −Σ π_θ ln π_θ；[0.80, 0.20]：KL ≈ 0.19、H ≈ 0.50；[0.95, 0.05]：KL ≈ 0.49、H ≈ 0.20</div>
+  </div>
+  <div class="ask3" style="margin-top:22px">
+    <details><summary>1. 放大到集群多出了哪些问题？什么时候用异步，代价是什么？</summary><p class="ans">算法没变，执行方式变了：几个模型装不进一组 GPU；生成远慢于更新，训练 GPU 空等；新权重要同步回生成端；Agent 任务还要管理环境。轨迹耗时差别大（工具调用、浏览器、长交互）时用异步，减少等待；代价是经验陈旧，要记录生成版本、用重要性比率降权，差太多就丢弃。数学、代码这类耗时接近的任务先用同步。</p></details>
+    <details><summary>2. 同一份权重为什么概率对不上？为什么裁剪修不了？</summary><p class="ans">生成端（vLLM / SGLang、FP8 / BF16、推理算子）和训练端（FSDP / Megatron、BF16 / FP32、训练算子）计算路径不同，MoE 路由也可能不同。PPO 比率的分母必须是真实的行为策略，分母一旦用重算值，比率在更新前就已失真；裁剪只限制更新幅度，不纠正概率本身的偏差。要记录生成时的对数概率、逐 token 对比、对齐精度，用 TIS、路由回放等方法修正。</p></details>
+    <details><summary>3. 为什么排查要从数据与奖励开始？</summary><p class="ans">四层是因果顺序：奖励决定学什么，策略指标描述怎么变，数值指标反映能否正常更新，系统决定日志里的概率是否可信。上游出错，下游一定跟着乱；下游的工具（裁剪、优化器、降学习率）修不了上游，只会让模型更平稳地朝错误目标走，把故障藏得更深。</p></details>
+  </div>
+</section>
+<nav class="pager" aria-label="翻页"><a href="../2026-10-19-modernrl-12/"><small>上一篇</small><span>12 · 奖励黑客、评测与训练排障</span></a></nav>
+</div>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <span>AI 观察笔记</span>
+    <span>学习笔记 · 原书：<a href="https://github.com/walkinglabs/hands-on-modern-rl" rel="noopener">walkinglabs/hands-on-modern-rl</a></span>
+  </div>
+</footer>
+<script>
+(function () {
+'use strict';
+var $ = S.$, $$ = S.$$, h = S.h;
+/* ---------- 同步训练的等待 ---------- */
+function sy() {
+  var L = +$('#sySl').value; $('#syL').textContent = L;
+  var busy = 9 * 10 + L, wall = 10 * L, util = busy / wall;
+  $('#syR').innerHTML = '<div><span class="v">' + L + '<small>秒</small></span><br><small>每一步至少要等</small></div><div><span class="v">' + S.pct(util, 0) + '</span><br><small>生成槽位的利用率</small></div><div><span class="v">' + S.pct(1 - util, 0) + '</span><br><small>空等</small></div>';
+  $('#syW').innerHTML = L <= 20 ? '任务耗时接近时，同步几乎不浪费，这就是数学、代码题先用同步的原因。' : '最慢的一条决定整步时间：其余 9 个槽位早早做完，只能等。异步训练让做完的先进队列，代价是这些轨迹到训练时可能已经落后几个版本。';
+}
+$('#sySl').addEventListener('input', sy); sy();
+S.notes($('#n-scale'), {
+  c: [
+    ['五个角色', 'Actor 生成、奖励模型或验证器打分、Reference 给 KL 参照、Critic 估优势（GRPO 省略）、训练进程更新并同步权重。'],
+    ['同步训练', '整批生成完成再统一算奖励、更新；数据新，但所有进程等最慢的那条。'],
+    ['异步训练', '完成的轨迹先进队列，训练持续消费；等待少，但经验会陈旧。'],
+    ['经验陈旧', '轨迹由较早版本的策略生成；用 π_θ / π_θgen 衡量，偏离大就降权或丢弃。']
+  ],
+  p: [
+    ['框架不改算法', '它只决定角色放在哪、何时交换数据、何时同步参数。'],
+    ['按问题选框架', '跑通：LlamaFactory / TRL；放大：veRL、slime、OpenRLHF、NeMo-Aligner；长轨迹：AReaL、LlamaRL、AgentRL、ROLL。'],
+    ['耗时接近用同步', '工具调用、浏览器等长短不一的任务更受益于异步。']
+  ]
+});
+
+/* ---------- 训推不一致 ---------- */
+S.guess($('#mmG'), { q: '生成端记录某 token 的对数概率是 −1.32，训练端重算是 −1.51。重要性比率是多少？', ans: Math.exp(-0.19), fmt: function (x) { return S.f(x, 2); }, why: '比率 = e^(−1.51 − (−1.32)) = e^−0.19 ≈ 0.83。这条数据没有任何采样随机性，比率却偏离 1 约 17%，会被当成策略梯度的一部分混进更新。' });
+function mm() {
+  var d = +$('#mmD').value, r = Math.exp(d), out = r < 0.8 || r > 1.2;
+  $('#mmDv').textContent = (d < 0 ? '−' : '') + S.f(Math.abs(d), 2);
+  $('#mmR').innerHTML = '<div><span class="v">' + S.f(r, 2) + '</span><br><small>比率 e<sup>Δ</sup></small></div><div><span class="v" style="color:var(' + (out ? '--alert' : '--ok') + ')">' + (out ? '超出' : '在内') + '</span><br><small>[0.8, 1.2] 裁剪区间</small></div>';
+}
+$('#mmD').addEventListener('input', mm); mm();
+S.notes($('#n-mismatch'), {
+  c: [
+    ['训推不一致', '同一组权重，生成引擎和训练引擎因精度、算子、MoE 路由不同，算出不同的概率。'],
+    ['ResourcePool / Worker / Driver', 'veRL 的三个抽象：GPU 分组、模型实例封装、单控制器编排算法主循环。'],
+    ['colocate vs disaggregated', '多个模型共享一组 GPU，或各自独占一组。'],
+    ['TIS', '截断重要性采样：限制过大的比率，降低少数异常 token 对梯度的影响。'],
+    ['R3 路由回放', '训练时复现生成时的专家选择，减少 MoE 路由差异带来的概率偏差。']
+  ],
+  p: [
+    ['裁剪修不了训推偏差', '比率的分母必须是真实行为策略；裁剪只限制更新幅度。'],
+    ['记录真实行为概率', '保存生成时的对数概率，重算只用来对比，不能冒充。'],
+    ['排查顺序', '版本 → 逐 token 对比两端对数概率 → 对齐精度与算子 → MoE 路由。']
+  ]
+});
+
+/* ---------- 有学习信号的概率 ---------- */
+var sgc = S.chart($('#sgC'), { h: 240, x: [0, 1], y: [0, 1], xt: [0, 0.1, 0.3, 0.5, 0.7, 0.9, 1], yt: [0, 0.25, 0.5, 0.75, 1], xl: '这道题的通过率 p', yl: '一组里有对有错的概率' });
+function sg() {
+  var G = +$('#sgG').value; $('#sgGv').textContent = G;
+  var f = function (p) { return 1 - Math.pow(p, G) - Math.pow(1 - p, G); };
+  sgc({ curves: [{ f: f, c: 'c1', label: 'G = ' + G }], vl: [{ x: 0.1, c: 'dim' }, { x: 0.9, c: 'dim' }] });
+  $('#sgW').innerHTML = 'G = ' + G + '：通过率 0.1 的题有信号的概率 ' + S.pct(f(0.1), 0) + '，0.05 的题只有 ' + S.pct(f(0.05), 0) + '，0.02 的题 ' + S.pct(f(0.02), 0) + '。虚线是 Seed-Thinking 的筛题区间 [0.1, 0.9]：区间外的题大多整组全对或全错，算了也白算。';
+}
+$('#sgG').addEventListener('input', sg); sg();
+S.notes($('#n-reward'), {
+  c: [
+    ['可验证奖励 VR', '由确定性的验证函数给分，如答案比对、单元测试；标注成本接近零。'],
+    ['偏好奖励 PPR', '由从成对偏好学到的奖励模型给分，适合开放任务；受标注分歧和泛化误差影响。'],
+    ['生成式奖励模型', '让大模型生成“A / B 哪个更好”的判断，可以带推理过程，便于审计。'],
+    ['奖励尺度对齐', '混合前按任务域在 batch 内做 z-score，避免大尺度奖励主导梯度。']
+  ],
+  p: [
+    ['只练能力边界附近的题', '通过率 0.1–0.9；全对、全错的题组内方差为零，没有梯度。'],
+    ['代码奖励分层', '规则层 → 公开测试 → 隐藏测试与模型裁判，分项记录。'],
+    ['两类奖励各有漏洞', 'VR 防测试覆盖不足与规则绕过；PPR 防钻奖励模型偏差。']
+  ]
+});
+
+/* ---------- GPU 小时 ---------- */
+S.guess($('#cgG'), { q: '7B Dense 模型训练 10 亿 token，单卡峰值 989 TFLOPS、MFU 40%，大约要多少 GPU 小时？', unit: 'GPU 小时', ans: 6 * 7e9 * 1e9 / (989e12 * 0.4 * 3600), fmt: function (x) { return S.f(x, 1); }, why: '6 × 7×10⁹ × 10⁹ = 4.2×10¹⁹ FLOPs；单卡每秒实际完成 989×10¹² × 0.4 ≈ 4×10¹⁴；相除约 1.06×10⁵ 秒，约 29.5 小时。真实训练还要加上通信、数据加载、检查点和流水线空闲。' });
+function cg() {
+  var N = +$('#cN').value * 1e9, T = +$('#cT').value * 1e9, F = +$('#cF').value * 1e12, M = +$('#cM').value;
+  $('#cNv').textContent = $('#cN').value; $('#cTv').textContent = S.f(+$('#cT').value, 1); $('#cFv').textContent = $('#cF').value; $('#cMv').textContent = S.pct(M, 0);
+  var h = 6 * N * T / (F * M * 3600);
+  $('#cR').innerHTML = '<div><span class="v">' + S.f(h, h < 100 ? 1 : 0) + '</span><br><small>GPU 小时（只算计算）</small></div><div><span class="v">' + S.f(h / 64, 1) + '</span><br><small>64 卡并行约需小时</small></div>';
+}
+['cN', 'cT', 'cF', 'cM'].forEach(function (id) { $('#' + id).addEventListener('input', cg); }); cg();
+S.notes($('#n-cost'), {
+  c: [
+    ['6NT 估算', '训练 FLOPs ≈ 6 × 激活参数 × token 数（前向 2 倍、反向 4 倍）。'],
+    ['MFU', '实际达到的算力占峰值的比例，典型 30%–50%。'],
+    ['RL 单步成本', '生成 + 更新 Actor + Reference 前向 + 计算奖励；生成约占 50%–60%。']
+  ],
+  p: [
+    ['数据筛选优先于堆算力', '高质量 1 万条胜过低质量 10 万条，但筛选本身也要算力。'],
+    ['小模型先验证', '在 7B 上定算法和超参，再放大，避免大模型上失败重训。'],
+    ['低精度更快也更脆', 'BF16 约快 2 倍，FP8 再快 1.5–2 倍，对稳定性要求更高。']
+  ]
+});
+
+/* ---------- KL 与熵 ---------- */
+var klc = S.chart($('#klC'), { h: 220, x: [0.5, 1], y: [0, 0.75], xt: [0.5, 0.6, 0.7, 0.8, 0.9, 1], yt: [0, 0.25, 0.5, 0.75], xl: '当前策略选 A 的概率', yl: 'KL（蓝）与熵（橙）' });
+function kl() {
+  var p = +$('#klP').value; $('#klPv').textContent = S.f(p, 2);
+  var K = function (x) { return x * Math.log(x / 0.5) + (1 - x) * Math.log((1 - x) / 0.5); }, H = function (x) { return -(x * Math.log(x) + (1 - x) * Math.log(1 - x)); };
+  klc({ curves: [{ f: K, c: 'c1', label: 'KL' }, { f: H, c: 'c2', label: '熵' }], vl: [{ x: p, c: 'dim' }] });
+  $('#klR').innerHTML = '<div><span class="v">' + S.f(K(p), 2) + '</span><br><small>KL(π ‖ π<sub>ref</sub>)</small></div><div><span class="v">' + S.f(H(p), 2) + '</span><br><small>熵 H(π)</small></div>';
+}
+$('#klP').addEventListener('input', kl); kl();
+S.notes($('#n-debug'), {
+  c: [
+    ['四层排查', '数据与奖励 → 策略变化 → 数值更新 → 训练系统，按因果顺序从上往下。'],
+    ['KL 与熵一起读', 'KL 陡增且熵加速下滑，才说明策略移动过快；单独一个不足以判断。'],
+    ['NaN 前兆', 'NaN 出现前通常有梯度范数持续变大、loss 尖刺。'],
+    ['固定 batch 复现', '稳定复现 → 数据或确定的计算路径；随机出现 → 精度、算子或优化器状态。']
+  ],
+  p: [
+    ['上游错，下游一定乱', '下游工具修不了上游问题，只会把故障藏得更深。'],
+    ['奖励涨而评测不动', '先查奖励规则、长度、重复与评测污染。'],
+    ['熵降也可能是题太简单', '全组全对时熵自然下降，要和数据难度一起看。'],
+    ['优化器的边界', '修不了错误奖励、损坏数据，也修不了两端版本错位。']
+  ]
+});
+
+/* ---------- 一条 rollout 记录 ---------- */
+S.anno($('#rcA'), { first: 9, code: [
+  '{',
+  '  "task":   {"id": "math-0412", "type": "math", "difficulty": "medium", "source": "failure-replay",',
+  '             "template": "cot-v3", "env": null},',
+  '  "traj":   {"model_ckpt": "step-1840", "temperature": 1.0, "top_p": 1.0,',
+  '             "tokens": [...], "logprobs": [...], "gen_seconds": 7.4},',
+  '  "tools":  [],',
+  '  "reward": {"answer_match": 1, "format_ok": 1, "length_penalty": -0.05,',
+  '             "weights": {"answer_match": 1.0, "format_ok": 0.1}, "total": 1.05},',
+  '  "system": {"worker": "rollout-17", "ts": "2026-10-31T09:12:44Z", "image": "math-env:1.4",',
+  '             "seed": 20261031},',
+  '  "flags":  []',
+  '}'].join('\n'), notes: {
+  2: '任务层：来源写成 failure-replay，说明这道题来自真实失败样本的回流；难度标签用于调度采样频率。',
+  3: '提示模板版本：同一道题可能有多种问法，模板换了版本，结果才能对得上。',
+  4: '轨迹层：记下生成它的检查点和采样参数。异步训练时靠它判断经验陈旧，回放时靠它复现。',
+  5: '逐 token 的对数概率要在生成时就记下。训练端重算的值只能用来对比，不能冒充行为策略。',
+  6: '交互层：工具调用和返回、执行输出、错误信息。数学题为空；代码和浏览器任务这里最长。',
+  7: '奖励层：每个奖励函数的值分开存，而不是只存总分，奖励出问题时才能定位是哪一项。',
+  8: '权重和聚合方式也要存：哪天调了权重，新旧数据才能对比。',
+  9: '系统层：worker、时间、环境镜像版本、随机种子，用来复现和排查“为什么只有这台机器出错”。',
+  11: '异常标记：超时、环境错误、格式错误单独标记，不直接混进训练，也不直接删除。'
+} });
+S.notes($('#n-data'), {
+  c: [
+    ['任务池', '公开基准、合成任务、交互环境任务、真实失败样本、安全与对抗数据的组合。'],
+    ['能力边界调度', '优先采样近期正确率 0.3–0.7 的任务，成功太多的类型降频。'],
+    ['五层记录', '任务层、轨迹层、交互层、奖励层、系统层。'],
+    ['数据回流', '合格轨迹回到下一轮 SFT、奖励模型训练和任务池。']
+  ],
+  p: [
+    ['只存 prompt / response / reward 不够', '够算梯度，不够排错。'],
+    ['失败样本标记而不删除', '它们本身是排查和改进环境的线索。'],
+    ['进训练前过质量关', '高分可能是漏洞，低分可能是奖励函数或环境出错。'],
+    ['安全任务持续注入', '防止能力提升时，安全和格式边界被遗忘。']
+  ]
+});
+})();
+</script>
+</body>
+</html>
