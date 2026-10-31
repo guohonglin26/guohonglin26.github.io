@@ -4,7 +4,7 @@ desc: 智能体设计模式学习笔记（三）：工具调用的六步流程�
 kicker: <span>技术学习</span><span>智能体设计模式 · 03</span><span>对应原书第 5、10、14、15 章</span><span>约 25 分钟</span>
 h1: 让智能体<em>伸出手</em>：接工具、接知识、接同伴
 lead: 前两篇的模式都在模型内部打转。这一篇讲智能体怎么和外面连起来：工具调用让它能行动，MCP 把“怎么接工具”标准化，RAG 让它能查资料，A2A 让不同框架做的智能体能互相委托。四章放在一起读，最值得记住的是它们各自管哪一段连接。
-nav: tool|工具调用;mcp|MCP;rag|RAG 基础;arag|Agentic RAG;a2a|A2A;map|四者分工;recap|回扣三问
+nav: tool|工具调用;mcp|MCP;rag|RAG 基础;arag|Agentic RAG;a2a|A2A;map|四者分工;skel|代码骨架;recap|回扣三问
 ---
 <style>
 .emb { width: 100%; max-width: 420px; display: block; margin: 6px auto; }
@@ -180,6 +180,21 @@ nav: tool|工具调用;mcp|MCP;rag|RAG 基础;arag|Agentic RAG;a2a|A2A;map|四�
   </table></div>
   <div class="lab" style="margin-top:18px"><div id="mapQ"></div></div>
   <div class="notes" id="n-map"></div>
+</section>
+
+<section class="part" id="skel">
+  <div class="part-head"><h2>代码骨架：工具、MCP、RAG、A2A 各怎么接</h2><span class="meta">原书第 5、10、14、15 章 · 实践代码示例</span></div>
+  <div class="sec-lede">
+    <p>这四个模式都在回答“Agent 怎么接上外面的世界”，代码上正好是四种接法。<strong>工具</strong>：自己写一个函数，加装饰器，文档字符串就是给模型看的说明。<strong>MCP</strong>：不自己写函数，而是连上一个现成的 MCP 服务器，由它告诉 Agent 有哪些工具。<strong>RAG</strong>：先把文档分块、向量化，再用一张“检索 → 生成”的小图回答问题。<strong>A2A</strong>：把自己的 Agent 包成一个 HTTP 服务，挂上一张“名片”，让别的 Agent 来委托任务。</p>
+    <p class="go">切换模式，点读代码：点带下划线的行，看它在这个模式里起什么作用。</p>
+  </div>
+  <div class="lab">
+    <p class="lab-t">代码骨架（据原书示例代码精简，保留结构和关键写法）</p>
+    <div class="seg" id="skS"><button data-v="0" aria-pressed="true">工具</button><button data-v="1">MCP</button><button data-v="2">RAG</button><button data-v="3">A2A</button></div>
+    <p class="cap" id="skM"></p>
+    <div id="skA"></div>
+  </div>
+  <div class="notes" id="n-skel"></div>
 </section>
 <section class="part" id="recap">
   <div class="part-head"><h2>回扣开头的三个问题</h2><span class="meta">先自己答，再点开</span></div>
@@ -360,5 +375,98 @@ S.notes($('#n-map'), {
   ],
   p: [
     ['一句话区分', '工具让它能做，MCP 让接工具变标准，RAG 让它有据可查，A2A 让它能找同伴。']
+  ]
+});
+
+/* ---------- 代码骨架 ---------- */
+(function () {
+  var D = [
+  {
+    "code": "@langchain_tool\ndef search_information(query: str) -> str:\n    \"\"\"提供有关给定主题的事实信息。使用此工具查找诸如\"法国首都\"或\"伦敦的天气？\"等短语的答案。\"\"\"\n    simulated_results = {\"capital of france\": \"法国的首都是巴黎。\", ...}\n    return simulated_results.get(query.lower(), simulated_results[\"default\"])\n\ntools = [search_information]\nagent_prompt = ChatPromptTemplate.from_messages([\n    (\"system\", \"你是一个有用的助手。\"), (\"human\", \"{input}\"),\n    (\"placeholder\", \"{agent_scratchpad}\")])\nagent = create_tool_calling_agent(llm, tools, agent_prompt)\nagent_executor = AgentExecutor(agent=agent, tools=tools)\nawait agent_executor.ainvoke({\"input\": \"法国的首都是什么？\"})",
+    "notes": {
+      "1": "装饰器把普通函数变成工具：函数名、参数类型和文档字符串会被转成给模型看的工具说明。",
+      "3": "文档字符串就是工具描述。模型靠它决定什么时候调用、传什么参数，所以要写清用途并举例。",
+      "5": "原书用字典模拟搜索，查不到就返回默认结果，而不是抛异常让整个 Agent 崩掉。",
+      "10": "agent_scratchpad 占位：存放这一轮已经做过的工具调用和返回，相当于“思考—行动—观察”的历史。",
+      "11": "用模型原生的函数调用能力生成工具调用。",
+      "12": "AgentExecutor 负责循环：调模型、执行工具、回填结果，直到模型给出最终回答。"
+    },
+    "first": 3,
+    "src": "原书第 5 章：LangChain 的工具调用 Agent，用一个模拟的搜索函数。"
+  },
+  {
+    "code": "TARGET_FOLDER_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), \"mcp_managed_files\")\nroot_agent = LlmAgent(\n    model='gemini-2.0-flash', name='filesystem_assistant_agent',\n    instruction=('Help the user manage their files. You can list files, read files, and write files. '\n                 f'You are operating in the following directory: {TARGET_FOLDER_PATH}'),\n    tools=[MCPToolset(\n        connection_params=StdioServerParameters(\n            command='npx',\n            args=[\"-y\", \"@modelcontextprotocol/server-filesystem\", TARGET_FOLDER_PATH],\n        ))])",
+    "notes": {
+      "1": "先划出一个专用目录。",
+      "5": "指令里告诉模型它在哪个目录里工作。",
+      "6": "MCPToolset：Agent 不再自己定义工具函数，而是连上一个 MCP 服务器，由服务器列出可用工具（列目录、读写文件等）。",
+      "7": "stdio 传输：用 npx 在本机启动服务器进程，通过标准输入输出通信。",
+      "9": "最后一个参数把服务器能访问的范围限定在这个目录。权限边界写在服务器的启动参数里，而不只是写在提示词里。"
+    },
+    "first": 6,
+    "src": "原书第 10 章：ADK Agent 通过 MCP 连接文件系统服务器。"
+  },
+  {
+    "code": "chunks = CharacterTextSplitter(chunk_size=500, chunk_overlap=50).split_documents(documents)\nvectorstore = Weaviate.from_documents(client=client, documents=chunks, embedding=OpenAIEmbeddings())\nretriever = vectorstore.as_retriever()\n\nclass RAGGraphState(TypedDict):\n    question: str\n    documents: List[Document]\n    generation: str\n\ndef retrieve_documents_node(state):\n    return {\"documents\": retriever.invoke(state[\"question\"]), \"question\": state[\"question\"], \"generation\": \"\"}\ndef generate_response_node(state):\n    context = \"\\n\\n\".join(doc.page_content for doc in state[\"documents\"])\n    generation = (prompt | llm | StrOutputParser()).invoke({\"context\": context, \"question\": state[\"question\"]})\n    return {**state, \"generation\": generation}\n\nworkflow = StateGraph(RAGGraphState)\nworkflow.add_node(\"retrieve\", retrieve_documents_node)\nworkflow.add_node(\"generate\", generate_response_node)\nworkflow.set_entry_point(\"retrieve\")\nworkflow.add_edge(\"retrieve\", \"generate\")\nworkflow.add_edge(\"generate\", END)\napp = workflow.compile()",
+    "notes": {
+      "1": "分块：每块 500 字符，相邻块重叠 50，免得一句话被切断后两边都不完整。",
+      "2": "每块算一个向量，存进 Weaviate 向量库。",
+      "5": "LangGraph 的状态：节点之间传来传去的就是这三个字段。",
+      "11": "检索节点只做一件事：按问题取回相关文档。",
+      "13": "生成节点把文档拼成上下文。原书的提示词要求“不知道就说不知道，最多三句话”。",
+      "17": "把两个节点连成图：检索 → 生成 → 结束。现在是一条直线；Agentic RAG 就是在这张图上加判断和回环，比如结果不够好就改写问题重搜。"
+    },
+    "first": 17,
+    "src": "原书第 14 章：LangChain 分块入库，LangGraph 编排“检索 → 生成”。"
+  },
+  {
+    "code": "skill = AgentSkill(\n    id='check_availability', name='Check Availability',\n    description=\"Checks a user's availability for a time using their Google Calendar\",\n    tags=['calendar'], examples=['Am I free from 10am to 11am tomorrow?'])\nagent_card = AgentCard(\n    name='Calendar Agent', description=\"An agent that can manage a user's calendar\",\n    url=f'http://{host}:{port}/', version='1.0.0',\n    defaultInputModes=['text'], defaultOutputModes=['text'],\n    capabilities=AgentCapabilities(streaming=True), skills=[skill])\nrunner = Runner(app_name=agent_card.name, agent=adk_agent,\n    artifact_service=InMemoryArtifactService(), session_service=InMemorySessionService(),\n    memory_service=InMemoryMemoryService())\nrequest_handler = DefaultRequestHandler(\n    agent_executor=ADKAgentExecutor(runner, agent_card), task_store=InMemoryTaskStore())\na2a_app = A2AStarletteApplication(agent_card=agent_card, http_handler=request_handler)\nuvicorn.run(Starlette(routes=a2a_app.routes()), host=host, port=port)",
+    "notes": {
+      "1": "技能：对外声明“我能做什么”，附上示例问法，方便别的 Agent 判断该不该找它。",
+      "5": "Agent Card：A2A 的名片，写明名字、地址、版本、输入输出方式、能力和技能。别的 Agent 先读名片再决定是否委托。",
+      "9": "声明支持流式：长任务可以边做边回传进度。",
+      "10": "里面仍是一个普通的 ADK Agent，A2A 只是在外面包了一层协议。",
+      "14": "任务存储：A2A 以“任务”为单位协作，任务有状态，可以查询、续传。",
+      "15": "把名片和请求处理器挂成 HTTP 服务，供别的 Agent 发现和调用。"
+    },
+    "first": 5,
+    "src": "原书第 15 章：把一个日历 Agent 发布成 A2A 服务。"
+  }
+];
+  function show(v) { var d = D[+v]; $('#skM').textContent = d.src; S.anno($('#skA'), d); }
+  S.seg($('#skS'), show); show(0);
+})();
+S.notes($('#n-skel'), {
+  "c": [
+    [
+      "工具描述",
+      "函数名、参数类型和文档字符串合起来，就是模型决定是否调用、怎么调用的依据。"
+    ],
+    [
+      "MCPToolset",
+      "ADK 里连接 MCP 服务器、自动获取其工具列表的组件。"
+    ],
+    [
+      "StateGraph",
+      "LangGraph 的状态图：节点读写共享状态，边决定执行顺序。"
+    ],
+    [
+      "Agent Card",
+      "A2A 中描述一个 Agent 身份、地址、能力和技能的名片。"
+    ]
+  ],
+  "p": [
+    [
+      "四种接法",
+      "自己写函数 / 连 MCP 服务器 / 检索知识库 / 委托别的 Agent。"
+    ],
+    [
+      "权限边界放在能力侧",
+      "MCP 服务器的启动参数限定可访问的目录。"
+    ],
+    [
+      "RAG 是一张可扩展的图",
+      "直线流程加上判断和回环，就是 Agentic RAG。"
+    ]
   ]
 });

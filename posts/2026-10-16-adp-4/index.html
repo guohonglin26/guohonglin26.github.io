@@ -57,7 +57,7 @@
 </section>
 
 <nav class="secnav" aria-label="本篇小节">
-  <div class="wrap"><a href="#mem">记忆管理</a><a href="#ltm">长期记忆类型</a><a href="#learn">学习与适应</a><a href="#goal">目标与监控</a><a href="#explore">探索与发现</a><a href="#recap">回扣三问</a></div>
+  <div class="wrap"><a href="#mem">记忆管理</a><a href="#ltm">长期记忆类型</a><a href="#learn">学习与适应</a><a href="#goal">目标与监控</a><a href="#explore">探索与发现</a><a href="#skel">代码骨架</a><a href="#recap">回扣三问</a></div>
 </nav>
 <div class="wrap">
 <div class="ask3">
@@ -207,6 +207,25 @@
     </dl>
   </div>
   <div class="notes" id="n-explore"></div>
+</section>
+
+<section class="part" id="skel">
+  <div class="part-head"><h2>代码骨架：状态怎么存，目标怎么盯</h2><span class="meta">原书第 8、11 章 · 实践代码示例</span></div>
+  <div class="sec-lede">
+    <p>记忆和目标这两个模式，落到代码里都和“状态”有关。原书第 8 章的 ADK 示例用前缀区分状态的生命周期：<code>user:</code> 跟着用户走、跨会话共享，不带前缀的只属于当前会话，<code>temp:</code> 只在当前一轮有效；而且强调状态要通过工具里的上下文对象修改，不要直接改会话对象，否则改动不会被记成事件。第 11 章的目标监控示例是一个“写代码 → 按目标评审 → 判断是否达标”的循环：目标是一张清单，评审结果再交给模型判一个 True 或 False，达标就停，最多 5 轮。</p>
+    <p class="go">切换模式，点读代码：点带下划线的行，看它在这个模式里起什么作用。</p>
+  </div>
+  <div class="lab">
+    <p class="lab-t">代码骨架（据原书示例代码精简，保留结构和关键写法）</p>
+    <div class="seg" id="skS"><button data-v="0" aria-pressed="true">状态与前缀</button><button data-v="1">目标监控</button></div>
+    <p class="cap" id="skM"></p>
+    <div id="skA"></div>
+  </div>
+  <div class="confuse">
+    <h4>读代码时注意：目标是否达成，由同一个模型说了算</h4>
+    <p>目标监控示例里，写代码、评审、判定达标用的是同一个模型，判定还只依据评审文字，没有运行代码或测试。像“经过测试”“处理边缘情况”这类目标，更可靠的做法是让代码真的跑一遍测试，用测试结果作为达标证据，模型判断作为补充。这是读代码时的观察，不是原书观点。</p>
+  </div>
+  <div class="notes" id="n-skel"></div>
 </section>
 
 <section class="part" id="recap">
@@ -365,6 +384,69 @@ S.notes($('#n-explore'), {
     ['定位', '增强人类，科学家在环。'],
     ['局限', '只读开放获取文献、缺负面结果、继承幻觉。'],
     ['安全', '输入目标和生成假设都要审查；1,200 个对抗目标评估。']
+  ]
+});
+
+/* ---------- 代码骨架 ---------- */
+(function () {
+  var D = [
+  {
+    "code": "def log_user_login(tool_context: ToolContext) -> dict:\n    state = tool_context.state\n    login_count = state.get(\"user:login_count\", 0) + 1\n    state[\"user:login_count\"] = login_count\n    state[\"task_status\"] = \"active\"\n    state[\"user:last_login_ts\"] = time.time()\n    state[\"temp:validation_needed\"] = True\n    return {\"status\": \"success\", \"message\": f\"已跟踪用户登录。总登录次数：{login_count}。\"}\n\nsession = session_service.create_session(app_name=app_name, user_id=user_id,\n    session_id=session_id, state={\"user:login_count\": 0, \"task_status\": \"idle\"})",
+    "notes": {
+      "2": "状态改动封装在工具里，通过 ToolContext 拿到会话状态。原书提醒不要绕过它直接改 session.state，那样的改动不会记成事件，难以追溯和持久化。",
+      "3": "<code>user:</code> 前缀：跟着用户走，这个用户的所有会话共享。原书还有 <code>app:</code> 前缀，全应用共享。",
+      "5": "不带前缀：只属于当前会话。",
+      "7": "<code>temp:</code> 前缀：只在当前这一轮有效，不会持久化。",
+      "10": "创建会话时给初始状态；之后的每次改动都通过事件记录下来。"
+    },
+    "first": 2,
+    "src": "原书第 8 章：在工具里通过 ToolContext 更新会话状态。"
+  },
+  {
+    "code": "def generate_prompt(use_case, goals, previous_code=\"\", feedback=\"\"):\n    p = f\"你是一个 AI 编码 Agent……用例：{use_case}\\n你的目标是：\\n\" + \"\\n\".join(f\"- {g}\" for g in goals)\n    if previous_code: p += f\"\\n之前生成的代码：\\n{previous_code}\"\n    if feedback: p += f\"\\n对之前版本的反馈：\\n{feedback}\\n\"\n    return p + \"\\n请仅返回修订后的 Python 代码。\"\n\ndef goals_met(feedback_text, goals) -> bool:\n    review = f\"这些是目标：…… 这是关于代码的反馈：{feedback_text} 目标是否已达成？仅用一个词回答：True 或 False。\"\n    return llm.invoke(review).content.strip().lower() == \"true\"\n\nfor i in range(max_iterations):                    # 默认 5 轮\n    code = clean_code_block(llm.invoke(generate_prompt(use_case, goals, previous_code, feedback)).content)\n    feedback = get_code_feedback(code, goals).content\n    if goals_met(feedback, goals):\n        break\n    previous_code = code",
+    "notes": {
+      "2": "目标是一张清单（如“简单”“经过测试”“处理边缘情况”），每轮都完整放进提示词。",
+      "3": "把上一版代码和反馈一起给模型，让它在此基础上修改，而不是从头重写。",
+      "7": "“是否达标”交给模型判断，只允许回答 True 或 False，循环才好据此停止。",
+      "9": "严格比较字符串：模型多说一个字就会被当成 False。",
+      "13": "评审：按目标清单逐项批评代码。",
+      "14": "达标就停；否则带着这一轮的代码和反馈进入下一轮。"
+    },
+    "first": 7,
+    "src": "原书第 11 章：按目标清单反复改代码，模型判定达标后停止，最多 5 轮。"
+  }
+];
+  function show(v) { var d = D[+v]; $('#skM').textContent = d.src; S.anno($('#skA'), d); }
+  S.seg($('#skS'), show); show(0);
+})();
+S.notes($('#n-skel'), {
+  "c": [
+    [
+      "状态前缀",
+      "user: 跨会话，app: 全应用，temp: 仅本轮，无前缀属于当前会话。"
+    ],
+    [
+      "ToolContext",
+      "ADK 传给工具的上下文对象，通过它读写会话状态，改动会记成事件。"
+    ],
+    [
+      "目标清单",
+      "目标监控模式里每轮都要对照的验收标准列表。"
+    ]
+  ],
+  "p": [
+    [
+      "状态的生命周期用前缀表达",
+      "同一个状态字典里，存放期限各不相同。"
+    ],
+    [
+      "别绕过事件改状态",
+      "直接改会话对象，改动无法追溯也可能丢失。"
+    ],
+    [
+      "监控要有可判定的出口",
+      "达标判定只允许 True 或 False，并设最大轮数。"
+    ]
   ]
 });
 })();

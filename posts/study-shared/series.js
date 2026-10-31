@@ -548,10 +548,10 @@
   S.anno = function (root, o) {
     root.innerHTML = '';
     root.classList.add('anno');
-    var pre = S.h('pre', { class: 'anno-code' }, root), side = S.h('div', { class: 'anno-side', 'aria-live': 'polite' }, root);
+    var pre = S.h('pre', { class: 'anno-code' }, root), inner = S.h('div', { class: 'anno-in' }, pre), side = S.h('div', { class: 'anno-side', 'aria-live': 'polite' }, root);
     var lines = o.code.replace(/^\n/, '').replace(/\s+$/, '').split('\n'), rows = [];
     lines.forEach(function (ln, i) {
-      var n = o.notes[i + 1], r = S.h(n ? 'button' : 'span', { class: 'anno-ln' + (n ? ' has' : ''), type: n ? 'button' : null }, pre);
+      var n = o.notes[i + 1], r = S.h(n ? 'button' : 'span', { class: 'anno-ln' + (n ? ' has' : ''), type: n ? 'button' : null }, inner);
       r.textContent = ln || ' ';
       if (n) r.addEventListener('click', function () { pick(i); });
       rows.push(r);

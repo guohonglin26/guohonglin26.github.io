@@ -4,7 +4,7 @@ desc: 智能体设计模式学习笔记（一）：提示词链（管道）、�
 kicker: <span>技术学习</span><span>智能体设计模式 · 01</span><span>对应原书第 1–3 章</span><span>约 20 分钟</span>
 h1: 先把流程搭起来：<em>串、分、并</em>
 lead: 原书前三章讲的是最朴素的三种控制流：一步接一步（提示词链）、按情况走不同的路（路由）、能同时做的就同时做（并行化）。它们像程序里的顺序、分支和并发，后面的反思、规划、多智能体，几乎都是在这三块积木上叠出来的。
-nav: chain|提示词链;ctx|上下文工程;route|路由;para|并行化;mix|组合起来;recap|回扣三问
+nav: chain|提示词链;ctx|上下文工程;route|路由;para|并行化;mix|组合起来;skel|代码骨架;recap|回扣三问
 ---
 <style>
 .inv { font-family: var(--f-num); font-size: 15px; line-height: 1.7; background: var(--bg); border: 1px solid var(--hair); border-radius: 6px; padding: 10px 14px; white-space: pre-wrap; color: var(--ink); }
@@ -159,6 +159,21 @@ nav: chain|提示词链;ctx|上下文工程;route|路由;para|并行化;mix|组�
   </div>
   <div class="notes" id="n-mix"></div>
 </section>
+
+<section class="part" id="skel">
+  <div class="part-head"><h2>代码骨架：链、路由、并行各长什么样</h2><span class="meta">原书第 1–3 章 · 实践代码示例</span></div>
+  <div class="sec-lede">
+    <p>前面几节讲的是为什么、什么时候用。这一节回到原书每章后半的“实践代码”，看三个模式落到 LangChain 里各是什么样子。三段代码有一个共同点：都用 LCEL 的 <code>|</code> 把“提示词 → 模型 → 输出解析器”串成一个可调用的单元，区别只在这些单元之间怎么连。<strong>提示词链</strong>是首尾相接；<strong>路由</strong>是先让一个单元做分类，再按结果走不同分支；<strong>并行</strong>是同时跑几个互不依赖的单元，再把结果汇总。</p>
+    <p class="go">切换模式，点读代码：点带下划线的行，看它在这个模式里起什么作用。</p>
+  </div>
+  <div class="lab">
+    <p class="lab-t">代码骨架（据原书示例代码精简，保留结构和关键写法）</p>
+    <div class="seg" id="skS"><button data-v="0" aria-pressed="true">提示词链</button><button data-v="1">路由</button><button data-v="2">并行</button></div>
+    <p class="cap" id="skM"></p>
+    <div id="skA"></div>
+  </div>
+  <div class="notes" id="n-skel"></div>
+</section>
 <section class="part" id="recap">
   <div class="part-head"><h2>回扣开头的三个问题</h2><span class="meta">先自己答，再点开</span></div>
   <div class="ask3" style="margin-top:0">
@@ -311,5 +326,84 @@ S.notes($('#n-mix'), {
   p: [
     ['判断依据', '步骤之间有没有依赖？输入要不要分情况？'],
     ['往后看', '反思给链加回路，规划让链由模型自己生成（第 2 篇）。']
+  ]
+});
+
+/* ---------- 代码骨架 ---------- */
+(function () {
+  var D = [
+  {
+    "code": "llm = ChatOpenAI(temperature=0)\nprompt_extract = ChatPromptTemplate.from_template(\n    \"从以下文本中提取技术规格：\\n\\n{text_input}\")\nprompt_transform = ChatPromptTemplate.from_template(\n    \"将以下规格转换为 JSON 对象，使用 'cpu'、'memory' 和 'storage' 作为键：\\n\\n{specifications}\")\n\nextraction_chain = prompt_extract | llm | StrOutputParser()\nfull_chain = (\n    {\"specifications\": extraction_chain}\n    | prompt_transform\n    | llm\n    | StrOutputParser()\n)\nfull_chain.invoke({\"text_input\": \"新款笔记本配备 3.5 GHz 八核处理器、16GB 内存和 1TB 固态硬盘。\"})",
+    "notes": {
+      "1": "温度设为 0：链里每一环都希望输出稳定，下一环才接得住。",
+      "2": "第一步只做一件事：从自由文本里把规格抽出来。",
+      "4": "第二步只做格式转换。变量名 specifications 就是留给上一步输出的位置。",
+      "7": "<code>|</code> 把提示词、模型、解析器串成一个可调用对象；StrOutputParser 把模型消息变成纯字符串。",
+      "9": "关键一行：用字典把第一条链的输出填进第二个提示词的 specifications 变量。这一步连接，就是“链”。",
+      "14": "调用一次，内部依次跑两次模型。"
+    },
+    "first": 9,
+    "src": "原书第 1 章：先抽取技术规格，再转成 JSON。"
+  },
+  {
+    "code": "router_prompt = ChatPromptTemplate.from_messages([\n    (\"system\", \"分析用户的请求：与预订航班或酒店相关输出 'booker'，\"\n               \"其他一般信息问题输出 'info'，不清楚输出 'unclear'。只输出一个词。\"),\n    (\"user\", \"{request}\")])\nrouter_chain = router_prompt | llm | StrOutputParser()\n\ndelegation_branch = RunnableBranch(\n    (lambda x: x['decision'].strip() == 'booker', branches[\"booker\"]),\n    (lambda x: x['decision'].strip() == 'info', branches[\"info\"]),\n    branches[\"unclear\"])\n\ncoordinator_agent = {\n    \"decision\": router_chain,\n    \"request\": RunnablePassthrough()\n} | delegation_branch | (lambda x: x['output'])\ncoordinator_agent.invoke({\"request\": \"给我预订去伦敦的航班。\"})",
+    "notes": {
+      "2": "用 LLM 做分类。提示词把输出限定成三个词之一：输出越受限，后面越好匹配。",
+      "8": "<code>.strip()</code> 是原书特意加的：模型常在词后面多带空格或换行。",
+      "10": "默认分支：分类结果不在预期内时走 unclear，而不是报错或乱派。",
+      "13": "分类结果 decision 和原始请求 request 放进同一个字典，分支既知道去哪，也拿得到原话。",
+      "15": "最后只取出处理程序的 output 返回。"
+    },
+    "first": 13,
+    "src": "原书第 2 章：协调器把请求分给预订、信息或“说不清”三个处理程序。"
+  },
+  {
+    "code": "summarize_chain = (ChatPromptTemplate.from_messages([\n    (\"system\", \"简洁地总结以下主题：\"), (\"user\", \"{topic}\")]) | llm | StrOutputParser())\nquestions_chain = ...   # 同样结构：生成三个有趣的问题\nterms_chain = ...       # 同样结构：识别 5-10 个关键术语\n\nmap_chain = RunnableParallel({\n    \"summary\": summarize_chain,\n    \"questions\": questions_chain,\n    \"key_terms\": terms_chain,\n    \"topic\": RunnablePassthrough(),\n})\nsynthesis_prompt = ChatPromptTemplate.from_messages([\n    (\"system\", \"基于以下信息：摘要：{summary} 相关问题：{questions} 关键术语：{key_terms} 综合一个全面的答案。\"),\n    (\"user\", \"原始主题：{topic}\")])\nfull_parallel_chain = map_chain | synthesis_prompt | llm | StrOutputParser()\nawait full_parallel_chain.ainvoke(\"太空探索的历史\")",
+    "notes": {
+      "1": "三条互不依赖的子链，每条都是完整的“提示词 | 模型 | 解析器”。",
+      "6": "RunnableParallel 同时跑字典里的每一项，总耗时约等于最慢的那一项，而不是三者相加。",
+      "10": "把原始主题也原样带过去，综合时还要用。",
+      "12": "汇总步骤：字典的键正好对上提示词里的变量名，结果自动填进去。",
+      "16": "异步调用 ainvoke；并行要在异步执行下才看得到收益。"
+    },
+    "first": 6,
+    "src": "原书第 3 章：同时做摘要、提问、抽术语，再综合成一个回答。"
+  }
+];
+  function show(v) { var d = D[+v]; $('#skM').textContent = d.src; S.anno($('#skA'), d); }
+  S.seg($('#skS'), show); show(0);
+})();
+S.notes($('#n-skel'), {
+  "c": [
+    [
+      "LCEL",
+      "LangChain 表达式语言，用 | 把提示词、模型、解析器等组件串成可调用对象。"
+    ],
+    [
+      "RunnableBranch",
+      "按条件选择分支执行，最后一项是默认分支。"
+    ],
+    [
+      "RunnableParallel",
+      "同时执行字典里的多个可运行对象，结果按键名汇总。"
+    ],
+    [
+      "RunnablePassthrough",
+      "把输入原样传下去，常用来让后续步骤还能拿到原始请求。"
+    ]
+  ],
+  "p": [
+    [
+      "链：上一步的输出填进下一步的变量",
+      "首尾相接，每一步只做一件事。"
+    ],
+    [
+      "路由：先分类再派发",
+      "分类输出要受限，并且一定要有默认分支。"
+    ],
+    [
+      "并行：互不依赖才能同时跑",
+      "耗时取决于最慢的一项，最后要有一个汇总步骤。"
+    ]
   ]
 });

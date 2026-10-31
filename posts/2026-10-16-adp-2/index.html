@@ -50,7 +50,7 @@
 </section>
 
 <nav class="secnav" aria-label="本篇小节">
-  <div class="wrap"><a href="#refl">反思</a><a href="#plan">规划</a><a href="#dr">Deep Research</a><a href="#tech">推理技术</a><a href="#react">ReAct</a><a href="#scale">推理扩展</a><a href="#mass">MASS</a><a href="#recap">回扣三问</a></div>
+  <div class="wrap"><a href="#refl">反思</a><a href="#plan">规划</a><a href="#dr">Deep Research</a><a href="#tech">推理技术</a><a href="#react">ReAct</a><a href="#scale">推理扩展</a><a href="#mass">MASS</a><a href="#skel">代码骨架</a><a href="#recap">回扣三问</a></div>
 </nav>
 <div class="wrap">
 <div class="ask3">
@@ -192,6 +192,25 @@
     <div id="massBody"></div>
   </div>
   <div class="notes" id="n-mass"></div>
+</section>
+
+<section class="part" id="skel">
+  <div class="part-head"><h2>代码骨架：反思、规划、推理分工</h2><span class="meta">原书第 4、6、17 章 · 实践代码示例</span></div>
+  <div class="sec-lede">
+    <p>这一篇的三个模式都在回答“模型怎么想得更好”，落到代码里形状差别很大。<strong>反思</strong>是一个循环：生产者写，评审者挑错，直到评审者说好或者次数用完。<strong>规划</strong>在原书的 CrewAI 示例里很朴素：把“先列计划、再按计划写”直接写进任务描述，并要求交付物里看得见计划。<strong>推理技术</strong>一章的 ADK 示例把搜索和代码执行做成两个专职子 Agent，让根 Agent 把它们当工具调用：需要事实就去搜，需要精确计算就交给代码，而不是让模型心算。</p>
+    <p class="go">切换模式，点读代码：点带下划线的行，看它在这个模式里起什么作用。</p>
+  </div>
+  <div class="lab">
+    <p class="lab-t">代码骨架（据原书示例代码精简，保留结构和关键写法）</p>
+    <div class="seg" id="skS"><button data-v="0" aria-pressed="true">反思</button><button data-v="1">规划</button><button data-v="2">推理分工</button></div>
+    <p class="cap" id="skM"></p>
+    <div id="skA"></div>
+  </div>
+  <div class="confuse">
+    <h4>读代码时注意：生产者和评审者是同一个模型</h4>
+    <p>反思示例里写代码和挑错的是同一个 gpt-4o，只是系统提示不同。同一个模型往往对自己的盲区同样看不见，评审者容易“放水”。原书在第 4 章正文里也提到用独立评审者的思路；实际使用时可以让评审者换一个模型，或者让它跑测试拿到客观证据，而不只凭阅读判断。停止条件靠字符串 CODE_IS_PERFECT 匹配，也意味着评审者只要顺口提到这个词就会提前结束。这是读代码时的观察，不是原书观点。</p>
+  </div>
+  <div class="notes" id="n-skel"></div>
 </section>
 <section class="part" id="recap">
   <div class="part-head"><h2>回扣开头的三个问题</h2><span class="meta">先自己答，再点开</span></div>
@@ -389,6 +408,78 @@ S.notes($('#n-mass'), {
     ['原则一', '组合前先把单个智能体的提示词调好。'],
     ['原则二', '组合有影响力的拓扑，不在无约束空间乱搜。'],
     ['原则三', '最后做工作流级联合优化，建模相互依赖。']
+  ]
+});
+
+/* ---------- 代码骨架 ---------- */
+(function () {
+  var D = [
+  {
+    "code": "max_iterations = 3\nmessage_history = [HumanMessage(content=task_prompt)]\nfor i in range(max_iterations):\n    if i > 0:\n        message_history.append(HumanMessage(content=\"请使用提供的批评完善代码。\"))\n    response = llm.invoke(message_history)              # 生产者\n    current_code = response.content\n    message_history.append(response)\n    critique = llm.invoke([\n        SystemMessage(content=\"你是高级软件工程师……如果代码完美并满足所有要求，\"\n                              \"用单一短语 'CODE_IS_PERFECT' 响应；否则提供批评列表。\"),\n        HumanMessage(content=f\"原始任务：\\n{task_prompt}\\n\\n要审查的代码：\\n{current_code}\")\n    ]).content                                          # 评审者\n    if \"CODE_IS_PERFECT\" in critique:\n        break\n    message_history.append(HumanMessage(content=f\"对先前代码的批评：\\n{critique}\"))",
+    "notes": {
+      "1": "迭代上限：反思要有尽头，否则可能一直挑不完、一直花钱。",
+      "6": "生产者看到的是完整历史：任务、上一版代码、上一轮批评都在里面。",
+      "9": "评审者是一次独立调用，有自己的系统提示：角色和生产者分开，只看任务和代码。",
+      "10": "评审标准就是原始任务的要求；满意时只回一个约定好的暗号。",
+      "14": "停止条件靠暗号判断；没有暗号就继续改。",
+      "16": "把批评写回历史，下一轮生产者据此修改。"
+    },
+    "first": 14,
+    "src": "原书第 4 章：生成阶乘函数，评审者逐轮挑错，最多 3 轮。"
+  },
+  {
+    "code": "planner_writer_agent = Agent(\n    role='文章规划者和撰写者',\n    goal='规划然后撰写关于指定主题的简洁、引人入胜的摘要。',\n    backstory='你是一位专业的技术作家和内容策略师。你的优势在于在写作之前创建清晰、可操作的计划。',\n    allow_delegation=False, llm=llm)\nhigh_level_task = Task(\n    description=(f\"1. 为主题'{topic}'的摘要创建要点计划。\\n\"\n                 f\"2. 根据您的计划撰写摘要，保持在 200 字左右。\"),\n    expected_output=\"包含两个不同部分的最终报告：### 计划（要点列表）### 摘要\",\n    agent=planner_writer_agent)\ncrew = Crew(agents=[planner_writer_agent], tasks=[high_level_task],\n            process=Process.sequential)\nresult = crew.kickoff()",
+    "notes": {
+      "2": "CrewAI 用角色、目标、背景三件事定义一个 Agent。",
+      "7": "规划直接写进任务描述：第一步列计划，第二步按计划写。",
+      "9": "expected_output 要求交付物里同时有“计划”和“摘要”，计划是看得见、能检查的。",
+      "11": "只有一个任务，规划发生在模型的一次生成里。复杂任务会拆成多个 Task，由 Crew 按顺序或层级执行。"
+    },
+    "first": 7,
+    "src": "原书第 6 章：CrewAI 里一个“先规划、再撰写”的 Agent。"
+  },
+  {
+    "code": "search_agent = Agent(model='gemini-2.0-flash', name='SearchAgent',\n    instruction=\"您是 Google 搜索专家\", tools=[google_search])\ncoding_agent = Agent(model='gemini-2.0-flash', name='CodeAgent',\n    instruction=\"您是代码执行专家\", code_executor=[BuiltInCodeExecutor])\nroot_agent = Agent(name=\"RootAgent\", model=\"gemini-2.0-flash\",\n    description=\"根 Agent\",\n    tools=[agent_tool.AgentTool(agent=search_agent),\n           agent_tool.AgentTool(agent=coding_agent)])",
+    "notes": {
+      "1": "一个子 Agent 只配一种能力：搜索，用来补事实。",
+      "3": "另一个只负责执行代码：需要精确计算时交给代码，而不是让模型心算。",
+      "7": "AgentTool 把子 Agent 包装成工具。根 Agent 像调用函数一样调用它们，自己负责推理、取舍和汇总。"
+    },
+    "first": 7,
+    "src": "原书第 17 章：根 Agent 把搜索和代码执行两个子 Agent 当工具用。"
+  }
+];
+  function show(v) { var d = D[+v]; $('#skM').textContent = d.src; S.anno($('#skA'), d); }
+  S.seg($('#skS'), show); show(0);
+})();
+S.notes($('#n-skel'), {
+  "c": [
+    [
+      "生产者与评审者",
+      "反思模式的两个角色：一个生成，一个按原始要求挑错。"
+    ],
+    [
+      "停止暗号",
+      "评审者满意时输出约定的固定短语，循环据此结束。"
+    ],
+    [
+      "AgentTool",
+      "把一个子 Agent 包装成工具，供上层 Agent 像函数一样调用。"
+    ]
+  ],
+  "p": [
+    [
+      "反思是带上限的循环",
+      "生成 → 批评 → 写回历史 → 再生成，满意或到上限就停。"
+    ],
+    [
+      "规划要可见",
+      "在交付物里显式写出计划，方便检查和纠偏。"
+    ],
+    [
+      "推理分工",
+      "事实交给搜索，精确计算交给代码，模型负责取舍。"
+    ]
   ]
 });
 })();

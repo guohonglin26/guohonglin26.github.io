@@ -521,7 +521,8 @@ pre.codeb { margin: 8px 0 0; padding: 10px 12px; background: var(--bg); border: 
 /* 点读配置（S.anno） */
 .anno { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 14px 20px; margin-top: 10px; }
 .anno-code { margin: 0; padding: 10px 0; background: var(--bg); border: 1px solid var(--hair); border-radius: 6px; overflow-x: auto; font-family: var(--f-num); font-size: 15px; line-height: 1.6; color: var(--ink); }
-.anno-ln { display: block; width: 100%; padding: 0 12px; white-space: pre; text-align: left; font: inherit; color: inherit; background: none; border: 0; }
+.anno-in { display: grid; width: max-content; min-width: 100%; }
+.anno-ln { display: block; box-sizing: border-box; padding: 0 12px; white-space: pre; text-align: left; font: inherit; color: inherit; background: none; border: 0; }
 .anno-ln.has { cursor: pointer; text-decoration: underline dotted var(--s1); text-underline-offset: 4px; }
 .anno-ln.has:hover { background: var(--panel); }
 .anno-ln.on { background: var(--s1-soft); }

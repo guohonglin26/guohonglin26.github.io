@@ -4,7 +4,7 @@ desc: 智能体设计模式学习笔记（六）：多智能体协作的六种�
 kicker: <span>技术学习</span><span>智能体设计模式 · 06</span><span>对应原书第 7、16、20 章</span><span>约 20 分钟</span>
 h1: 一群智能体，<em>谁干什么、花多少、先干哪个</em>
 lead: 单个智能体能力有限，于是有了多智能体协作；协作起来要花钱、要占算力，于是要做资源感知优化；事情一多、目标冲突，就要排优先级。这三章讲的都是“组织和调度”，放在一起读最顺。
-nav: forms|协作形式;topo|关系结构;adk|ADK 积木;res|资源感知;prio|优先级;recap|回扣三问
+nav: forms|协作形式;topo|关系结构;adk|ADK 积木;res|资源感知;prio|优先级;skel|代码骨架;recap|回扣三问
 ---
 <style>
 .topo { width: 100%; max-width: 440px; display: block; margin: 8px auto; }
@@ -138,6 +138,25 @@ nav: forms|协作形式;topo|关系结构;adk|ADK 积木;res|资源感知;prio|�
     <p><b>路由</b>决定“交给谁”，<b>资源感知优化</b>决定“花多大代价做”（用哪个档位的模型、要不要回退），<b>优先级排序</b>决定“先做哪个”。原书第 16 章把“对关键任务排优先级”也列为资源优化技术之一，三者在调度器里常常是同一段逻辑的三个维度。</p>
   </div>
   <div class="notes" id="n-prio"></div>
+</section>
+
+<section class="part" id="skel">
+  <div class="part-head"><h2>代码骨架：团队、按难度选模型、排优先级</h2><span class="meta">原书第 7、16、20 章 · 实践代码示例</span></div>
+  <div class="sec-lede">
+    <p>最后三个模式落到代码上都很直白。<strong>多智能体协作</strong>在 CrewAI 里就是两个角色、两个任务，第二个任务通过 <code>context</code> 声明要用第一个任务的结果，Crew 按顺序执行。<strong>资源感知</strong>的示例是一个路由器：先让模型把问题分成“简单”“需要推理”“需要联网”三类，再分别交给便宜的小模型、推理模型，或者先搜索再交给大模型。<strong>优先级</strong>的示例给任务加上 P0–P2 字段，由 Agent 通过几个带参数说明的工具创建任务、设定优先级、指派负责人。</p>
+    <p class="go">切换模式，点读代码：点带下划线的行，看它在这个模式里起什么作用。</p>
+  </div>
+  <div class="lab">
+    <p class="lab-t">代码骨架（据原书示例代码精简，保留结构和关键写法）</p>
+    <div class="seg" id="skS"><button data-v="0" aria-pressed="true">团队</button><button data-v="1">按难度选模型</button><button data-v="2">优先级</button></div>
+    <p class="cap" id="skM"></p>
+    <div id="skA"></div>
+  </div>
+  <div class="confuse">
+    <h4>读代码时注意：分类器的温度设成了 1</h4>
+    <p>资源感知示例里，负责分类的调用用了 temperature=1，同一个问题多问几次，可能一次分成“简单”、一次分成“推理”，路由就不稳定。分类这类判断任务通常把温度设为 0。另外返回结果直接 json.loads，模型多写一句说明就会解析失败，可以加上容错，或者解析失败时默认走较强的模型。这是读代码时的观察，不是原书观点。</p>
+  </div>
+  <div class="notes" id="n-skel"></div>
 </section>
 
 <section class="part" id="recap">
@@ -308,5 +327,79 @@ S.notes($('#n-prio'), {
     ['评估方式', '从简单规则到 LLM 打分推理。'],
     ['典型例子', '停机报告先于密码重置；避撞先于省油；批处理推迟到低峰。'],
     ['示例默认值', '项目管理智能体缺信息时默认 P1、分给 Worker A。']
+  ]
+});
+
+/* ---------- 代码骨架 ---------- */
+(function () {
+  var D = [
+  {
+    "code": "researcher = Agent(role='高级研究分析师', goal='查找并总结 AI 的最新趋势。',\n    backstory=\"你是一位经验丰富的研究分析师……\", allow_delegation=False)\nwriter = Agent(role='技术内容作家', goal='基于研究发现撰写清晰且引人入胜的博客文章。',\n    backstory=\"你是一位熟练的作家……\", allow_delegation=False)\nresearch_task = Task(description=\"研究 2024-2025 年人工智能中出现的前 3 个趋势……\",\n    expected_output=\"前 3 个 AI 趋势的详细摘要，包括关键点和来源。\", agent=researcher)\nwriting_task = Task(description=\"基于研究发现撰写一篇 500 字的博客文章……\",\n    expected_output=\"一篇关于最新 AI 趋势的完整 500 字博客文章。\", agent=writer,\n    context=[research_task])\nblog_creation_crew = Crew(agents=[researcher, writer], tasks=[research_task, writing_task],\n    process=Process.sequential, llm=llm)\nresult = blog_creation_crew.kickoff()",
+    "notes": {
+      "1": "每个 Agent 一个角色、一个目标。allow_delegation=False：不允许它再把活转给别人，分工固定。",
+      "6": "expected_output 写清交付物，下游才知道能拿到什么。",
+      "9": "关键一行：写作任务声明依赖研究任务的结果，研究产出会作为上下文交给作家。",
+      "11": "sequential：按任务顺序执行。换成层级流程，就是由一个管理者 Agent 来分派。"
+    },
+    "first": 10,
+    "src": "原书第 7 章：研究员和作家两个 Agent 合写一篇博客。"
+  },
+  {
+    "code": "def classify_prompt(prompt: str) -> dict:\n    system_message = {\"role\": \"system\", \"content\": (\n        \"You are a classifier ... returns one of three categories ONLY: simple / reasoning / internet_search ... \"\n        'Respond ONLY with JSON like: { \"classification\": \"simple\" }')}\n    response = client.chat.completions.create(model=\"gpt-4o\",\n        messages=[system_message, {\"role\": \"user\", \"content\": prompt}], temperature=1)\n    return json.loads(response.choices[0].message.content)\n\ndef generate_response(prompt, classification, search_results=None):\n    if classification == \"simple\":            model = \"gpt-4o-mini\"\n    elif classification == \"reasoning\":       model = \"o4-mini\"\n    elif classification == \"internet_search\": model = \"gpt-4o\"   # 先拼上搜索结果\n    ...\n\ndef handle_prompt(prompt):\n    classification = classify_prompt(prompt)[\"classification\"]\n    search_results = google_search(prompt) if classification == \"internet_search\" else None\n    return generate_response(prompt, classification, search_results)",
+    "notes": {
+      "1": "第一步只做分类：简单事实、需要推理、需要最新信息三类。",
+      "4": "要求只返回 JSON，后面直接解析。",
+      "6": "分类器的温度设成了 1，见下方读码观察。",
+      "10": "简单问题交给便宜的小模型。",
+      "11": "需要多步推理的交给推理模型。",
+      "12": "需要最新信息的先联网搜索，再连同搜索结果交给大模型。",
+      "17": "路由器把三步串起来：分类 → 按需搜索 → 选模型生成。"
+    },
+    "first": 1,
+    "src": "原书第 16 章：先分类问题，再选便宜模型、推理模型或“搜索 + 大模型”。"
+  },
+  {
+    "code": "class Task(BaseModel):\n    id: str\n    description: str\n    priority: Optional[str] = None      # P0, P1, P2\n    assigned_to: Optional[str] = None\n\nclass PriorityArgs(BaseModel):\n    task_id: str = Field(description=\"要更新的任务 ID，例如 'TASK-001'。\")\n    priority: str = Field(description=\"要设置的优先级。必须是以下之一：'P0'、'P1'、'P2'。\")\n\ndef assign_priority_to_task_tool(task_id: str, priority: str) -> str:\n    if priority not in [\"P0\", \"P1\", \"P2\"]:\n        return \"无效的优先级。必须是 P0、P1 或 P2。\"\n    task = task_manager.update_task(task_id, priority=priority)\n    ...",
+    "notes": {
+      "4": "优先级是任务的一个显式字段，取值固定为 P0、P1、P2，而不是一段模糊描述。",
+      "7": "工具参数用 Pydantic 写清说明和取值范围，这些说明会直接给模型看。",
+      "9": "描述里就写明允许的取值，减少模型乱填。",
+      "12": "工具内部再校验一次：模型传了不合法的值，就返回明确的错误信息，让它改正。"
+    },
+    "first": 4,
+    "src": "原书第 20 章：一个可以建任务、设 P0–P2、指派负责人的项目经理 Agent。"
+  }
+];
+  function show(v) { var d = D[+v]; $('#skM').textContent = d.src; S.anno($('#skA'), d); }
+  S.seg($('#skS'), show); show(0);
+})();
+S.notes($('#n-skel'), {
+  "c": [
+    [
+      "context 依赖",
+      "CrewAI 中任务声明依赖其他任务的输出，执行时作为上下文传入。"
+    ],
+    [
+      "模型路由",
+      "先判断问题难度和类型，再选择成本和能力匹配的模型。"
+    ],
+    [
+      "显式优先级字段",
+      "把优先级作为任务数据的一部分，取值固定且可校验。"
+    ]
+  ],
+  "p": [
+    [
+      "协作靠任务依赖串起来",
+      "研究任务的结果作为写作任务的上下文。"
+    ],
+    [
+      "按难度花钱",
+      "简单问题小模型，推理问题推理模型，时效问题先搜索。"
+    ],
+    [
+      "工具参数要说明取值",
+      "描述里写清允许值，工具内部再校验一次。"
+    ]
   ]
 });
