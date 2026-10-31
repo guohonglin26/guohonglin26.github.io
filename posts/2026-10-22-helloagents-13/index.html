@@ -76,7 +76,7 @@
 </section>
 
 <nav class="secnav" aria-label="本篇小节">
-  <div class="wrap"><a href="#common">共同骨架</a><a href="#trip">旅行助手</a><a href="#research">深度研究</a><a href="#town">赛博小镇</a><a href="#grad">毕业设计</a><a href="#iv">面试演练</a><a href="#recap">回扣三问</a></div>
+  <div class="wrap"><a href="#common">共同骨架</a><a href="#trip">旅行助手</a><a href="#tripx">旅行助手代码</a><a href="#research">深度研究</a><a href="#resx">研究助手代码</a><a href="#town">赛博小镇</a><a href="#townx">小镇代码</a><a href="#grad">毕业设计</a><a href="#iv">面试演练</a><a href="#recap">回扣三问</a></div>
 </nav>
 <div class="wrap">
 <div class="ask3">
@@ -118,6 +118,22 @@
   <div class="notes" id="n-trip"></div>
 </section>
 
+<section class="part" id="tripx">
+  <div class="part-head"><h2>旅行助手的工程拆解：类型从下往上搭，查询分块拼</h2><span class="meta">原书 13.2.4、13.3.3–13.3.4 节</span></div>
+  <div class="sec-lede">
+    <p>上一节讲了为什么分四个专家。真正让它能稳定跑起来的，是两处不起眼的工程：<strong>数据模型</strong>和<strong>查询拼装</strong>。</p>
+    <p>原书用 Pydantic 定义数据，原则是<strong>自底向上</strong>：先定义最小的 Location（经纬度，带 ge / le 范围校验），再定义用到它的景点、餐饮、酒店、预算，然后组合成单日行程 DayPlan，最后是顶层的 TripPlan。每个模型都很小，好理解好维护；前端、后端、智能体之间都按这一套类型传递，格式不对会报出具体是哪个字段错。高德返回的温度是 "16°C" 这样的字符串，原书用一个在校验前运行的 field_validator 先把它清洗成整数。</p>
+    <p>流程上，plan_trip 依次让景点、天气、酒店三个专家各做一件事，再把<strong>用户需求和三份结果分块标注</strong>后拼成一个查询（“用户需求：…”“景点信息：…”“天气信息：…”“酒店信息：…”），交给规划者生成 JSON，最后解析成 TripPlan。分块标注让规划者分得清每段材料是什么，也方便以后再加一个餐厅专家或交通专家。</p>
+    <p class="go">逐步走一遍：从最小的类型，一直到 plan_trip 返回。</p>
+  </div>
+  <div class="lab"><p class="lab-t">代码走读（据原书代码精简）</p><div id="trT"></div></div>
+  <div class="confuse">
+    <h4>读代码时注意：解析失败时悄悄变成 0 度</h4>
+    <p>parse_temperature 解析失败时返回 0，于是一个格式异常的温度会变成“0 摄氏度”，前端照常显示，规划者可能据此建议带厚外套。容错可以，但更稳妥的是返回 None 并把字段设成可选，或者记一条警告，让异常可见。这是读代码时的观察，不是原书观点。</p>
+  </div>
+  <div class="notes" id="n-tripx"></div>
+</section>
+
 <section class="part" id="research">
   <div class="part-head"><h2>深度研究助手：TODO 驱动的三阶段</h2><span class="meta">原书第 14 章</span></div>
   <div class="sec-lede">
@@ -134,6 +150,22 @@
     <p>骨架相同：先规划出步骤列表，再逐步执行。区别有三：每个子任务的执行不是一次 LLM 调用，而是“确定性搜索 + 总结智能体”；中间结果写进外部笔记而不是只放在 history 字符串里；最后多了一个专门的报告整合阶段。可以把它看作 Plan-and-Solve 加上第 9 篇的结构化笔记、第 8 篇的检索增强。</p>
   </div>
   <div class="notes" id="n-research"></div>
+</section>
+
+<section class="part" id="resx">
+  <div class="part-head"><h2>深度研究助手的工程拆解：三个服务，一个监听器</h2><span class="meta">原书 14.2.2、14.3.2–14.3.3、14.5.1、14.5.4 节</span></div>
+  <div class="sec-lede">
+    <p>三阶段的数据形状很简单：<strong>规划</strong>输出 3–5 个子任务，每个有 title、intent、query 三个字段；<strong>执行</strong>对每个子任务搜索、总结，总结写进 NoteTool，每条观点带来源编号；<strong>报告</strong>按子任务顺序整合成概述、分节分析、总结和参考文献。整个过程通过 SSE 不断向前端推送 status、tasks、task_completed、report 几类事件，用户能实时看到进度。</p>
+    <p>实时进度靠的是 <strong>ToolAwareSimpleAgent</strong>：它继承 SimpleAgent，只重写“执行工具”这一步，执行前后行为不变，只是多调用一个监听回调，把“哪个 Agent 调了什么工具、参数和结果是什么”通知出去。三个服务共用同一个监听器，所以所有工具调用都能推到前端，也方便调试和分析。</p>
+    <p>服务层还有两处值得学。<strong>规划服务</strong>不信任模型的输出格式：模型常在 JSON 前后加一段说明文字，所以先用正则抠出数组，抠不到再整体解析，然后逐个检查三个必需字段；原书还给了一个简单的规划质量检查（少于 3 个或多于 5 个子任务扣分，查询太短扣分）。<strong>搜索服务</strong>不让 Agent 自己调搜索工具，而是由服务层先搜好、去重、给每个来源限 2000 token，再交给总结 Agent，原书的理由是让 Agent 专注处理信息。</p>
+    <p class="go">逐步走一遍：监听器、主循环和 JSON 提取。</p>
+  </div>
+  <div class="lab"><p class="lab-t">代码走读（据原书代码精简）</p><div id="rsT"></div></div>
+  <div class="confuse">
+    <h4>读代码时注意：贪婪的正则和静默的空结果</h4>
+    <p>一是 <code>\[.*\]</code> 加 DOTALL 是贪婪匹配，会从第一个“[”一直抓到最后一个“]”。如果模型在数组后面又写了带引用标号的说明，比如“见 [1]”，抓到的就不是合法 JSON。可以改成非贪婪匹配再逐个尝试，或者干脆要求模型用结构化输出。二是搜索失败时服务返回空列表，总结 Agent 拿着空材料照样会写出一段“总结”，容易变成无据编造。更稳妥的是把这个子任务标成失败，并在报告里注明。这两点是读代码时的观察，不是原书观点。</p>
+  </div>
+  <div class="notes" id="n-resx"></div>
 </section>
 
 <section class="part" id="town">
@@ -155,6 +187,27 @@
     <p>按原书的规则，中立对话也 +2，所以只要不冒犯，好感度就会一直涨：大约 40 轮普通对话就能从陌生聊到挚友，“友好”和“中立”之间只差 3 分的节奏。另外，每轮额外调用一次 LLM 做情感判断也是成本。可以考虑中立记 0、按天衰减、或者把情感判断合并进 NPC 回复的同一次调用里（让模型同时输出回复和态度标签）。这是我的读后想法，不是原书观点。</p>
   </div>
   <div class="notes" id="n-town"></div>
+</section>
+
+<section class="part" id="townx">
+  <div class="part-head"><h2>赛博小镇的工程拆解：背景对话批量生成，好感度让 LLM 打分</h2><span class="meta">原书 15.2.2–15.2.4、15.3.2 节</span></div>
+  <div class="sec-lede">
+    <p>每个 NPC 的设定只是一个字典：id、名字、职业、性格（张三是严谨的 Python 工程师，李四是外向的产品经理，王五是温和的 UI 设计师）。记忆用两层：<strong>工作记忆</strong>取最近 5 条对话，保证“它是什么颜色的”这种指代能接上；<strong>情景记忆</strong>存全部历史，用向量检索取出最相关的 3 条，让 NPC 能回答“还记得上次那个项目吗”。两者一起作为上下文交给 Agent，回复之后再把这一轮写回记忆。</p>
+    <p>上线后很快碰到成本问题：多个玩家同时和不同 NPC 说话，就是多路并发的 LLM 请求。原书的解法是<strong>混合模式</strong>。NPC 平时的“背景对话”（自言自语、在做什么）由后台每 5 分钟<strong>批量生成</strong>一次：一个提示词里写清三个 NPC 的设定和当前场景，要求只返回 {"张三": …, "李四": …, "王五": …} 这样的 JSON，一次调用顶三次，而且三人在同一个上下文里生成，彼此还能呼应。玩家按 E 发起对话时，才切换到该 NPC 专属 Agent 的<strong>即时响应</strong>，结合记忆和好感度生成个性化回复。</p>
+    <p><strong>好感度</strong>不靠固定加分，而是每轮对话后再调一次 LLM，判断玩家态度：友好 +5，中立 +2，不友好 −3；解析失败按中立处理。分数限制在 0–100，分五级：陌生（≤20）、熟悉（≤40）、友好（≤60）、亲密（≤80）、挚友（&gt;80），等级再反过来影响 NPC 说话的语气。</p>
+    <p class="go">先估一下，再用模拟器验证。</p>
+  </div>
+  <div class="lab">
+    <p class="lab-t">好感度模拟（规则来自原书）</p>
+    <div id="afG"></div>
+    <div class="btnrow"><button class="btn" type="button" data-d="5">友好 +5</button><button class="btn" type="button" data-d="2">中立 +2</button><button class="btn" type="button" data-d="-3">不友好 −3</button><button class="btn" type="button" data-d="0">重来</button></div>
+    <div class="read" id="afO"></div>
+  </div>
+  <div class="confuse">
+    <h4>读代码时注意：解析失败按中立加分，分数会悄悄往上漂</h4>
+    <p>好感度要求 LLM“只返回数字”，但模型偶尔会回“+5分”或“友好”，int() 解析失败就按中立 +2 处理。于是越是格式不稳的模型，好感度越会无声地往上涨，连不友好的对话也可能被记成 +2。另外每轮对话多了一次打分调用，成本几乎翻倍。可以改成结构化输出（只允许三个枚举值），或者把打分并进回复的那次调用里。这是读代码时的观察，不是原书观点。</p>
+  </div>
+  <div class="notes" id="n-townx"></div>
 </section>
 
 <section class="part" id="grad">
@@ -377,6 +430,146 @@ S.notes($('#n-grad'), {
     ['必备文件', 'Notebook 或脚本、requirements.txt、README.md；可选演示视频、截图、数据集。'],
     ['推荐方向', '生产力工具、学习辅助、创意娱乐、数据分析、生活服务。'],
     ['决策顺序', '要不要 Agent → 范式 → 实现方式 → 记忆检索 → 上下文 → 协议 → 训练 → 评估。']
+  ]
+});
+
+/* ---------- 旅行助手代码走读 ---------- */
+HA.trace($('#trT'), { code: "class Location(BaseModel):\n    longitude: float = Field(..., ge=-180, le=180)\n    latitude: float = Field(..., ge=-90, le=90)\n\nclass Attraction(BaseModel):\n    name: str\n    location: Location                      # 嵌套模型\n    visit_duration: int = Field(..., gt=0)  # 分钟\n    ticket_price: int = Field(default=0, ge=0)\n\nclass DayPlan(BaseModel):\n    date: str\n    hotel: Optional[Hotel] = None\n    attractions: List[Attraction] = Field(default_factory=list)\n    meals: List[Meal] = Field(default_factory=list)\n\nclass WeatherInfo(BaseModel):\n    day_temp: int\n    @field_validator('day_temp', mode='before')\n    def parse_temperature(cls, v):          # \"16°C\" -> 16\n        if isinstance(v, str):\n            v = v.replace('°C', '').strip()\n            try: return int(v)\n            except ValueError: return 0\n        return v\n\nclass TripPlan(BaseModel):\n    city: str\n    days: List[DayPlan] = Field(default_factory=list)\n    weather_info: List[WeatherInfo] = Field(default_factory=list)\n    budget: Optional[Budget] = None\n\ndef plan_trip(self, request: TripPlanRequest) -> TripPlan:\n    attractions = self.attraction_agent.run(f\"请搜索{request.city}的{request.preferences}景点\")\n    weather = self.weather_agent.run(f\"请查询{request.city}的天气\")\n    hotels = self.hotel_agent.run(f\"请搜索{request.city}的{request.accommodation}酒店\")\n    query = self._build_planner_query(request, attractions, weather, hotels)\n    response = self.planner_agent.run(query)\n    return self._parse_trip_plan(response)  # JSON -> TripPlan", steps: [
+  { l: ['1-3'], t: '最小的类型', s: '<p><b>Location</b>：只有经纬度，用 <code>ge</code>、<code>le</code> 限定范围。所有带位置的东西都复用它。</p>' },
+  { l: ['5-9'], t: '用它搭景点', s: '<p><b>Attraction</b> 把 Location 当字段类型，这就是嵌套模型。游览时间必须大于 0，门票不能为负。餐饮、酒店、预算的写法类似，这里省略。</p>' },
+  { l: ['11-15'], t: '组合成一天', s: '<p><b>DayPlan</b> 由酒店、景点列表、餐饮列表组合而成，列表默认为空。</p>' },
+  { l: ['17-25'], t: '清洗脏数据', s: '<p>高德返回 <code>"16°C"</code>。<code>mode="before"</code> 让清洗在类型校验之前运行，先去掉单位再转整数。解析失败返回 0，见下方读码观察。</p>' },
+  { l: ['27-31'], t: '顶层：TripPlan', s: '<p>城市、每日行程、天气、预算都在这里。前端、后端和智能体之间传递的就是它。</p>' },
+  { l: ['33-36'], t: '三个专家', s: '<p>景点、天气、酒店各调一次，每个专家的提示词都很短，只管一类工具。三者互不依赖，上一节的实验就是看能不能并行。</p>' },
+  { l: ['37'], t: '拼查询', s: '<p>用户需求和三份结果分块标注后拼在一起，规划者才分得清哪段是景点、哪段是天气。</p>' },
+  { l: ['38-39'], t: '生成并解析', s: '<p>规划者按要求输出 JSON，解析成 TripPlan。格式不对时，Pydantic 会报出具体哪个字段有问题。</p>' }
+] });
+S.notes($('#n-tripx'), {
+  "c": [
+    [
+      "自底向上建模",
+      "先定义最小的模型，再逐层组合成复杂结构：Location → Attraction → DayPlan → TripPlan。"
+    ],
+    [
+      "嵌套模型",
+      "把一个 Pydantic 模型当作另一个模型的字段类型。"
+    ],
+    [
+      "field_validator(mode=\"before\")",
+      "在类型校验之前运行的清洗函数，用来处理外部 API 的不规范格式。"
+    ]
+  ],
+  "p": [
+    [
+      "类型在多方之间共用",
+      "前端、后端、智能体按同一套模型传递和校验。"
+    ],
+    [
+      "查询分块标注",
+      "用户需求、景点、天气、酒店各成一块，规划者不会混淆。"
+    ],
+    [
+      "容错要让异常可见",
+      "静默返回默认值会把错误伪装成正常数据。"
+    ]
+  ]
+});
+
+/* ---------- 研究助手代码走读 ---------- */
+HA.trace($('#rsT'), { code: "class ToolAwareSimpleAgent(SimpleAgent):\n    def _execute_tool_call(self, tool_name, parameters):\n        parsed = self._parse_parameters(parameters)\n        result = super()._execute_tool_call(tool_name, parameters)\n        if self._tool_call_listener:\n            self._tool_call_listener({\"agent_name\": self.name, \"tool_name\": tool_name,\n                                      \"parsed_parameters\": parsed, \"result\": result})\n        return result\n\nclass DeepResearchAgent:\n    def run(self, topic):\n        self._emit({\"type\": \"status\", \"message\": \"正在规划研究任务...\"})\n        todo_list = self.planner.plan_todo_list(topic)       # 3–5 个 {title, intent, query}\n        self._emit({\"type\": \"tasks\", \"tasks\": todo_list})\n        summaries = []\n        for task in todo_list:\n            results = self.search_service.search(task.query)  # 去重、每个来源限 2000 token\n            summary = self.summarizer.summarize_task(task, results)\n            summaries.append((task, summary))                 # 同时记进 NoteTool\n            self._emit({\"type\": \"task_completed\", \"task_id\": task.id})\n        report = self.reporter.generate_report(topic, summaries)\n        self._emit({\"type\": \"report\", \"content\": report})\n        return report\n\ndef _extract_tasks(response):\n    m = re.search(r'\\[.*\\]', response, re.DOTALL)   # 先抠 JSON 数组\n    if m: return json.loads(m.group(0))\n    return json.loads(response)                      # 再试整体解析", steps: [
+  { l: ['1-8'], t: '监听器', s: '<p>只重写“执行工具”这一步：照常执行，然后把 Agent 名、工具名、解析后的参数和结果交给回调。Agent 本身的行为没有任何变化。</p>' },
+  { l: ['10-14'], t: '规划', s: '<p>先推一条状态，再让规划服务生成 3–5 个子任务，把任务列表推给前端显示。</p>' },
+  { l: ['16-17'], t: '搜索', s: '<p>搜索由服务层完成，不是 Agent 自己调工具：先搜好、去重、每个来源截到 2000 token。</p>' },
+  { l: ['18-20'], t: '总结并推进度', s: '<p>总结 Agent 提取核心观点、合并相似信息、为每个观点标来源；结果记进 NoteTool，再推一条“完成”事件。</p>' },
+  { l: ['21-23'], t: '报告', s: '<p>按子任务顺序整合，加概述、总结和参考文献，推给前端。</p>' },
+  { l: ['25-28'], t: '稳妥地取出 JSON', s: '<p>模型常在 JSON 前后加说明文字，所以先用正则抠数组，抠不到再整体解析。下方读码观察说了这个正则的一个坑。</p>' }
+] });
+S.notes($('#n-resx'), {
+  "c": [
+    [
+      "TODO 驱动",
+      "先把主题拆成 3–5 个带 title、intent、query 的子任务，再逐个执行。"
+    ],
+    [
+      "ToolAwareSimpleAgent",
+      "继承 SimpleAgent，只重写执行工具这一步，多调用一个监听回调。"
+    ],
+    [
+      "SSE 进度事件",
+      "status、tasks、task_completed、report 几类事件实时推给前端。"
+    ],
+    [
+      "搜索调度服务",
+      "服务层先搜好、去重、限长，再交给总结 Agent。"
+    ]
+  ],
+  "p": [
+    [
+      "三阶段顺序协作",
+      "规划 → 执行（搜索、总结、记笔记）→ 报告。"
+    ],
+    [
+      "不信任模型的输出格式",
+      "先抠 JSON，再整体解析，再校验必需字段。"
+    ],
+    [
+      "规划质量可以粗检",
+      "子任务数在 3–5 之间，查询不能太短。"
+    ],
+    [
+      "失败要显式",
+      "搜索失败返回空结果时，应标记子任务失败而不是照常总结。"
+    ]
+  ]
+});
+
+/* ---------- 好感度模拟 ---------- */
+(function () {
+  var sc = 0, n = 0;
+  function lv(s) { return s <= 20 ? '陌生' : s <= 40 ? '熟悉' : s <= 60 ? '友好' : s <= 80 ? '亲密' : '挚友'; }
+  function draw() { $('#afO').innerHTML = '<div><span class="v">' + sc + '</span><br><small>好感度（0–100）</small></div><div><span class="v">' + lv(sc) + '</span><br><small>等级</small></div><div><span class="v">' + n + '</span><br><small>对话次数</small></div>'; }
+  S.$$('#townx .btnrow .btn').forEach(function (b) {
+    b.addEventListener('click', function () { var d = +b.getAttribute('data-d'); if (!d) { sc = 0; n = 0; } else { sc = Math.max(0, Math.min(100, sc + d)); n++; } draw(); });
+  });
+  S.guess($('#afG'), { q: '从 0 分开始，至少要多少次“友好”对话才能成为挚友？', unit: '次', ans: 17, fmt: function (x) { return S.f(x, 0); }, why: '挚友要求分数大于 80。16 次友好是 80 分，还停在“亲密”；第 17 次到 85 分才升级。中间夹一次不友好，就要多补一次友好还多一点。' });
+  draw();
+})();
+S.notes($('#n-townx'), {
+  "c": [
+    [
+      "工作记忆 + 情景记忆",
+      "最近 5 条保证指代连贯；向量检索取最相关的 3 条历史。"
+    ],
+    [
+      "批量生成",
+      "一次调用、一个 JSON，生成所有 NPC 的背景对话，成本约降到三分之一。"
+    ],
+    [
+      "混合模式",
+      "背景对话后台定时批量生成；玩家发起交互时切换到专属 Agent 即时响应。"
+    ],
+    [
+      "好感度打分",
+      "LLM 判断态度：友好 +5、中立 +2、不友好 −3，分数 0–100 分五级。"
+    ]
+  ],
+  "p": [
+    [
+      "批量只用于背景",
+      "和玩家的直接交互仍走单独的 Agent，保证个性化。"
+    ],
+    [
+      "同一上下文生成更连贯",
+      "三个 NPC 一起生成，彼此的话能呼应。"
+    ],
+    [
+      "等级影响语气",
+      "好感度反过来改变 NPC 的说话方式。"
+    ],
+    [
+      "解析失败要可见",
+      "默认按中立加分会让分数无声漂移。"
+    ]
   ]
 });
 })();
