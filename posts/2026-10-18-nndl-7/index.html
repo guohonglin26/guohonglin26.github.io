@@ -108,6 +108,14 @@
     <p>原书把优化算法分成三类：<strong>调学习率</strong>、<strong>修正梯度估计</strong>、<strong>利用参数结构或局部平坦性</strong>。它们都能写进一个统一形式：<strong>Δθ<sub>t</sub> = −α<sub>t</sub>/√(G<sub>t</sub> + ε) · M<sub>t</sub></strong>，G<sub>t</sub> 是学习率缩放（1 或历史梯度平方的累计），M<sub>t</sub> 是更新方向（当前梯度或历史梯度的移动平均）。</p>
     <p><strong>自适应学习率</strong>：<strong>AdaGrad</strong> 累加梯度平方 G<sub>t</sub> = Σg²，累计大的参数学习率小，但学习率只降不升，后期可能过慢；<strong>RMSprop</strong>（Hinton）改成指数衰减移动平均 G<sub>t</sub> = βG<sub>t−1</sub> + (1 − β)g²，β 常取 0.9，学习率可大可小；<strong>AdaDelta</strong> 再把 α 换成参数更新量平方的移动平均，平抑波动。<strong>修正梯度</strong>：<strong>动量法</strong>用负梯度的加权移动平均作方向，Δθ<sub>t</sub> = ρΔθ<sub>t−1</sub> − αg<sub>t</sub>（ρ 常取 0.9），方向一致时加速、来回振荡时减速；<strong>Nesterov</strong> 先按动量走一步，再在“前瞻点”算梯度，更合理。<strong>Adam</strong> = 动量 + RMSprop：一阶矩 M<sub>t</sub> = β₁M<sub>t−1</sub> + (1 − β₁)g，二阶矩 G<sub>t</sub> = β₂G<sub>t−1</sub> + (1 − β₂)g²（β₁ = 0.9，β₂ = 0.999），由于 M₀ = G₀ = 0，初期估计偏小，要做<strong>偏差修正</strong> M̂ = M/(1 − β₁ᵗ)、Ĝ = G/(1 − β₂ᵗ)，然后 Δθ = −αM̂/√(Ĝ + ε)，α 常取 0.001。</p>
     <p>原书第二版新增了两个现代优化器。<strong>Muon</strong>（MomentUm Orthogonalized by Newton–Schulz）：把权重矩阵当整体，先算动量方向 M，再把它“正交化”（相当于把 SVD 的奇异值都置为 1，只留方向、拉平各方向的幅度），用 Newton–Schulz 迭代近似；只适用于隐藏层二维矩阵，其余参数仍用 AdamW。<strong>SAM</strong>：min<sub>θ</sub> max<sub>‖ε‖≤ρ</sub> ℒ(θ + ε)，找“附近怎么扰动损失都不大”的平坦解，两步近似：先沿梯度找最坏扰动，再在扰动点算梯度更新。还有<strong>梯度截断</strong>：按值截断，或按模截断 g ← (b/‖g‖)g（‖g‖ &gt; b 时），对循环网络防梯度爆炸很有效，且对阈值不敏感。</p>
+    <div class="eqx"><div class="eqx-f">M<sub>t</sub> = <span data-t="1">β₁M<sub>t−1</sub> + (1 − β₁)g<sub>t</sub></span>，G<sub>t</sub> = <span data-t="2">β₂G<sub>t−1</sub> + (1 − β₂)g<sub>t</sub>²</span>，Δθ<sub>t</sub> = −<span data-t="3">α</span> <span data-t="4">M̂<sub>t</sub> / √(Ĝ<sub>t</sub> + ε)</span></div>
+    <ul class="eqx-k">
+      <li data-t="1"><b>M<sub>t</sub> 一阶矩</b>梯度的指数滑动平均，让方向更稳——这就是动量法<em>β₁ 默认 0.9</em></li>
+      <li data-t="2"><b>G<sub>t</sub> 二阶矩</b>梯度平方的滑动平均，记下每个参数梯度通常有多大——这就是 RMSprop<em>β₂ 默认 0.999</em></li>
+      <li data-t="3"><b>α</b>全局学习率<em>人为设定，常配合预热和余弦衰减</em></li>
+      <li data-t="4"><b>M̂<sub>t</sub> / √(Ĝ<sub>t</sub> + ε)</b>每个参数按自己的梯度尺度归一化后的步子：梯度一直大的走小步，梯度小而稀疏的走大步<em>M̂、Ĝ 是偏差修正，见下</em></li>
+    </ul>
+    <p class="eqx-n">M、G 从 0 起步，开头几步偏小，所以除以 1 − β<sup>t</sup> 补回来，得到 M̂、Ĝ。AdamW 再把权重衰减从梯度里拿出来单独做。</p></div>
     <p class="go">选一种地形，让六个优化器同时出发（学习率按各自常用量级示意设置）。</p>
   </div>
   <div class="lab">

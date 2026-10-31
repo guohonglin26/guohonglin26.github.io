@@ -151,6 +151,14 @@ nav: mem|三种记忆;srn|简单循环网络;mode|四种模式;bptt|随时间反
     <p><strong>LSTM</strong> 在 h<sub>t</sub> = h<sub>t−1</sub> + g(·) 的基础上做了两处改进。一是引入新的<strong>内部状态</strong> c<sub>t</sub>，专门做线性的循环信息传递：<strong>c<sub>t</sub> = f<sub>t</sub> ⊙ c<sub>t−1</sub> + i<sub>t</sub> ⊙ c̃<sub>t</sub></strong>，再非线性地输出给外部状态 <strong>h<sub>t</sub> = o<sub>t</sub> ⊙ tanh(c<sub>t</sub>)</strong>，候选状态 c̃<sub>t</sub> = tanh(W<sub>c</sub>x<sub>t</sub> + U<sub>c</sub>h<sub>t−1</sub> + b<sub>c</sub>)。二是三个<strong>门</strong>（都是 σ(W x<sub>t</sub> + U h<sub>t−1</sub> + b)，取值 (0, 1) 的“软”门）：<strong>遗忘门</strong> f<sub>t</sub> 控制 c<sub>t−1</sub> 遗忘多少；<strong>输入门</strong> i<sub>t</sub> 控制候选状态写入多少；<strong>输出门</strong> o<sub>t</sub> 控制内部状态输出多少。f = 0、i = 1 时清空旧记忆、写入新内容；f = 1、i = 0 时原样复制旧记忆。</p>
     <p><strong>LSTM 避免梯度消失的关键是记忆单元的加法更新</strong>：f<sub>t</sub> ≈ 1 时 ∂c<sub>t</sub>/∂c<sub>t−1</sub> ≈ 1，梯度可以近似恒等地传回很远；普通 RNN 是乘法形式，权重矩阵连乘容易消失或爆炸。所以训练时遗忘门偏置 b<sub>f</sub> 常初始化为正数（原书边注）。名字的含义也值得记住：h 每步都被重写，是<strong>短期记忆</strong>；网络参数是<strong>长期记忆</strong>；记忆单元 c 保存信息的周期介于两者之间，是“长的短期记忆”。</p>
     <p><strong>GRU</strong> 更简洁，不要额外的记忆单元，用一个<strong>更新门</strong> z<sub>t</sub> 平衡“保留旧状态”和“写入新状态”：<strong>h<sub>t</sub> = z<sub>t</sub> ⊙ h<sub>t−1</sub> + (1 − z<sub>t</sub>) ⊙ h̃<sub>t</sub></strong>；<strong>重置门</strong> r<sub>t</sub> 控制候选状态 h̃<sub>t</sub> = tanh(W<sub>h</sub>x<sub>t</sub> + U<sub>h</sub>(r<sub>t</sub> ⊙ h<sub>t−1</sub>) + b<sub>h</sub>) 是否依赖历史。z = 0、r = 1 时退化为简单循环网络；z = 1 时原样复制。</p>
+    <div class="eqx"><div class="eqx-f"><span data-t="5">c<sub>t</sub></span> = <span data-t="1">f<sub>t</sub></span> ⊙ <span data-t="5">c<sub>t−1</sub></span> + <span data-t="2">i<sub>t</sub></span> ⊙ <span data-t="4">c̃<sub>t</sub></span>，h<sub>t</sub> = <span data-t="3">o<sub>t</sub></span> ⊙ tanh(<span data-t="5">c<sub>t</sub></span>)</div>
+    <ul class="eqx-k">
+      <li data-t="1"><b>f<sub>t</sub> 遗忘门</b>旧记忆保留多少<em>三个门都是 σ(Wx<sub>t</sub> + Uh<sub>t−1</sub> + b)，取值在 0 到 1</em></li>
+      <li data-t="2"><b>i<sub>t</sub> 输入门</b>新信息写进去多少<em>同上，由当前输入和上一步状态决定</em></li>
+      <li data-t="4"><b>c̃<sub>t</sub> 候选状态</b>这一步想写入的新内容<em>tanh(W<sub>c</sub>x<sub>t</sub> + U<sub>c</sub>h<sub>t−1</sub> + b<sub>c</sub>)</em></li>
+      <li data-t="3"><b>o<sub>t</sub> 输出门</b>记忆拿出多少给外部状态 h<sub>t</sub><em>下一步和输出层看到的是 h<sub>t</sub>，不是 c<sub>t</sub></em></li>
+      <li data-t="5"><b>c<sub>t</sub>、c<sub>t−1</sub> 内部记忆</b>用加法更新：f<sub>t</sub> 接近 1 时，梯度沿 c 几乎无损地往回传<em>这就是 LSTM 缓解梯度消失的关键</em></li>
+    </ul></div>
     <p class="go">一个记忆任务：第 2 步给一个值，要求第 12 步把它读出来，中间全是干扰。用手工设定权重的 LSTM 单元和 SRN 比一比（示意）。</p>
   </div>
   <div class="lab">

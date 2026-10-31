@@ -125,6 +125,14 @@ nav: neuron|神经元与网络;uat|通用近似;play|训练游乐场;bp|反向�
     <p>δ 本身怎么算？由 z⁽ˡ⁺¹⁾ = W⁽ˡ⁺¹⁾a⁽ˡ⁾ + b⁽ˡ⁺¹⁾ 和 a⁽ˡ⁾ = f(z⁽ˡ⁾) 用链式法则：</p>
     <p class="fx" style="margin:10px 0">δ⁽ˡ⁾ = f′<sub>l</sub>(z⁽ˡ⁾) ⊙ (W⁽ˡ⁺¹⁾)ᵀδ⁽ˡ⁺¹⁾</p>
     <p>原书的解读：<strong>第 l 层一个神经元的误差项，是所有与它相连的第 l+1 层神经元误差项的加权和，再乘上它自己激活函数的导数</strong>。起点在输出层，而且很简单：Logistic + 交叉熵，或 Softmax + 交叉熵，都有 <strong>δ⁽ᴸ⁾ = ŷ − y</strong>。所以训练分三步：前向算每层 z、a；反向算每层 δ；用 δ 算梯度并更新（原书算法 4.1）。</p>
+    <div class="eqx"><div class="eqx-f">δ⁽ˡ⁾ = <span data-t="1">f′<sub>l</sub>(z⁽ˡ⁾)</span> ⊙ <span data-t="2">(W⁽ˡ⁺¹⁾)ᵀ</span> <span data-t="3">δ⁽ˡ⁺¹⁾</span>，∂ℒ/∂W⁽ˡ⁾ = <span data-t="3">δ⁽ˡ⁾</span> <span data-t="4">(a⁽ˡ⁻¹⁾)ᵀ</span></div>
+    <ul class="eqx-k">
+      <li data-t="3"><b>δ⁽ˡ⁾、δ⁽ˡ⁺¹⁾</b>误差项 ∂ℒ/∂z⁽ˡ⁾：损失对这一层净输入有多敏感<em>从输出层往回算；Softmax 加交叉熵时最后一层 δ⁽ᴸ⁾ = ŷ − y</em></li>
+      <li data-t="2"><b>(W⁽ˡ⁺¹⁾)ᵀ</b>把后一层的误差沿原来的连接倒着分回来<em>前向用的同一组权重，转置一下</em></li>
+      <li data-t="1"><b>f′<sub>l</sub>(z⁽ˡ⁾)</b>本层激活函数在当前输入处的斜率<em>Sigmoid 的斜率最大 0.25，层层相乘就是梯度消失的来源</em></li>
+      <li data-t="4"><b>(a⁽ˡ⁻¹⁾)ᵀ</b>前一层的输出：输入越大，对应权重的梯度越大<em>前向时缓存下来的激活，这是训练显存的大头之一</em></li>
+    </ul>
+    <p class="eqx-n">一句话：本层误差 = 后一层误差倒传回来 × 本层的斜率；权重梯度 = 本层误差 × 前一层输出。</p></div>
     <p class="go">在一个 2-2-1 的小网络上用真实数字走一遍（权重为示意），最后用数值微分核对。</p>
   </div>
   <div class="lab">

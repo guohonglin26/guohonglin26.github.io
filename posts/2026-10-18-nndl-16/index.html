@@ -147,6 +147,14 @@
     <p><strong>扩散模型</strong>不一步生成复杂样本，而是先定义一个固定的<strong>前向过程</strong>，把数据 x₀ 一点点加噪成近似高斯的 x<sub>T</sub>，再学一个<strong>反向过程</strong>从噪声一步步恢复。x₁…x<sub>T</sub> 都是隐变量，所以它也可以看作一种特殊的层级 VAE：前向分布人为固定，反向分布由网络学习。好处是前向过程有解析形式，反向每一步只需“稍微去噪一点”。</p>
     <p>前向一步 q(x<sub>t</sub>|x<sub>t−1</sub>) = 𝒩(√(1 − β<sub>t</sub>) x<sub>t−1</sub>, β<sub>t</sub>I)，{β<sub>t</sub>} 叫<strong>噪声调度</strong>（线性、余弦等）。令 α<sub>t</sub> = 1 − β<sub>t</sub>、ᾱ<sub>t</sub> = Πα<sub>s</sub>，有闭式 <strong>x<sub>t</sub> = √ᾱ<sub>t</sub> x₀ + √(1 − ᾱ<sub>t</sub>) ε</strong>：训练时不必一步步加噪，任意时刻的带噪样本一次采出来。信噪比 SNR(t) = ᾱ<sub>t</sub>/(1 − ᾱ<sub>t</sub>) 随 t 下降。反向取 p<sub>θ</sub>(x<sub>t−1</sub>|x<sub>t</sub>) = 𝒩(μ<sub>θ</sub>(x<sub>t</sub>, t), σ<sub>t</sub>²I)。</p>
     <p>训练仍是最大似然的变分下界：ℒ<sub>VLB</sub> 拆成各步的 KL(q(x<sub>t−1</sub>|x<sub>t</sub>, x₀) ‖ p<sub>θ</sub>(x<sub>t−1</sub>|x<sub>t</sub>))，而给定 x₀ 时的真实后验是高斯、有闭式均值 μ̃<sub>t</sub>(x<sub>t</sub>, x₀)，于是每项化成均方误差。网络预测什么有四种等价参数化：<strong>x₀</strong>、<strong>噪声 ε</strong>（最常用，ℒ<sub>simple</sub> = 𝔼‖ε − ε<sub>θ</sub>(x<sub>t</sub>, t)‖²）、<strong>分数函数</strong> ∇log p<sub>t</sub>(x)（与 ε 只差一个因子 −1/√(1 − ᾱ<sub>t</sub>)，对应去噪分数匹配）、<strong>速度 v</strong> = √ᾱ<sub>t</sub> ε − √(1 − ᾱ<sub>t</sub>) x₀。它们表达能力相同，区别在不同时间步的数值尺度：预测 x₀ 在 t 大时难，预测 ε 在 t 小时信号弱，v 在整条时间轴上更平衡。原书还提到：数据内在维数很低时，直接预测 x₀ 可能更好。</p>
+    <div class="eqx"><div class="eqx-f">x<sub>t</sub> = <span data-t="1">√ᾱ<sub>t</sub></span> x₀ + <span data-t="2">√(1 − ᾱ<sub>t</sub>)</span> <span data-t="3">ε</span>，ℒ<sub>simple</sub> = 𝔼‖<span data-t="3">ε</span> − <span data-t="4">ε<sub>θ</sub>(x<sub>t</sub>, t)</span>‖²</div>
+    <ul class="eqx-k">
+      <li data-t="1"><b>√ᾱ<sub>t</sub></b>原图还保留多少：ᾱ<sub>t</sub> = Π(1 − β<sub>s</sub>)，t 越大越小<em>由噪声调度 {β<sub>t</sub>} 决定</em></li>
+      <li data-t="2"><b>√(1 − ᾱ<sub>t</sub>)</b>噪声占多少；和上一项的平方和为 1<em>同上</em></li>
+      <li data-t="3"><b>ε ∼ 𝒩(0, I)</b>加进去的那份噪声：既是加噪的材料，又是训练的标签<em>随机采样</em></li>
+      <li data-t="4"><b>ε<sub>θ</sub>(x<sub>t</sub>, t)</b>网络看着加噪后的图和步数，猜当初加了什么噪声<em>要训练的唯一部分</em></li>
+    </ul>
+    <p class="eqx-n">第一式让训练不用一步步加噪：随机挑一个 t，一步就能采出 x<sub>t</sub>，再让网络把噪声猜回来。</p></div>
     <p class="go">左边：一维三峰数据（示意）在前向过程中逐渐变成高斯，可以切换线性和余弦调度；右边：把 √ᾱ<sub>t</sub> = cos θ<sub>t</sub>、√(1 − ᾱ<sub>t</sub>) = sin θ<sub>t</sub> 看成一个角度，x<sub>t</sub> 和 v 就是同一个圆上的径向和切向。</p>
   </div>
   <div class="lab-row">

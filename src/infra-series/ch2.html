@@ -47,6 +47,15 @@ nav: graph|矩阵与 FLOPs;kv|KV 与生成;state|上下文状态;moe|MoE;shape|�
     <p>因果模型里旧 token 看不到后来的 token，所以旧 token 的 K、V 可以保留：把“重算旧 token”变成“保存并读取旧状态”。每个上下文 token 的 KV：<strong>c<sub>KV</sub> = 2·L·n<sub>KV</sub>·d<sub>h</sub>·b<sub>KV</sub></strong>，Qwen3-8B BF16 是 2×36×8×128×2 = <strong>144 KiB</strong>，8192 token 即 1.125 GiB。数据按生命周期分三类：权重（多次调用间不变）、上下文状态（随请求追加）、临时数据（用完即释放）。</p>
     <p>一批请求共享权重读取，但上下文各读各的。上下文读取超过权重读取的 batch：<strong>B* = R<sub>W</sub> / (c<sub>KV</sub>H)</strong>，Qwen3-8B 权重读取约 15.14 GB，8K 上下文时 B* = 13，2K 时 51。上下文越长，批内复用的收益越早被抵消。</p>
     <p>完整回答：prefill 后执行 n<sub>d</sub> = G − 1 次 decode，第 j 次要读 H + j 个旧 token，累计读取 <strong>R<sub>old</sub> = c<sub>KV</sub>[n<sub>d</sub>H + n<sub>d</sub>(n<sub>d</sub>−1)/2]</strong>。原书例题：输入 8192、返回 1025 个 token，累计读 KV 约 <strong>1224 GiB</strong>，而结束时只保存约 <strong>1.27 GiB</strong>，近千倍。原因是每个进入上下文的 token，后面每次 decode 都要再读一遍。</p>
+    <div class="eqx"><div class="eqx-f">c<sub>KV</sub> = 2·<span data-t="1">L</span>·<span data-t="2">n<sub>KV</sub></span>·<span data-t="3">d<sub>h</sub></span>·<span data-t="4">b<sub>KV</sub></span>，M<sub>KV</sub> = c<sub>KV</sub>·<span data-t="5">H</span></div>
+    <ul class="eqx-k">
+      <li data-t="1"><b>L</b>层数：每层都要存自己的 K 和 V<em>模型结构决定；前面的 2 就是 K、V 各一份</em></li>
+      <li data-t="2"><b>n<sub>KV</sub></b>KV 头数：GQA 让多个查询头共用一组 K、V<em>MHA 时等于注意力头数，GQA 时小得多</em></li>
+      <li data-t="3"><b>d<sub>h</sub></b>每个头的维度<em>模型结构决定</em></li>
+      <li data-t="4"><b>b<sub>KV</sub></b>每个数占几个字节<em>FP16 为 2，FP8 为 1</em></li>
+      <li data-t="5"><b>H</b>上下文长度（token 数）<em>随对话和生成不断变长</em></li>
+    </ul>
+    <p class="eqx-n">c<sub>KV</sub> 是“每个 token 要存多少字节”。GQA 压的是 n<sub>KV</sub>，MLA 把 K、V 压成一个低维潜向量，量化压的是 b<sub>KV</sub>。</p></div>
     <p class="go">先猜那个倍数，再拖动输入输出长度。</p>
   </div>
   <div class="lab-row">

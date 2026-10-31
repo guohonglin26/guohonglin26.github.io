@@ -82,6 +82,15 @@
     <p>Qwen3-8B 的 D<sub>w</sub> ≈ 14.1 GiB，每 token KV k = 144 KiB。2K 上下文时 batch 1 → 64，每输出 token 的读取从 14.38 降到 0.50 GiB（约 1/29）；但<strong>权重项和 KV 项相等的 batch b<sub>KV</sub> = ⌈D<sub>w</sub>/(Lk)⌉</strong>：2K 时 51，8K 时只要 <strong>13</strong>。上下文一长，KV 读取很快就超过权重读取。</p>
     <p>代价是首 token 和输出间隔都变长：batch 1 → 64，总吞吐 37 → 1165 token/s，但首 token 从 96 ms 延后到 <strong>3.29 s</strong>，平均输出间隔从 27 增到 40 ms。</p>
     <p>LoRA 是个有意思的对照：一套 Q、V 投影 r = 16 的 BF16 adapter 只占 14.6 MiB，100 套 1.43 GiB；而 100 条互不共享的 8K 上下文，KV 要 <strong>112.5 GiB</strong>。<strong>能放多少套 adapter 由小矩阵决定，能服务多少条请求仍由 KV 决定。</strong></p>
+    <div class="eqx"><div class="eqx-f">T<sub>step</sub> ≈ max( <span data-t="1">b</span>F / <span data-t="2">P</span>, (<span data-t="3">D<sub>w</sub></span> + <span data-t="1">b</span><span data-t="4">Lk</span>) / <span data-t="5">β</span> )</div>
+    <ul class="eqx-k">
+      <li data-t="1"><b>b</b>一个 batch 里同时解码的请求数<em>调度器决定</em></li>
+      <li data-t="2"><b>P</b>算力（FLOP/s）<em>硬件决定</em></li>
+      <li data-t="3"><b>D<sub>w</sub></b>权重字节：每一步读一次，被 b 条请求平摊<em>所以 batch 越大，每条请求分摊的越少</em></li>
+      <li data-t="4"><b>Lk</b>每条请求的 KV 读取：L 是它的上下文长度，k 是每个 token 的 KV 字节<em>每条请求各读各的，乘的是 b，摊不薄</em></li>
+      <li data-t="5"><b>β</b>显存带宽<em>硬件决定</em></li>
+    </ul>
+    <p class="eqx-n">这就是本节标题“权重被摊薄，KV 摊不薄”：上下文一长，Lk 项就会超过 D<sub>w</sub>，加大 batch 不再划算。</p></div>
     <p class="go">先猜 8K 上下文下 KV 读取超过权重读取的 batch。</p>
   </div>
   <div class="lab">
@@ -325,6 +334,11 @@
       <div><b>4.56 s</b><span>方案 D 的完成时间（B 要 9.01、C 要 14.55）</span></div>
     </div>
     <p class="src">数字均取自原书第 8 章。</p>
+  </div>
+  <div class="lab">
+    <p class="lab-t">拿掉一个零件会怎样：推理服务的优化手段</p>
+    <p class="lab-s">本篇讲的几种手段各省一种资源。点一个把它关掉，看服务会变成什么样。这里是本笔记整理的定性判断，具体数字请回到各节的计算器。</p>
+    <div id="abS"></div>
   </div>
   <div class="notes" id="n-plan"></div>
 </section>
@@ -640,6 +654,15 @@ S.notes($('#n-back'), {
   ],
   ph: '一句话'
 });
+/* ---------- 拿掉一个零件：推理服务 ---------- */
+S.ablate($('#abS'), { parts: [
+  { k: 'kv', t: 'KV Cache', role: '前文的 K、V 存起来复用', off: '每生成一个 token 都要把整段前文重算一遍，计算量随长度平方增长。', sign: '越往后，每个 token 的间隔（ITL）越长。' },
+  { k: 'batch', t: '批处理', role: '多条请求共用一次权重读取', off: 'b = 1：每一步都把全部权重读一遍只服务一条请求，解码阶段受带宽限制，吞吐很低。', sign: 'GPU 算力利用率（MFU）个位数。' },
+  { k: 'cont', t: '连续批处理', role: '请求随到随进、随完随走', off: '退回静态批：一批里短请求结束后要等最长的那条，空位不能补人，排队的请求等得更久。', sign: '队列变长、TTFT 变差，GPU 时有空转。' },
+  { k: 'page', t: '分页 KV', role: '按页分配，不预留最大长度', off: '每条请求按最大长度预留一段连续显存，大部分用不上，碎片也多，能同时服务的请求变少。', sign: '显存没用满就报不够，并发上不去。' },
+  { k: 'prefix', t: '前缀缓存', role: '相同开头只算一次', off: '系统提示、工具定义这类相同前缀每次都重新 prefill，首 token 延迟变长，算力白花。', sign: 'TTFT 随提示长度线性变长。' },
+  { k: 'spec', t: '推测解码', role: '小模型先猜，大模型一次验几个', off: '每一步只出一个 token，小 batch 时大量时间花在等权重读取上。', to: '不过它不是越开越好：负载高、batch 已经很大时，验证的额外计算可能得不偿失，见“推测解码”一节的判据。' }
+] });
 })();
 </script>
 </body>

@@ -131,6 +131,14 @@
     <p>卷积和循环网络编码序列，本质上都是<strong>局部</strong>交互：卷积靠局部邻域，循环靠逐步递推（理论上能建远距离依赖，实际受路径长和梯度消失限制）。想直接连接任意两个位置，全连接网络又处理不了变长输入。<strong>自注意力</strong>的办法是：用注意力<strong>动态生成</strong>不同位置之间的连接权重（原书图 8.5：全连接层的权重是学出来的固定值，自注意力层的权重由输入内容即时算出）。</p>
     <p>它采用<strong>查询—键—值</strong>（QKV）模式：每个输入 x<sub>i</sub> 线性映射成 q<sub>i</sub>、k<sub>i</sub>、v<sub>i</sub>，即 Q = W<sub>q</sub>X、K = W<sub>k</sub>X、V = W<sub>v</sub>X；然后每个查询 q<sub>t</sub> 对所有键做键值对注意力，得到输出 h<sub>t</sub> = Σ<sub>j</sub> α<sub>j,t</sub>v<sub>j</sub>。用缩放点积时可以一行写完：<strong>H = V softmax(KᵀQ/√D<sub>k</sub>)</strong>（按列 softmax）。原书提醒：这是“列向量为样本”的写法；按行组织时就是常见的 softmax(QKᵀ/√d<sub>k</sub>)V，两者等价。</p>
     <p><strong>多头自注意力</strong>在 M 个不同的投影子空间里并行做自注意力，拼接后再乘输出矩阵 W<sub>o</sub>：不同的头可以关注不同的组合关系。和卷积、循环相比（原书表 8.1）：自注意力<strong>单层复杂度 O(T²D)、顺序操作 O(1)、任意两位置最大路径 O(1)</strong>——并行性强、路径最短；代价是要显式构造 T × T 的相关性矩阵。</p>
+    <div class="eqx"><div class="eqx-f">H = softmax( <span data-t="1">Q</span><span data-t="2">K</span>ᵀ / <span data-t="3">√d<sub>k</sub></span> ) <span data-t="4">V</span><small>行写法</small></div>
+    <ul class="eqx-k">
+      <li data-t="1"><b>Q = XW<sub>q</sub> 查询</b>每个位置在问：我想找什么<em>三个矩阵都由同一个输入 X 算出，所以叫“自”注意力</em></li>
+      <li data-t="2"><b>K = XW<sub>k</sub> 键</b>每个位置在答：我能提供什么；QKᵀ 是两两之间的相关度<em>一行对应一个查询位置</em></li>
+      <li data-t="3"><b>√d<sub>k</sub></b>点积的方差随维度变大，不除会让 softmax 太尖、梯度太小<em>缩放只改尺度，不改排序</em></li>
+      <li data-t="4"><b>V = XW<sub>v</sub> 值</b>真正被加权平均的内容<em>权重由 softmax 那一项给出</em></li>
+    </ul>
+    <p class="eqx-n">和全连接层的区别：全连接层的权重训练完就固定了；这里的权重 softmax(QKᵀ/√d<sub>k</sub>) 随输入变化，每句话都不一样。</p></div>
     <p class="go">点一个词，看它作为查询时注意力分布在哪些词上（嵌入和权重为示意）。</p>
   </div>
   <div class="lab">
@@ -203,6 +211,11 @@
       <div id="pdM" style="margin-top:10px"></div>
       <p class="cap" id="pdW"></p>
     </div>
+  </div>
+  <div class="lab">
+    <p class="lab-t">拿掉一个零件会怎样：Transformer 块</p>
+    <p class="lab-s">一个 Transformer 块里每个零件都在防一种问题。点一个把它拿掉，看会出什么事。这里是本笔记依据原书和常见实践整理的定性判断，不是实验结果。</p>
+    <div id="abT"></div>
   </div>
   <div class="notes" id="n-tf"></div>
 </section>
@@ -682,6 +695,16 @@ S.notes($('#n-back'), {
   ],
   ph: '一句话'
 });
+/* ---------- 拿掉一个零件：Transformer 块 ---------- */
+S.ablate($('#abT'), { parts: [
+  { k: 'res', t: '残差连接', role: 'x + 子层(x)', off: '梯度只能一层层穿过每个子层，层数一多就难训练；每层也不再是“在原表示上学一点增量”。', sign: '加深网络后 loss 不降反升。' },
+  { k: 'ln', t: '层规范化', role: '稳住每层的尺度', off: '各层激活的尺度会漂移，学习率稍大就发散，只能用更小的学习率和更长的预热。', sign: 'loss 出现尖峰或直接变成 NaN。' },
+  { k: 'scale', t: '√d<sub>k</sub> 缩放', role: '点积除以 √d<sub>k</sub>', off: '维度大时点积方差大，softmax 几乎变成 one-hot，梯度很小，训练变慢、变不稳。' },
+  { k: 'mh', t: '多头', role: '多种关注方式并行', off: '每个位置只能按一种方式分配注意力，很难同时照顾语法、指代、语义等不同关系。' },
+  { k: 'pe', t: '位置编码', role: '告诉模型谁在前谁在后', off: '自注意力对顺序不敏感（打乱输入，输出只是跟着打乱），“狗咬人”和“人咬狗”得到同样的词表示。' },
+  { k: 'ffn', t: '前馈网络', role: '逐位置的非线性变换', off: '每层只剩注意力的加权平均，对 V 来说是线性组合，表达能力大减；FFN 占一个块约三分之二的参数，常被认为是存放知识的主要部位。' },
+  { k: 'mask', t: '因果掩码', role: '解码器只看前文', off: '训练时能偷看后面的词，下一个词预测变成抄答案；生成时却看不到未来，训练和推理对不上。', to: '去掉掩码、双向看上下文是另一条路：编码器式模型（BERT）用掩码语言模型训练，擅长理解而不擅长生成。' }
+] });
 })();
 </script>
 </body>

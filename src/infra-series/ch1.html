@@ -117,6 +117,14 @@ nav: layers|六层分工;req|一次请求;dean|数量级与 Amdahl;cap|放得下
   <div class="sec-lede">
     <p>例题 1-1：一张 H100 SXM，能不能让 70B 模型在 10 ms 内生成一个 token？按每参数 1 字节估算，单请求每步要把约 70 GB 权重读一遍，矩阵运算约 2N = 140 GFLOPs。读取下界 70 GB ÷ 3350 GB/s ≈ <strong>20.90 ms</strong>，计算下界 140 GFLOPs ÷ 989.4 TFLOP/s ≈ <strong>0.1415 ms</strong>，前者约是后者的 148 倍。读取和计算可以分块重叠，所以单步下界取较大的一项：<strong>T<sub>step</sub> ≥ max(F/Π, R<sub>W</sub>/β)</strong>。</p>
     <p>于是：算力翻倍几乎没用；带宽翻倍或权重减半，读取下界都降到约 10.45 ms。另一条路是 batch：B 个请求共用一次权重读取，运算量变成 2BN，读取量不变。8 个请求时，每输出分摊约 2.61 ms，吞吐从约 47.9 提到约 383 token/s，<strong>但每个请求仍要等整批执行完</strong>。令 2BN/Π = b<sub>W</sub>N/β，得到转折点 <strong>B* = b<sub>W</sub>Π / (2β)</strong>，本例约 148。也可以用算术强度 I = 2B / b<sub>W</sub> 和 Π/β 比较，这是第 4 篇 Roofline 的出发点。原书特别提醒：这个转折点没计 KV，一张 H100 放下 73.73 GB 权重后只剩约 6.27 GB，根本装不下 148 条请求的 KV。</p>
+    <div class="eqx"><div class="eqx-f">T<sub>step</sub> ≥ max( <span data-t="1">F</span> / <span data-t="2">Π</span>, <span data-t="3">R<sub>W</sub></span> / <span data-t="4">β</span> )，B* = b<sub>W</sub>·<span data-t="2">Π</span> / (2<span data-t="4">β</span>)</div>
+    <ul class="eqx-k">
+      <li data-t="1"><b>F ≈ 2BN</b>这一步的浮点运算量：B 条请求，每个参数一次乘加<em>随 batch 线性增长</em></li>
+      <li data-t="2"><b>Π</b>芯片峰值算力（FLOP/s）<em>查规格，注意精度</em></li>
+      <li data-t="3"><b>R<sub>W</sub> = b<sub>W</sub>·N</b>这一步要从显存读出的权重字节：每个参数 b<sub>W</sub> 字节<em>和 batch 无关，所有请求共用一次</em></li>
+      <li data-t="4"><b>β</b>显存带宽（B/s）<em>查规格，实测通常只能到七八成</em></li>
+    </ul>
+    <p class="eqx-n">两个下界取大的：batch 小时读权重是瓶颈，再加请求几乎不加时间；batch 超过 B* 后算力变成瓶颈。</p></div>
     <p class="go">换卡、换精度、换 batch，看哪一项决定下界。</p>
   </div>
   <div class="lab">
