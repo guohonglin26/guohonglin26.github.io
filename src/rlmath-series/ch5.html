@@ -166,6 +166,30 @@ nav: mean|均值估计;basic|MC Basic;es|更高效地用样本;greedy|ε-贪心;
     <li>ε-贪心怎么去掉探索性起点？ε 取多大？
       <details><summary>先自己答，再点开</summary><p class="ans">ε-贪心是软策略，每个动作都有正概率，一条足够长的回合就能访问所有 (s, a)。ε 大探索强、最优性差，ε 小反之；常用先大后小。收敛结果只在 ε-贪心策略集合内最优。</p></details></li>
   </ol></div>
+  <div class="ask3" style="margin-top:22px"><h3>原书 Q&amp;A（第 5.7 节，作者答读者常问）</h3><ol>
+    <li>什么是蒙特卡罗估计？
+      <details><summary>先自己答，再点开</summary><p class="ans">一大类用随机样本来求解近似问题的方法。</p></details></li>
+    <li>什么是均值估计问题？
+      <details><summary>先自己答，再点开</summary><p class="ans">根据随机样本计算一个随机变量的期望。</p></details></li>
+    <li>均值估计问题怎么解？
+      <details><summary>先自己答，再点开</summary><p class="ans">两条路：知道概率分布就按定义算（有模型）；不知道就用蒙特卡罗估计近似（无模型），样本足够多时近似很准。</p></details></li>
+    <li>均值估计为什么对强化学习重要？
+      <details><summary>先自己答，再点开</summary><p class="ans">状态值和动作值都定义为回报的期望，估计它们本质上就是均值估计问题。</p></details></li>
+    <li>基于蒙特卡罗的无模型强化学习，核心思路是什么？
+      <details><summary>先自己答，再点开</summary><p class="ans">把策略迭代改造成无模型版本：把策略迭代里依赖模型的策略评估一步，换成用蒙特卡罗样本做的策略评估。</p></details></li>
+    <li>initial-visit、first-visit、every-visit 是什么？
+      <details><summary>先自己答，再点开</summary><p class="ans">利用一个回合样本的三种方式。initial-visit 用整个回合只估计起始的那个状态—动作对；every-visit 每次访问某个状态—动作对都用其后的部分来估计它；first-visit 只在回合中第一次访问时计入。后两者对样本利用得更充分。</p></details></li>
+    <li>什么是 exploring starts？为什么重要？
+      <details><summary>先自己答，再点开</summary><p class="ans">它要求从每个状态—动作对出发都生成无穷多（或足够多）个回合。理论上这是找到最优策略的必要条件：只有每个动作值都被充分探索，才能准确评估并选出最好的动作。</p></details></li>
+    <li>用什么思路避免 exploring starts？
+      <details><summary>先自己答，再点开</summary><p class="ans">让策略变“软”：软策略是随机的，一个回合就能访问很多状态—动作对，不必从每个状态—动作对都单独出发很多次。</p></details></li>
+    <li>ε-贪心策略能是最优的吗？
+      <details><summary>先自己答，再点开</summary><p class="ans">既能也不能。样本足够时，MC ε-Greedy 能收敛到最优的 ε-贪心策略；但它只是在所有（同一个 ε 的）ε-贪心策略里最优。</p></details></li>
+    <li>能不能用一个回合访问所有状态—动作对？
+      <details><summary>先自己答，再点开</summary><p class="ans">能，只要策略是软的（如 ε-贪心）并且回合足够长。</p></details></li>
+    <li>MC Basic、MC Exploring Starts、MC ε-Greedy 是什么关系？
+      <details><summary>先自己答，再点开</summary><p class="ans">MC Basic 最简单，揭示了无模型蒙特卡罗方法的核心思想；Exploring Starts 调整了样本的使用方式；ε-Greedy 再去掉了 exploring starts 的要求。核心思想很简单，复杂是为了性能，初学者要把核心思想和这些复杂处分开看。</p></details></li>
+  </ol></div>
   <div class="notes" id="n-back"></div>
 </section>
 ===SCRIPT===

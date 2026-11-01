@@ -203,6 +203,20 @@
     <li>REINFORCE 在做什么？怎样兼顾探索与利用？为何 on-policy？
       <details><summary>先自己答，再点开</summary><p class="ans">用 MC 回报估计 q，沿 ∇ln π 方向更新 θ；等价于对 π(a<sub>t</sub>|s<sub>t</sub>) 做系数为 β = q/π 的梯度上升。β 与 q 成正比（利用），q &gt; 0 时与 π 成反比（探索）。真实梯度要求 A ∼ π(θ)，动作必须由当前策略产生，所以是 on-policy。</p></details></li>
   </ol></div>
+  <div class="ask3" style="margin-top:22px"><h3>原书 Q&amp;A（第 9.6 节，作者答读者常问）</h3><ol>
+    <li>策略梯度方法的基本思想是什么？
+      <details><summary>先自己答，再点开</summary><p class="ans">很简单：定义一个合适的标量指标，求它的梯度，再用梯度上升优化它。最重要的理论结果是定理 9.1 给出的策略梯度。</p></details></li>
+    <li>策略梯度方法最复杂的地方在哪？
+      <details><summary>先自己答，再点开</summary><p class="ans">思想简单，梯度的推导却很复杂，因为要分很多情形，每种情形的推导都不简单。对很多读者来说，熟悉定理 9.1 的结论就够了，不必掌握证明。</p></details></li>
+    <li>策略梯度里该用哪个指标？
+      <details><summary>先自己答，再点开</summary><p class="ans">本章介绍的三个常用指标（v̄<sub>π</sub>、v̄<sub>π</sub><sup>0</sup>、r̄<sub>π</sub>）得到的梯度形式相似，都可以用；文献里常见的是式 (9.1) 和 (9.4) 的写法。</p></details></li>
+    <li>策略梯度里为什么会出现自然对数？
+      <details><summary>先自己答，再点开</summary><p class="ans">为了把梯度写成期望的形式，这样就能用随机梯度来近似真实梯度。</p></details></li>
+    <li>推导策略梯度时为什么要研究不带折扣的情形？
+      <details><summary>先自己答，再点开</summary><p class="ans">平均奖励 r̄<sub>π</sub> 的定义对折扣和不折扣情形都成立；折扣情形下它的梯度只是近似，不折扣情形下的梯度形式更简洁。</p></details></li>
+    <li>式 (9.32) 的策略梯度算法在数学上做了什么？
+      <details><summary>先自己答，再点开</summary><p class="ans">看它的简洁形式 (9.33) 最清楚：它是在用梯度上升更新 π(a<sub>t</sub>|s<sub>t</sub>, θ<sub>t</sub>) 这个值。拿到一个样本 (s<sub>t</sub>, a<sub>t</sub>) 后，根据系数的正负，让这个动作的概率变大或变小。</p></details></li>
+  </ol></div>
   <div class="notes" id="n-back"></div>
 </section>
 <nav class="pager" aria-label="翻页"><a href="../2026-10-19-rlmath-8/"><small>上一篇</small><span>08 · 值函数方法</span></a><a class="nx" href="../2026-10-19-rlmath-10/"><small>下一篇</small><span>10 · Actor-Critic 方法</span></a></nav>

@@ -176,6 +176,22 @@ nav: why|回报与自举;value|状态值;bellman|贝尔曼方程;matrix|矩阵�
     <li>动作值和状态值怎么换算？没被选的动作有值吗？
       <details><summary>先自己答，再点开</summary><p class="ans">v = Σ<sub>a</sub> π q；q = r + γΣ p(s′|s, a) v(s′)。没被选的动作照样有动作值（做一次这个动作、之后再按 π 走），找更好的策略恰恰要靠它们。</p></details></li>
   </ol></div>
+  <div class="ask3" style="margin-top:22px"><h3>原书 Q&amp;A（第 2.10 节，作者答读者常问）</h3><ol>
+    <li>状态值和回报是什么关系？
+      <details><summary>先自己答，再点开</summary><p class="ans">状态值是从这个状态出发能得到的回报的均值。</p></details></li>
+    <li>为什么要关心状态值？
+      <details><summary>先自己答，再点开</summary><p class="ans">状态值可以用来评价策略；下一章会看到，最优策略本身就是用状态值定义的。</p></details></li>
+    <li>为什么要关心贝尔曼方程？
+      <details><summary>先自己答，再点开</summary><p class="ans">它描述了所有状态的值之间的关系，是分析状态值的工具。</p></details></li>
+    <li>为什么把求解贝尔曼方程叫作策略评估？
+      <details><summary>先自己答，再点开</summary><p class="ans">解出贝尔曼方程就得到状态值，而状态值用来评价策略，所以解方程就是在评估对应的策略。</p></details></li>
+    <li>为什么要学贝尔曼方程的矩阵形式？
+      <details><summary>先自己答，再点开</summary><p class="ans">贝尔曼方程是为所有状态各写一个的线性方程组，要求解就得把它们放在一起；矩阵形式是这组方程的简洁写法。</p></details></li>
+    <li>状态值和动作值是什么关系？
+      <details><summary>先自己答，再点开</summary><p class="ans">一方面，状态值是该状态下各动作值的（按策略）平均；另一方面，动作值依赖于做完这个动作后可能到达的下一状态的值。</p></details></li>
+    <li>策略选不到的动作，为什么还要关心它的值？
+      <details><summary>先自己答，再点开</summary><p class="ans">策略选不到它，不代表它不好；恰恰可能是策略不够好、漏掉了最好的动作。要找到更好的策略，就得继续探索那些当前策略不选的动作。</p></details></li>
+  </ol></div>
   <div class="notes" id="n-back"></div>
 </section>
 ===SCRIPT===

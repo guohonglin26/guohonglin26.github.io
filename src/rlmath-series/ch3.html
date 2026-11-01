@@ -173,6 +173,34 @@ nav: improve|改进策略;boe|最优与 BOE;contract|收缩映射;solve|解出�
     <li>什么改变最优策略？每步加 −1 有用吗？
       <details><summary>先自己答，再点开</summary><p class="ans">γ 和奖励的相对大小（模型固定）。γ 小则短视、避险，γ 大则远视、敢冒险；加重禁区惩罚会绕开禁区。每步加 −1 是仿射变换，最优策略不变；而且折扣本身就会惩罚绕路。</p></details></li>
   </ol></div>
+  <div class="ask3" style="margin-top:22px"><h3>原书 Q&amp;A（第 3.7 节，作者答读者常问）</h3><ol>
+    <li>最优策略是怎么定义的？
+      <details><summary>先自己答，再点开</summary><p class="ans">一个策略对应的状态值在每个状态上都不小于任何其他策略，它就是最优的。注意这个定义只适用于表格型算法；用函数近似值或策略时要换别的指标（第 8、9 章）。</p></details></li>
+    <li>贝尔曼最优方程为什么重要？
+      <details><summary>先自己答，再点开</summary><p class="ans">它同时刻画了最优策略和最优状态值，解出它就得到两者。</p></details></li>
+    <li>贝尔曼最优方程算不算一个贝尔曼方程？
+      <details><summary>先自己答，再点开</summary><p class="ans">算。它是对应策略恰好为最优策略时的那个贝尔曼方程。</p></details></li>
+    <li>贝尔曼最优方程的解唯一吗？
+      <details><summary>先自己答，再点开</summary><p class="ans">它有两个未知量：值和策略。值的解（最优状态值）唯一；策略的解（最优策略）不一定唯一。</p></details></li>
+    <li>分析它的解靠的是哪条关键性质？
+      <details><summary>先自己答，再点开</summary><p class="ans">方程右端是收缩映射，于是可以用收缩映射定理分析解的存在性和唯一性。</p></details></li>
+    <li>最优策略一定存在吗？
+      <details><summary>先自己答，再点开</summary><p class="ans">一定存在，这是对贝尔曼最优方程分析的结论。</p></details></li>
+    <li>最优策略唯一吗？
+      <details><summary>先自己答，再点开</summary><p class="ans">不唯一。可能有多个甚至无穷多个最优策略，它们的最优状态值相同。</p></details></li>
+    <li>最优策略是随机的还是确定的？
+      <details><summary>先自己答，再点开</summary><p class="ans">都有可能。好消息是总存在确定性的贪心最优策略。</p></details></li>
+    <li>怎样得到一个最优策略？
+      <details><summary>先自己答，再点开</summary><p class="ans">用定理 3.3 给出的迭代算法求解贝尔曼最优方程，具体实现见第 4 章。本书所有强化学习算法的目标都是在不同条件下得到最优策略。</p></details></li>
+    <li>把折扣率调小，最优策略一般会怎样？
+      <details><summary>先自己答，再点开</summary><p class="ans">变得更短视：即使后面能拿到更多累计奖励，它也不敢冒险。</p></details></li>
+    <li>折扣率设为 0 会怎样？
+      <details><summary>先自己答，再点开</summary><p class="ans">最优策略极度短视，只选眼前奖励最大的动作，哪怕它长期来看很差。</p></details></li>
+    <li>所有奖励都加上同一个数，最优状态值变吗？最优策略变吗？
+      <details><summary>先自己答，再点开</summary><p class="ans">这是对奖励的仿射变换，最优策略不变，但最优状态值会变大（见式 (3.8)）。</p></details></li>
+    <li>想让最优策略别在到达目标前绕远路，要不要每一步都加一个负奖励？
+      <details><summary>先自己答，再点开</summary><p class="ans">没必要。第一，每步加同一个负奖励也是仿射变换，不改变最优策略；第二，折扣率本身就会鼓励尽快到达：绕路让轨迹变长，折扣回报就变小。</p></details></li>
+  </ol></div>
   <div class="notes" id="n-back"></div>
 </section>
 ===SCRIPT===

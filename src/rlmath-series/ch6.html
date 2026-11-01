@@ -127,6 +127,22 @@ nav: incr|增量均值;rm|RM 算法;dv|Dvoretzky 定理;sgd|随机梯度下降;b
     <li>SGD、RM、均值估计什么关系？为什么远处快、近处抖？
       <details><summary>先自己答，再点开</summary><p class="ans">均值估计是 f = ‖w − X‖²/2 的 SGD，SGD 是求 𝔼[∇f] = 0 的 RM 算法。随机梯度的相对误差与 |w<sub>k</sub> − w*| 成反比：远时真梯度大、噪声相对小，像梯度下降；近时真梯度小、噪声相对大，才显出随机性。</p></details></li>
   </ol></div>
+  <div class="ask3" style="margin-top:22px"><h3>原书 Q&amp;A（第 6.6 节，作者答读者常问）</h3><ol>
+    <li>什么是随机近似？
+      <details><summary>先自己答，再点开</summary><p class="ans">一大类用于求根或优化问题的随机迭代算法。</p></details></li>
+    <li>为什么要学随机近似？
+      <details><summary>先自己答，再点开</summary><p class="ans">第 7 章的时序差分算法可以看成随机近似算法。有了这一章的准备，第一次见到它们就不会觉得突兀。</p></details></li>
+    <li>这一章为什么反复讨论均值估计？
+      <details><summary>先自己答，再点开</summary><p class="ans">状态值和动作值是随机变量的均值，第 7 章的时序差分算法和用于均值估计的随机近似算法很相似。</p></details></li>
+    <li>RM 算法比其他求根算法强在哪？
+      <details><summary>先自己答，再点开</summary><p class="ans">它不需要目标函数或其导数的表达式，只要能拿到输入和对应的（带噪声的）输出，是一种黑箱方法。著名的 SGD 就是 RM 算法的一个特例。</p></details></li>
+    <li>SGD 的基本思想是什么？
+      <details><summary>先自己答，再点开</summary><p class="ans">求解涉及随机变量的优化问题，在不知道概率分布时只用样本求解：把梯度下降里以期望表示的真实梯度，换成随机梯度。</p></details></li>
+    <li>SGD 收敛得快吗？
+      <details><summary>先自己答，再点开</summary><p class="ans">它的收敛规律很有意思：离最优解远时收敛快；接近最优解时随机梯度的随机性开始起作用，收敛变慢。</p></details></li>
+    <li>MBGD 是什么？比 SGD、BGD 好在哪？
+      <details><summary>先自己答，再点开</summary><p class="ans">小批量梯度下降，介于两者之间：比 SGD 用的样本多，随机性小；比 BGD 不需要用全部样本，更灵活。</p></details></li>
+  </ol></div>
   <div class="notes" id="n-back"></div>
 </section>
 ===SCRIPT===
