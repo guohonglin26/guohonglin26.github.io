@@ -63,7 +63,7 @@
 </section>
 
 <nav class="secnav" aria-label="本篇小节">
-  <div class="wrap"><a href="#pd">PD 分离</a><a href="#ratio">阶段配比</a><a href="#af">AF 与 CPU</a><a href="#skew">专家 skew</a><a href="#replica">专家副本</a><a href="#kv">KV 分布</a><a href="#route">路由</a><a href="#plan">八卡部署</a><a href="#back">三个问题</a></div>
+  <div class="wrap"><a href="#org">分布方式</a><a href="#pd">PD 分离</a><a href="#ratio">阶段配比</a><a href="#af">AF 与 CPU</a><a href="#skew">专家 skew</a><a href="#replica">专家副本</a><a href="#kv">KV 分布</a><a href="#route">路由</a><a href="#ops">启动与恢复</a><a href="#plan">八卡部署</a><a href="#back">三个问题</a></div>
 </nav>
 <div class="wrap">
 <div class="q3"><h3>本篇要回答的 3 个问题</h3><ol>
@@ -71,6 +71,26 @@
   <li>EP 越大为什么越不均衡？专家副本要跑几批才回本？</li>
   <li>缓存命中的机器排队 250 ms，没缓存的只等 20 ms，该发给谁？</li>
 </ol></div>
+
+<section class="part" id="org">
+  <div class="part-head"><h2>四种组织方式，和一条资源约束</h2><span class="meta">原书 9.1 节</span></div>
+  <div class="sec-lede">
+    <p>比较部署方案前，先分清硬件组织和服务组织。<strong>推理实例</strong>可以由多张卡的进程协同执行；<strong>完整服务副本</strong>拥有完成整个推理所需的权重和执行能力，能和其他副本各自接请求。原书画了四种组织：八张卡共同组成一个实例处理同一批请求；多个完整副本各自接请求；<strong>PD 分离</strong>按生成阶段分工，交接的是 prefill 留下的上下文 KV，一次请求交一次；<strong>AF 分离</strong>把注意力和 FFN／专家分开放，隐状态要在每一层、每一步生成里来回传。它们改变的是系统的不同部分，可以逐项引入，也可以组合：加副本分散排队但模型要复制；PD 分离能分别配两阶段的能力，但多了 KV 交接和两个队列；AF 分离让算子用合适的硬件，但每层都要往返；共享 KV 能跨实例复用上下文，但要管缓存标识、就绪通知和失效。</p>
+    <p>判断够不够用只需要一条约束：到达率 λ 乘以每个请求在某类资源上的平均占用时间 d，要小于这类资源的单元数 n，即 <strong>λd &lt; n</strong>。每秒来 4 个请求、每个占 0.5 GPU 秒，就要 2 张一直在忙的卡；恰好只有 2 张时，任何突发都会一直积压。原书的开篇例子：一张 A100 每个请求 prefill 约 0.86 GPU 秒、decode 约 1.76 GPU 秒，合计 2.62；一张 H20 是 1.81 加 0.88，合计 2.68。四张 A100 加四张 H20 都做完整副本，每秒约完成 3.02 个请求，低于每秒 3.5 个的到达率。接下来几节要回答的就是：同样八张卡，换一种分工能不能补上这个缺口。还有一个容易忽略的成本：智能体等工具的 10 秒里，GPU 可以去算别的请求，但 8192 个 token 的上下文 KV（Qwen3-8B 约 1.125 GiB）还占着显存，十个会话同时等就是 11.25 GiB。计算暂停了，状态还得留着。</p>
+    <p class="go">用约束算一算：到达率、每请求占用和卡数怎样决定会不会积压。</p>
+  </div>
+  <div class="lab">
+    <p class="lab-t">λd &lt; n：会不会积压</p>
+    <div class="ctl-grid">
+      <label class="ctl"><span>到达率 λ（请求/秒） <output id="ogLv">3.5</output></span><input type="range" id="ogL" min="0.5" max="8" step="0.1" value="3.5"></label>
+      <label class="ctl"><span>每请求占用 d（GPU 秒） <output id="ogDv">2.65</output></span><input type="range" id="ogD" min="0.2" max="5" step="0.05" value="2.65"></label>
+      <label class="ctl"><span>卡数 n <output id="ogNv">8</output></span><input type="range" id="ogN" min="1" max="24" step="1" value="8"></label>
+    </div>
+    <div class="read" id="ogR"></div>
+    <p class="cap">d 默认取 A100 与 H20 的平均（约 2.65 GPU 秒）。原书精确算法是分别算两类卡的完成率再相加，约 3.02 请求/秒。</p>
+  </div>
+  <div class="notes" id="n-org"></div>
+</section>
 
 <section class="part" id="pd">
   <div class="part-head"><h2>PD 分离：先算那份要交接的 KV</h2><span class="meta">原书 9.2.1–9.2.2 节</span></div>
@@ -95,6 +115,7 @@
   </div>
   <div class="notes" id="n-pd"></div>
 </section>
+
 
 <section class="part" id="ratio">
   <div class="part-head"><h2>配比：同构分离不涨，异构分离涨 1.51 倍</h2><span class="meta">原书 9.2.3–9.2.4 节</span></div>
@@ -243,6 +264,28 @@
     <p class="note">远端取回含 10 ms 查找固定开销；B 直接重算 887 ms，命中后只需 30.9 ms。</p>
   </div>
   <div class="notes" id="n-route"></div>
+</section>
+
+<section class="part" id="ops">
+  <div class="part-head"><h2>启动、扩缩容与故障恢复：实例本身也在变</h2><span class="meta">原书 9.6 节</span></div>
+  <div class="sec-lede">
+    <p>前面比较的是请求交给谁、状态放在哪，都默认实例已经在跑。扩容和故障恢复时，新副本先要初始化进程和分词器、读权重并分片、编译、探测 KV 容量、捕获执行图，而请求一直在来。<strong>预热要算账</strong>：捕获执行图让启动多花 10 秒、此后每步省 0.2 ms，要 50000 步才持平。<strong>积压要排空</strong>：服务完全不可用、启动 T<sub>s</sub> 秒，结束时积压约 λT<sub>s</sub>；就绪后的服务率 μ 只有超出到达率的那部分能用来消化积压，排空还要 λT<sub>s</sub> / (μ − λ)。原书的例子：每秒到 3.5 个、启动 10 秒，积压 35 个；直接 PD 就绪后每秒 4.55 个，只余 1.05 个去消化积压，第 43 秒才排空；理想分块的共置 4.17 个，到第 63 秒左右；不分块的共置 3.02 个，积压永远在涨。<strong>服务余量决定积压退得多快。</strong></p>
+    <p><strong>运行中迁移</strong>可以利用源端还活着：先在后台复制不再变的上下文，源端继续生成，最后短暂停下补齐差量。迁走一个 decode worker 时 KV 约 41.1 GB，每秒只增长约 0.172 GB，经 25 GB/s 的网卡约 1.65 秒追上；追赶速度是两条曲线的斜率之差。改变并行方式（如 TP4 改 TP8）时，网络搬移只要 0.66 到 2.6 秒，可建通信组、准备执行图、恢复接收请求这些软件准备若串行占 9 秒，再快的链路总时间也只能逼近 9 秒，要提前建组、预捕获执行图才能继续缩短。<strong>故障恢复</strong>则没有源端可依靠：先确定用户已经收到哪段输出，再决定是从已保存的 KV 继续、用已记录的 token 重做 prefill，还是重新采样（会得到不同的后缀，对 RL 样本也是另一回事）。token 级预写日志在对外返回之前记下确定的输出，决定“继续哪条序列”；KV checkpoint 决定“还要补算多少”。张量并行或专家并行组里丢一张卡，整个协作实例可能都停，其他完整副本还能继续服务。</p>
+    <p class="go">先估盈亏点，再用计算器看服务余量怎样决定排空时间。</p>
+  </div>
+  <div class="lab-row">
+    <div class="lab"><p class="lab-t">先估再算</p><div id="opG"></div></div>
+    <div class="lab">
+      <p class="lab-t">启动积压的排空时间（连续流量模型）</p>
+      <div class="ctl-grid">
+        <label class="ctl"><span>到达率 λ（请求/秒） <output id="opLv">3.5</output></span><input type="range" id="opL" min="0.5" max="8" step="0.1" value="3.5"></label>
+        <label class="ctl"><span>启动时间（秒） <output id="opTv">10</output></span><input type="range" id="opT" min="1" max="120" step="1" value="10"></label>
+        <label class="ctl"><span>就绪后服务率 μ（请求/秒） <output id="opMv">4.55</output></span><input type="range" id="opM" min="0.5" max="10" step="0.05" value="4.55"></label>
+      </div>
+      <div class="read" id="opR"></div>
+    </div>
+  </div>
+  <div class="notes" id="n-ops"></div>
 </section>
 
 <section class="part" id="plan">
@@ -608,6 +651,101 @@ S.notes($('#n-back'), {
     ['下一篇', '换到训练侧：并行、checkpoint、故障恢复和 RL 的资源配比。']
   ],
   ph: '一句话'
+});
+
+/* ---------- λd < n ---------- */
+function og() {
+  var l = +$('#ogL').value, d = +$('#ogD').value, n = +$('#ogN').value;
+  $('#ogLv').textContent = S.f(l, 1); $('#ogDv').textContent = S.f(d, 2); $('#ogNv').textContent = n;
+  var need = l * d, cap = n / d, ok = need < n;
+  $('#ogR').innerHTML = '<div><span class="v">' + S.f(need, 1) + '</span><br><small>需要的忙碌卡数 λd</small></div><div><span class="v">' + S.f(cap, 2) + '</span><br><small>服务上限（请求/秒）</small></div><div><span class="v" style="color:var(' + (ok ? '--ok' : '--alert') + ')">' + (ok ? '跟得上' : '每秒积压 ' + S.f(l - cap, 2)) + '</span><br><small>' + (ok ? '余量 ' + S.pct(1 - need / n, 0) : '队列会一直变长') + '</small></div>';
+}
+['ogL', 'ogD', 'ogN'].forEach(function (id) { $('#' + id).addEventListener('input', og); }); og();
+S.notes($('#n-org'), {
+  "c": [
+    [
+      "推理实例 vs 服务副本",
+      "实例可以多卡协同；副本拥有完成整次推理的全部权重和能力，可独立接请求。"
+    ],
+    [
+      "PD 分离",
+      "按 prefill / decode 阶段分工，每次请求交接一次上下文 KV。"
+    ],
+    [
+      "AF 分离",
+      "注意力与 FFN／专家分开执行，隐状态在每层、每步生成中往返。"
+    ],
+    [
+      "共置",
+      "P 和 D 由同一组执行资源处理。"
+    ]
+  ],
+  "p": [
+    [
+      "λd < n",
+      "到达率 × 每请求资源占用 < 资源单元数；用 GPU 秒记占用。"
+    ],
+    [
+      "开篇缺口",
+      "八卡完整副本约 3.02 请求/秒 < 到达 3.5 请求/秒。"
+    ],
+    [
+      "先算需求再选方式",
+      "两阶段需求相近时分离只增加交接；长前缀多时共享 KV 更划算。"
+    ],
+    [
+      "暂停计算不等于释放状态",
+      "工具等待时 KV 仍占显存：1.125 GiB × 10 s = 11.25 GiB·s。"
+    ]
+  ]
+});
+
+/* ---------- 启动与积压 ---------- */
+S.guess($('#opG'), { q: '捕获执行图让启动多花 10 秒，此后每个执行步省 0.2 ms。要多少步才能把多花的时间赚回来？', unit: '步', ans: 50000, fmt: function (x) { return S.f(x, 0); }, why: '10 s / 0.2 ms = 50000 步，从第 50001 步起才净赚。每步若为 32 个请求各生成一个 token，约对应 160 万个输出 token。收益按批执行的次数累计。' });
+function op() {
+  var l = +$('#opL').value, t = +$('#opT').value, m = +$('#opM').value;
+  $('#opLv').textContent = S.f(l, 1); $('#opTv').textContent = t; $('#opMv').textContent = S.f(m, 2);
+  var q = l * t, ok = m > l, dr = ok ? q / (m - l) : Infinity;
+  $('#opR').innerHTML = '<div><span class="v">' + S.f(q, 0) + '</span><br><small>就绪时的积压（个）</small></div><div><span class="v">' + (ok ? S.f(dr, 0) + '<small>秒</small>' : '排不空') + '</span><br><small>' + (ok ? '就绪后还要排空' : 'μ ≤ λ，积压持续增长') + '</small></div><div><span class="v">' + (ok ? S.f(t + dr, 0) + '<small>秒</small>' : '—') + '</span><br><small>从开始启动算起</small></div>';
+}
+['opL', 'opT', 'opM'].forEach(function (id) { $('#' + id).addEventListener('input', op); }); op();
+S.notes($('#n-ops'), {
+  "c": [
+    [
+      "预热盈亏点",
+      "多花的启动时间 / 每步节省 = 持平所需的步数。"
+    ],
+    [
+      "排空时间",
+      "T_drain = λT_s / (μ − λ)；只有超出到达率的服务能力能消化积压。"
+    ],
+    [
+      "热迁移追赶",
+      "后台复制速度减去状态增长速度，才是积压缩小的速度。"
+    ],
+    [
+      "token 级预写日志",
+      "对外返回前记下已确定的输出，故障后知道该继续哪条序列。"
+    ]
+  ],
+  "p": [
+    [
+      "服务余量决定恢复速度",
+      "原书例子：μ = 4.55 第 43 秒排空；4.17 约第 63 秒；3.02 永远排不空。"
+    ],
+    [
+      "链路再快也逃不掉软件准备",
+      "9 秒串行准备时，总时间只能逼近 9 秒。"
+    ],
+    [
+      "三种恢复方式",
+      "从 KV 继续、用已记录 token 重做 prefill、重新采样（后缀会变）。"
+    ],
+    [
+      "故障范围看同步组",
+      "TP / EP 组丢一张卡可能整组停；其他完整副本继续。"
+    ]
+  ]
 });
 })();
 </script>
