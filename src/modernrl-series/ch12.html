@@ -4,7 +4,7 @@ desc: 动手学现代强化学习笔记（十二）：奖励黑客、规格博�
 kicker: <span>技术学习</span><span>动手学现代强化学习 · 12</span><span>对应原教程第 25–26 章（docs/chapter30_alignment_failures、chapter32_selfplay）与附录 A.1</span><span>约 45 分钟</span>
 h1: 优化器<em>只看得见那个数字</em>
 lead: 前面十一篇一直在想办法让策略拿到更高的奖励。原教程最后一部分回头检查一个更基础的问题：奖励升高以后，事情是否真的做得更好？它从一个仓库机器人反复扫同一个条形码的例子讲起，一路讲到奖励模型过度优化、验证器漏洞、评测泄漏和统计噪声，最后收拢成一套排障顺序。这一篇也是整个系列的收尾：所有算法都要经过这一关。
-nav: hack|奖励黑客;over|过度优化;eval|评测;debug|排障;back|回扣三问
+nav: hack|奖励黑客;over|过度优化;eval|评测;debug|排障;selfplay|自博弈;back|回扣三问
 ---
 <style>
 main sub, main sup { font-size: 15px; line-height: 0; }
@@ -151,6 +151,28 @@ main sub, main sup { font-size: 15px; line-height: 0; }
   </table></div>
   <p class="book-ref">原文附录 A.1“训练前、中、后的检查表”压缩版。第 1 篇的 CartPole 排查顺序（先查 terminated / truncated、GAE 切断、日志口径，再看优化指标）是同一思想的小号版本。</p>
   <div class="notes" id="n-debug"></div>
+</section>
+
+<section class="part" id="selfplay">
+  <div class="part-head"><h2>自博弈：对手也在变，裁判必须独立</h2><span class="meta">原文 docs/chapter32_selfplay/self-play-outlook/index.md（26.1 节）</span></div>
+  <div class="sec-lede">
+    <p>石头、剪刀、布只有三个动作，却足以说明普通 RL 的一个盲点。对手每次都出石头，策略很快学会只出布，训练胜率接近 100%；换一个会出剪刀的对手，这个策略立刻失败。固定对手给的数据越来越重复，也不会逼策略补上新的弱点。让正在学习的策略自己参与生成对局，就是<strong>自博弈</strong>。AlphaGo Zero 是边界清楚的例子：规则判定落子是否合法、谁赢，策略和自己的历史版本对弈获得经验。原教程强调，“自己产生数据”不等于“自己决定什么是对的”，围棋的胜负是一个可靠的外部锚点。</p>
+    <p>只和最新版的自己对弈，容易绕圈：A 被 B 克制，B 被 C 克制，C 又忘了怎么对付 A。办法是维护一个<strong>历史对手池</strong>，按概率抽对手（虚拟对弈、PSRO 都是这个思路）。语言任务没有统一的胜负规则，就要回答三个问题：谁产生候选，谁来比较，比较结果怎么变成训练信号。常见形式有生成者—评判者结构（Self-Rewarding 让同一个模型既写回答又给自己打分，再做迭代 DPO）和辩论式训练（双方互相反驳，由裁判判定）。原教程也提醒，DeepSeek-R1-Zero 那种“规则奖励 + 在线采样”属于在线 RL 的邻近例子，没有另一个学习中的对手，不算严格的自博弈。</p>
+    <p>持续自博弈至少要稳住三个闭环：<strong>对手多样性</strong>（防止策略坍缩和遗忘）、<strong>自适应课程</strong>（题目集中在还有区分度的难度，但别全是无解题）、<strong>奖励来源</strong>（规则信号可靠但覆盖窄，模型评判覆盖广但偏差会沿循环累积）。生成者和评判者来自同一个模型时，训练分数可以一直涨而外部任务毫无改善，所以必须留一份<strong>独立的保留集</strong>做锚点。这和这一篇前面讲的奖励黑客是同一个问题，只是作弊对象换成了模型自己。</p>
+    <p class="go">调对手池里三种出法的比例，看一个专门针对它的“最优应对”能赢多少。</p>
+  </div>
+  <div class="lab">
+    <p class="lab-t">石头剪刀布：对手池越偏，越容易被针对</p>
+    <div class="ctl-grid">
+      <label class="ctl"><span>出石头的比例 <output id="spRv">1.00</output></span><input type="range" id="spR" min="0" max="1" step="0.05" value="1"></label>
+      <label class="ctl"><span>出剪刀的比例 <output id="spSv">0.00</output></span><input type="range" id="spS" min="0" max="1" step="0.05" value="0"></label>
+      <label class="ctl"><span>出布的比例 <output id="spPv">0.00</output></span><input type="range" id="spP" min="0" max="1" step="0.05" value="0"></label>
+    </div>
+    <div class="btnrow"><button class="btn" type="button" id="spU">均匀混合</button><button class="btn" type="button" id="spF">固定出石头</button></div>
+    <div class="read" id="spO"></div>
+    <p class="cap" id="spW"></p>
+  </div>
+  <div class="notes" id="n-selfplay"></div>
 </section>
 
 <section class="part" id="back">
@@ -312,5 +334,66 @@ S.notes($('#n-debug'), {
     ['Critic 坏掉', 'value loss 不降；explained variance < 0；value 尺度远小于 return'],
     ['熵的两种病', '快速归零（过早收敛 / hacking）vs 长期很高（奖励没被吸收）'],
     ['训练后要留', '最佳评测 checkpoint、失败 checkpoint、审计样本、多 seed、私有集']
+  ]
+});
+
+/* ---------- 自博弈：对手池可被针对的程度 ---------- */
+(function () {
+  function sp() {
+    var r = +$('#spR').value, s = +$('#spS').value, p = +$('#spP').value, z = r + s + p || 1;
+    r /= z; s /= z; p /= z;
+    $('#spRv').textContent = S.f(r, 2); $('#spSv').textContent = S.f(s, 2); $('#spPv').textContent = S.f(p, 2);
+    // 赢 +1、平 0、输 −1：出布赢石头输剪刀；出石头赢剪刀输布；出剪刀赢布输石头
+    var ev = { '布': r - s, '石头': s - p, '剪刀': p - r }, best = '布';
+    Object.keys(ev).forEach(function (k) { if (ev[k] > ev[best]) best = k; });
+    var tie = ev[best] - Math.min(ev['布'], ev['石头'], ev['剪刀']) < 0.02;
+    $('#spO').innerHTML = '<div><span class="v">' + (tie ? '三种都一样' : best) + '</span><br><small>针对这个对手池的最优应对</small></div><div><span class="v">' + S.f(ev[best], 2) + '</span><br><small>每局期望得分（赢 +1、输 −1）</small></div>';
+    $('#spW').innerHTML = ev[best] < 0.02 ? '对手池接近均匀时，任何纯策略都占不到便宜：这就是石头剪刀布的均衡。历史对手池让当前策略面对的分布更接近这里，不容易被单一策略针对。' : '对手池越偏，越容易被一个纯策略针对。只和固定对手（或只和最新的自己）训练，学到的就是这种“针对型”策略，一换对手就失效。';
+  }
+  ['spR', 'spS', 'spP'].forEach(function (id) { $('#' + id).addEventListener('input', sp); });
+  $('#spU').addEventListener('click', function () { $('#spR').value = $('#spS').value = $('#spP').value = 1 / 3; sp(); });
+  $('#spF').addEventListener('click', function () { $('#spR').value = 1; $('#spS').value = 0; $('#spP').value = 0; sp(); });
+  sp();
+})();
+S.notes($('#n-selfplay'), {
+  "c": [
+    [
+      "自博弈",
+      "让正在学习的策略参与生成训练数据（对局、反驳、题目）。"
+    ],
+    [
+      "历史对手池",
+      "保留多个旧版本按概率抽取对手，防止策略绕圈和遗忘；PSRO、虚拟对弈都是这个思路。"
+    ],
+    [
+      "生成者—评判者",
+      "一个产生候选、一个比较；Self-Rewarding 让同一个模型兼任两者。"
+    ],
+    [
+      "辩论式训练",
+      "双方看到对方回答并反驳，由裁判判定。"
+    ],
+    [
+      "独立保留集",
+      "不参与循环的外部评测，用来区分真实进步和自我偏好被放大。"
+    ]
+  ],
+  "p": [
+    [
+      "自己产生数据 ≠ 自己定对错",
+      "需要规则、测试或人类判断作外部锚点。"
+    ],
+    [
+      "三个闭环",
+      "对手多样性、自适应课程、奖励来源，要分别稳住。"
+    ],
+    [
+      "R1-Zero 不算严格自博弈",
+      "在线采样 + 规则奖励，没有学习中的对手。"
+    ],
+    [
+      "同模型自评会累积偏差",
+      "训练分数涨不代表外部能力涨。"
+    ]
   ]
 });
