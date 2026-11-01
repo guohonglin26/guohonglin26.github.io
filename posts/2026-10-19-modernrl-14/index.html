@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>看、听、动手、画：RL 走出纯文本以后多出来的问题</title>
+<meta name="description" content="动手学现代强化学习笔记（十四）：VLM 的奖励为什么分不清“看错了”和“想错了”、视觉编码器的梯度由谁决定、为什么 RL 会放大不看图的瞎猜；音频的内容、韵律、实时性三类奖励与“越想越差”；具身智能从 MDP 到 POMDP、连续动作与域随机化；图像生成把终点分数传回整条去噪轨迹（DDPO、DanceGRPO）与视频的时间一致性。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='15' width='18' height='4' rx='1' fill='none' stroke='%2313171C' stroke-width='2'/%3E%3Cpath d='M12 15L16 4' stroke='%2313171C' stroke-width='2.2' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='4' r='2.2' fill='%232340D6'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../assets/site.css">
+<link rel="stylesheet" href="../study-shared/series.css">
+<script src="../../assets/site.js"></script>
+<script src="../study-shared/series.js"></script>
+<script src="../study-shared/rlevo.js"></script>
+
+</head>
+<body data-series="modernrl-series" data-part="14" data-rail>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="../../">
+      <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><rect x="7" y="9" width="10" height="11" rx="1.5" fill="var(--s1)"/></svg>
+      AI 观察笔记
+    </a>
+    <nav class="site-nav">
+      <a href="../../">全部文章</a>
+      <button class="theme-btn" type="button">深色</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+<section class="hero wrap">
+  <p class="kicker"><span>技术学习</span><span>动手学现代强化学习 · 14</span><span>对应原教程第 23–24 章（docs/chapter26_vlm、chapter27_audio_rl、chapter28_vla、chapter29_visual_generation）</span><span>约 45 分钟</span></p>
+  <h1>输入多了一种，<em>奖励就多了一层盲区</em></h1>
+  <p class="lead">前面的 RL 都在 token 里打转：读文本、写文本、给文本打分。原教程第 23–24 章把它推到另外四种场景：看图回答、听音说话、控制机器人、生成图像和视频。算法还是 PPO、GRPO 那一套，但每多一种模态，就多出一个奖励看不见的环节：答对了是不是真的看了图，说对了是不是说得像人，仿真里学会了到真机上还灵不灵，画得好看是不是只是讨好了评分器。这一篇和第 13 篇一样，是对照原文补上的。</p>
+  <p class="credit">本系列是开源教程《<a href="https://github.com/walkinglabs/hands-on-modern-rl" rel="noopener">Hands-On Modern RL（动手学现代强化学习）</a>》（WalkingLabs 社区编写的开源课程，CC BY-NC-SA 4.0 协议；本笔记依据 2026 年 10 月 1 日的仓库版本（docs/ 讲义与 code/ 实验代码））的学习笔记。原教程沿“CartPole → DQN → 策略梯度 → PPO → RLHF / DPO / GRPO → Agentic RL”一条线展开，这里按它的章节重新组织成十二篇，用自己的话重讲，并把关键实验搬进浏览器：CartPole 的 DQN 与 PPO 是用 JavaScript 真实训练的缩小版，其余公式演示的数值都在页面里实时计算。原教程数据（如训练日志 CSV、实验表格）标“原书数据”，为演示设的数值标“示意”，每节标出对应的原文路径。原教程自述“由 AI 协助生成、尚未全面审稿”，本笔记只采信能与原始论文对上的内容，存疑处单独注明。改编内容同样按 CC BY-NC-SA 4.0 分享、仅限非商业用途；数学推导部分可与同站<a href="../2026-10-19-rlmath/">《强化学习的数学原理》系列</a>对照着读。</p>
+<nav class="series" aria-label="系列目录">
+  <a href="../2026-10-19-modernrl/"><b>总览</b>算法地图</a>
+  <a href="../2026-10-19-modernrl-1/" data-part="1"><b>01</b>训练闭环</a>
+  <a href="../2026-10-19-modernrl-2/" data-part="2"><b>02</b>DQN 家族</a>
+  <a href="../2026-10-19-modernrl-3/" data-part="3"><b>03</b>策略梯度</a>
+  <a href="../2026-10-19-modernrl-4/" data-part="4"><b>04</b>PPO 与 GAE</a>
+  <a href="../2026-10-19-modernrl-5/" data-part="5"><b>05</b>连续控制</a>
+  <a href="../2026-10-19-modernrl-6/" data-part="6"><b>06</b>离线与模仿</a>
+  <a href="../2026-10-19-modernrl-7/" data-part="7"><b>07</b>RLHF</a>
+  <a href="../2026-10-19-modernrl-8/" data-part="8"><b>08</b>DPO 家族</a>
+  <a href="../2026-10-19-modernrl-9/" data-part="9"><b>09</b>GRPO 与 RLVR</a>
+  <a href="../2026-10-19-modernrl-10/" data-part="10"><b>10</b>推理与搜索</a>
+  <a href="../2026-10-19-modernrl-11/" data-part="11"><b>11</b>Agentic RL</a>
+  <a href="../2026-10-19-modernrl-12/" data-part="12"><b>12</b>奖励黑客与评测</a>
+  <a href="../2026-10-19-modernrl-13/" data-part="13"><b>13</b>工业化训练</a>
+  <a href="../2026-10-19-modernrl-14/" aria-current="page" data-part="14"><b>14</b>多模态与具身</a>
+</nav>
+</section>
+
+<nav class="secnav" aria-label="本篇小节">
+  <div class="wrap"><a href="#vlm">看图</a><a href="#audio">听与说</a><a href="#embodied">具身控制</a><a href="#gen">图像与视频</a><a href="#back">回扣三问</a></div>
+</nav>
+<div class="wrap">
+<div class="ask3">
+  <h3>读完这一篇，你应该能回答</h3>
+  <ol>
+    <li>VLM 的一个标量奖励，为什么分不清“看错了”和“想错了”？为什么 RL 可能把“不看图直接猜”强化起来？</li>
+    <li>音频模型的奖励为什么至少要分内容、韵律、实时性三块？只用可验证奖励会掉进什么陷阱？</li>
+    <li>具身控制和图像生成，分别把 RL 的哪一个基本假设改掉了？</li>
+  </ol>
+</div>
+
+<section class="part" id="vlm">
+  <div class="part-head"><h2>看图：猜对了，不等于看了图</h2><span class="meta">原文 docs/chapter26_vlm/vlm-challenges.md、vlm-grpo-hands-on.md（23.1、23.3 节）</span></div>
+  <div class="sec-lede">
+    <p>图里有 3 个圆，问“有几个圆”，模型答 3，奖励记 1。这个分数分不清两件事：模型真的数出了 3 个，还是没看图、猜中了训练集里最常见的答案。VLM 比纯文本模型多一条感知链路：图像被切成小块、编码成视觉 token，再和问题一起进语言模型。所以奖励要检查的不只是“答得对不对”，还有“<strong>是不是依据图像答对的</strong>”。</p>
+    <p>原教程用一组 4 个回答说明这个盲区（见下表）。B 是看错了，C 是看对了但数错了，两者拿到同样的负优势，梯度只能按混合方向更新；D 是没看图碰巧蒙对，反而拿到正优势。还有一个容易忽略的事实：RL 的损失只算在回答 token 上，视觉 token 是输入；梯度会沿注意力反传到视觉编码器，但<strong>视觉编码器到底更不更新，由参数有没有解冻决定，而不是由奖励决定</strong>。常见三种选择：全量更新（能提升视觉理解，但编码器可能被 RL 的梯度搞坏）；冻结编码器（保住视觉能力，但学不到新的感知）；差异化学习率（视觉部分用更小的学习率，原教程以 1:10 作为起点）。</p>
+    <p>更麻烦的是 RL 会<strong>放大瞎猜</strong>。四选一的题，不看图瞎猜的命中率是 1/4；组大小为 8 时，平均有 2 条碰巧猜对，组内归一化后拿到正优势，被策略梯度强化。如果答案分布不均匀（计数题里小数字更常见），猜的收益更高，几轮下来，成本高、收益不确定的“认真看图”反而被挤掉。对策是把视觉理解也变成可检查的信号：Visual-RFT 用检测框的交并比、置信度和格式三项可验证奖励；工具式推理让模型调用放大镜看局部，把“重新看哪里”变成能审查的动作；最直接的是<strong>反事实对照</strong>，同一个问题换一张关键物体不同、场景相近的图，答案几乎不变，就说明它在靠语言先验答题。</p>
+    <p class="go">先估一下：瞎猜能拿多少正优势。</p>
+  </div>
+  <div class="tblw"><table class="cmpt">
+    <thead><tr><th>回答</th><th>视觉感知</th><th>文本推理</th><th>答案</th><th>奖励</th><th>优势</th></tr></thead>
+    <tbody>
+      <tr><td>A</td><td>看到 3 个圆</td><td>计数正确</td><td>3</td><td>1</td><td>正</td></tr>
+      <tr><td>B</td><td>错看成 2 个</td><td>如实报告</td><td>2</td><td>0</td><td>负</td></tr>
+      <tr><td>C</td><td>看到 3 个圆</td><td>推理时漏数一个</td><td>2</td><td>0</td><td>负</td></tr>
+      <tr class="on"><td>D</td><td>没有认真看图</td><td>凭语言先验猜</td><td>3</td><td>1</td><td>正（危险）</td></tr>
+    </tbody>
+  </table></div>
+  <p class="cap">原教程 23.1 节的例子，正确答案是 3，组大小为 4。</p>
+  <div class="lab-row">
+    <div class="lab"><p class="lab-t">先估再算</p><div id="vgG"></div></div>
+    <div class="lab">
+      <p class="lab-t">瞎猜在一组里能拿多少正优势（示意）</p>
+      <div class="ctl-grid">
+        <label class="ctl"><span>选项数 <output id="vkV">4</output></span><input type="range" id="vk" min="2" max="10" step="1" value="4"></label>
+        <label class="ctl"><span>组大小 G <output id="vGV">8</output></span><input type="range" id="vG" min="4" max="32" step="4" value="8"></label>
+        <label class="ctl"><span>答案分布的偏斜（倍） <output id="vsV">1.0</output></span><input type="range" id="vs" min="1" max="2.5" step="0.1" value="1"></label>
+      </div>
+      <div class="read" id="vR"></div>
+      <p class="cap">偏斜 1.5 倍表示“猜最常见的答案”比均匀乱猜命中率高 50%。</p>
+    </div>
+  </div>
+  <div class="confuse"><h4>易混辨析：视觉幻觉 vs 文本里的奖励黑客</h4>
+    <p><b>文本奖励黑客</b>：模型找到奖励函数的漏洞，比如写得更长、迎合评分器，输出本身在“作弊”。</p>
+    <p><b>视觉幻觉被 RL 放大</b>：图像证据明明就在输入里，模型却用语言先验代替看图，结果碰巧对就被强化。它是在“感知”上作弊，所以要额外检查答案对图像的依赖程度（反事实对照、视觉 grounding 奖励），只看答案对错发现不了。</p>
+  </div>
+  <div class="notes" id="n-vlm"></div>
+</section>
+
+<section class="part" id="audio">
+  <div class="part-head"><h2>听与说：答对了，但说得难听</h2><span class="meta">原文 docs/chapter27_audio_rl/reward-design.md、future.md（24.1–24.2 节）</span></div>
+  <div class="sec-lede">
+    <p>语音对话模型的回答，内容可能完全正确，语调却像念稿、停顿怪异，或者让人等了两秒才开口。原教程把音频奖励拆成三类。<strong>内容正确性</strong>最容易写成程序：答案比对、语音识别的字错率、语义相似度，或者让大模型判断是否等价，适合客观任务。<strong>韵律自然度</strong>（音高、节奏、强度、停顿）没有唯一标签，要从人类比较或声学统计里学；单一的标量奖励模型会把“内容对但韵律怪”和“内容错但语气自然”压成一个数，原教程介绍的做法是按评分细则分维度打分，没有标注时也可以用基频分布和人类参考的距离打分，并显式惩罚单调。<strong>实时性</strong>按首包延迟（用户说完到第一段可播放音频）给分。三类按场景加权组合：客服重内容，陪伴重韵律，同声传译重延迟。</p>
+    <p>音频还有两个独特的坑。一是“<strong>越想越差</strong>”：文本和视觉的推理模型给更多推理 token 通常会更好，音频模型却可能相反，因为长推理链落在文本上（比如只分析歌词）而不是声学证据上（音高、节奏、和声），越想越偏。原教程转述的 Step-Audio-R1 做法是迭代地筛选“推理里明确提到声学特征且答案正确”的样本做蒸馏，RL 奖励里除了答案正确，还给“有推理过程”一小部分分，否则优化器会倾向于跳过推理直接答。二是<strong>可验证奖励陷阱</strong>：只优化能自动判对错的内容奖励，韵律会被训得越来越平，所以要把交互偏好重新纳入奖励。具体模型数字为原教程对论文的转述，这里只采用机制层面的结论。</p>
+    <div class="eqx"><div class="eqx-f">R<sub>total</sub> = <span data-t="1">w<sub>c</sub>·R<sub>content</sub></span> + <span data-t="2">w<sub>p</sub>·R<sub>prosody</sub></span> + <span data-t="3">w<sub>l</sub>·R<sub>latency</sub></span></div>
+    <ul class="eqx-k">
+      <li data-t="1"><b>R<sub>content</sub></b>内容对不对：答案比对、1 − 字错率、语义相似度或大模型判等价<em>最容易自动验证</em></li>
+      <li data-t="2"><b>R<sub>prosody</sub></b>说得像不像人：分维度的评审打分，或基频分布距离加单调惩罚<em>最难量化，也最容易被训平</em></li>
+      <li data-t="3"><b>R<sub>latency</sub></b>开口快不快：按首包延迟分段给分或指数衰减<em>和深度推理天然冲突，常靠架构解决</em></li>
+    </ul></div>
+    <p class="go">切换三种产品场景，看权重为什么不一样。</p>
+  </div>
+  <div class="lab">
+    <p class="lab-t">按场景配权重（倾向来自原教程，数值为示意）</p>
+    <div class="seg" id="auS"><button data-v="0" aria-pressed="true">客服问答</button><button data-v="1">陪伴对话</button><button data-v="2">实时翻译</button></div>
+    <div id="auB"></div>
+    <p class="cap" id="auW"></p>
+  </div>
+  <div class="notes" id="n-audio"></div>
+</section>
+
+<section class="part" id="embodied">
+  <div class="part-head"><h2>具身控制：从 MDP 到 POMDP</h2><span class="meta">原文 docs/chapter28_vla/embodied-intelligence/index.md（24.3 节）</span></div>
+  <div class="sec-lede">
+    <p>CartPole 的状态只有 4 个数，包含了系统当前的全部物理信息。机械狗永远拿不到“世界真实的物理状态”（准确的质心速度、地面摩擦系数），只有带噪声的传感器观测，这是<strong>部分可观测</strong>的 POMDP：策略要靠历史观测形成对真实状态的估计，工程上就是把过去几帧观测堆叠起来，或者用循环网络。动作也从“上下左右”变成十几维的连续向量（每个关节的目标角度），策略输出高斯分布的均值和标准差，再缩放到真实关节范围，交给底层 PD 控制器。原教程说具身 RL 里最常用的仍然是 PPO。</p>
+    <p>最大的鸿沟是<strong>仿真到真机</strong>（Sim-to-Real）：真机上试错代价太高，只能在仿真里训练，可仿真的摩擦、质量、延迟不可能和现实一样。<strong>域随机化</strong>把这些参数当成一个分布，目标从“在一个环境里回报最高”改成“在一族环境里平均回报最高”，这和《深入理解 AI Agent》第 7 篇讲的仿真随机化是同一个思路。网络结构上常用<strong>非对称 Actor-Critic</strong>：训练时 Critic 可以看仿真里才有的真实状态（特权信息），帮助估值更准；Actor 只用真机上也拿得到的观测，部署时不依赖特权信息。</p>
+    <div class="eqx"><div class="eqx-f">J(θ) = 𝔼<sub><span data-t="1">μ ∼ p(μ)</span></sub> [ 𝔼<sub><span data-t="2">τ ∼ 𝒫<sub>μ</sub></span></sub> [ R(τ) ] ]</div>
+    <ul class="eqx-k">
+      <li data-t="1"><b>μ ∼ p(μ)</b>仿真物理参数（摩擦、质量、延迟、传感器噪声）从一个分布里随机抽<em>每次 reset 时重新抽</em></li>
+      <li data-t="2"><b>τ ∼ 𝒫<sub>μ</sub></b>在这组参数下跑出来的轨迹<em>策略要在整族环境上都好，才不会只适应一个仿真器</em></li>
+    </ul></div>
+    <p class="go">点读原教程给的四足机器狗观测空间和动作缩放代码。</p>
+  </div>
+  <div class="lab">
+    <p class="lab-t">四足机器狗的观测与动作（据原教程示例精简）</p>
+    <div id="emA"></div>
+  </div>
+  <div class="notes" id="n-embodied"></div>
+</section>
+
+<section class="part" id="gen">
+  <div class="part-head"><h2>图像与视频：把终点的分数传回整条去噪轨迹</h2><span class="meta">原文 docs/chapter29_visual_generation/visual-generation-dancegrpo.md、video-generation-modern.md（24.4–24.5 节）</span></div>
+  <div class="sec-lede">
+    <p>扩散模型从纯噪声出发，一步步去噪得到一张图。把<strong>每一步去噪看成一个动作</strong>，整条去噪过程就是一条轨迹，最后一张图拿一个分（人类偏好、文图对齐、画质）。DDPO 的目标就是让平均分升高：一条轨迹的概率是每步去噪概率的乘积，取对数变成求和，于是可以直接套用第 3 篇的 REINFORCE，把终点的分数传回每一步去噪。同一条指令生成三张图，分数 0.3、0.5、0.7，减去平均分 0.5 作基线，0.7 那张的去噪步骤被推高，0.3 那张被压低，0.5 那张几乎不动。DanceGRPO 把这一点做成 GRPO 的形式：同一条指令生成一组图，在组内比较。</p>
+    <p><strong>奖励模型决定模型会学成什么样</strong>：只奖励偏好，可能学会讨好评分器的固定风格；只奖励文图对齐，图可能对题但不好看；画质分高也可能只是迎合了评审器。所以原教程强调要分开检查偏好、对齐和画质，并且一定要人工看图。视频又多了一条时间轴：终点一个分数说不清哪一帧出了问题，物体会不会凭空消失、轨迹是否连续、接触和因果的先后、重力与遮挡，这些“物理感”需要专门的评测去检查。</p>
+    <p class="go">用原教程的三张图例子判断一下。</p>
+  </div>
+  <div class="lab"><p class="lab-t">DDPO 里谁被推高</p><div id="gnQ"></div></div>
+  <div class="notes" id="n-gen"></div>
+</section>
+
+<section class="part" id="back">
+  <div class="part-head"><h2>回扣开头的三个问题</h2><span class="meta">先自己答，再点开</span></div>
+  <div class="fxc">
+    <h3>本篇公式卡</h3>
+    <div class="fx">VLM 的 GRPO 损失只算在回答 token：L = −Σ_{t∈response} A_t log π_θ(y_t | y_&lt;t, x_text, x_image)；视觉编码器是否更新取决于是否解冻</div>
+    <div class="fx">瞎猜的期望正优势条数 ≈ G × 命中率；四选一、G = 8 时约 2 条</div>
+    <div class="fx">音频：R_total = w_c·R_content + w_p·R_prosody + w_l·R_latency</div>
+    <div class="fx">域随机化：J(θ) = 𝔼_{μ∼p(μ)}[𝔼_{τ∼𝒫_μ}[R(τ)]]</div>
+    <div class="fx">DDPO：log p_θ(τ|c) = log p(x_T) + Σ_t log p_θ(x_{t−1}|x_t, t, c)；∇J = 𝔼[R(τ, c)∇ log p_θ(τ|c)]，减基线降方差</div>
+  </div>
+  <div class="ask3" style="margin-top:22px">
+    <details><summary>1. 为什么分不清看错和想错？为什么会强化瞎猜？</summary><p class="ans">一个标量奖励只说明“这次不好”，看错（感知）和想错（推理）拿到同样的负优势；没看图却碰巧答对的回答拿到正优势。组内归一化后，瞎猜命中的那几条被强化；答案分布越偏，猜的收益越高。要用反事实对照、视觉 grounding 奖励、工具式看图把感知变成可检查的信号；视觉编码器是否更新由解冻策略决定。</p></details>
+    <details><summary>2. 音频奖励为什么要分三块？可验证奖励陷阱是什么？</summary><p class="ans">内容、韵律、实时性的可验证程度不同、彼此冲突（想得久开口就慢），压成一个数就不知道模型学了哪一块。只优化容易自动判分的内容奖励，韵律会被训得越来越平，答对但难听；要把交互偏好、韵律评分重新纳入奖励。音频还会“越想越差”，推理要落在声学证据上。</p></details>
+    <details><summary>3. 具身控制和图像生成各改了什么假设？</summary><p class="ans">具身控制改掉了“完全可观测、离散动作、训练和测试是同一个环境”：变成 POMDP、高维连续动作、仿真到真机的差距，用观测堆叠、高斯策略、域随机化、非对称 Actor-Critic 应对。图像生成改掉了“动作是一个 token”：每一步去噪是一个动作，终点的一个分数要传回整条去噪轨迹（DDPO、DanceGRPO），而奖励模型本身决定了会学成什么样。</p></details>
+  </div>
+</section>
+<nav class="pager" aria-label="翻页"><a href="../2026-10-19-modernrl-13/"><small>上一篇</small><span>13 · 大模型 RL 的工业化：训推一致、异步、奖励与成本</span></a></nav>
+</div>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <span>AI 观察笔记</span>
+    <span>学习笔记 · 原书：<a href="https://github.com/walkinglabs/hands-on-modern-rl" rel="noopener">walkinglabs/hands-on-modern-rl</a></span>
+  </div>
+</footer>
+<script>
+(function () {
+'use strict';
+var $ = S.$, $$ = S.$$, h = S.h;
+/* ---------- 瞎猜 ---------- */
+S.guess($('#vgG'), { q: '四选一的看图选择题，组大小为 8。完全不看图瞎猜，平均有几条回答碰巧答对、拿到正优势？', unit: '条', ans: 2, fmt: function (x) { return S.f(x, 1); }, why: '8 × 1/4 = 2。组内归一化后这 2 条拿到正优势，被策略梯度强化；如果小数字之类的答案更常见，猜得更准，强化得更多。' });
+function vg() {
+  var k = +$('#vk').value, G = +$('#vG').value, s = +$('#vs').value;
+  $('#vkV').textContent = k; $('#vGV').textContent = G; $('#vsV').textContent = S.f(s, 1);
+  var p = Math.min(1, s / k);
+  $('#vR').innerHTML = '<div><span class="v">' + S.pct(p, 0) + '</span><br><small>瞎猜命中率</small></div><div><span class="v">' + S.f(G * p, 1) + '</span><br><small>每组平均拿正优势的瞎猜条数</small></div>';
+}
+['vk', 'vG', 'vs'].forEach(function (id) { $('#' + id).addEventListener('input', vg); }); vg();
+S.notes($('#n-vlm'), {
+  c: [
+    ['跨模态信用分配', '一个标量奖励分不清错误来自视觉感知还是文本推理。'],
+    ['视觉编码器更新', 'RL 损失只算在回答 token 上；编码器是否更新由参数是否解冻决定。'],
+    ['差异化学习率', '视觉部分用更小的学习率，在保护感知与提升感知之间折中。'],
+    ['反事实对照', '换一张关键内容不同、场景相近的图，答案不变就说明在靠语言先验。'],
+    ['Visual-RFT', '把检测任务做成可验证奖励：交并比、置信度、格式。']
+  ],
+  p: [
+    ['猜对 ≠ 看了图', '奖励既要查答得对不对，也要查是不是依据图像答对。'],
+    ['RL 会放大瞎猜', '碰巧答对拿正优势；答案分布越偏，猜的收益越高。'],
+    ['把看图变成可检查的动作', '工具式放大、grounding 奖励、反事实检查。']
+  ]
+});
+
+/* ---------- 音频场景 ---------- */
+(function () {
+  var D = [[0.7, 0.2, 0.1, '客服问答：信息准确决定业务价值，内容奖励权重最大；但也不能完全不顾韵律，否则用户体验差。'],
+           [0.3, 0.55, 0.15, '陪伴对话：对话体验决定用户愿不愿意继续聊，韵律自然度最重要。'],
+           [0.35, 0.15, 0.5, '实时翻译：延迟超过阈值就不可用，实时性权重最大；内容仍然不能错。']];
+  var L = ['内容', '韵律', '实时'];
+  function show(v) {
+    var d = D[+v];
+    S.bars($('#auB'), L.map(function (n, i) { return { label: n, value: d[i], text: S.f(d[i], 2) }; }));
+    $('#auW').textContent = d[3];
+  }
+  S.seg($('#auS'), show); show(0);
+})();
+S.notes($('#n-audio'), {
+  c: [
+    ['内容正确性奖励', '答案比对、1 − 字错率、语义相似度、大模型判等价。'],
+    ['韵律自然度奖励', '音高、节奏、强度、停顿；分维度评审或声学统计，并惩罚单调。'],
+    ['实时性奖励', '按首包延迟（用户说完到第一段可播放音频）给分。'],
+    ['越想越差', '音频推理链落在文本而不是声学证据上，推理越长越偏。'],
+    ['可验证奖励陷阱', '只优化可自动判分的内容，韵律被训平，答对但难听。']
+  ],
+  p: [
+    ['三类奖励按场景加权', '客服重内容、陪伴重韵律、翻译重延迟。'],
+    ['推理要接地', '奖励推理里明确用到声学特征，并给“有推理过程”留一点分。'],
+    ['延迟冲突靠架构', '边想边说的流水线，而不是只调权重。']
+  ]
+});
+
+/* ---------- 机器狗 ---------- */
+S.anno($('#emA'), { first: 7, code: [
+  'observation_space = gym.spaces.Dict({',
+  "    'base_lin_vel': Box(shape=(3,)),        # 估算的质心线速度",
+  "    'base_ang_vel': Box(shape=(3,)),        # IMU 测量的角速度",
+  "    'projected_gravity': Box(shape=(3,)),   # 投影重力（机身倾斜）",
+  "    'dof_pos': Box(shape=(12,)),            # 12 个关节的角度",
+  "    'dof_vel': Box(shape=(12,)),            # 12 个关节的角速度",
+  "    'history': Box(shape=(5, 33)),          # 过去 5 帧观测",
+  '})',
+  '',
+  'action = policy_net(observation)            # [-1, 1] 之间的 12 维向量',
+  'target_dof_pos = default_dof_pos + action * action_scale',
+  '# target_dof_pos 交给底层 PD 控制器产生电机扭矩'].join('\n'), notes: {
+  1: '观测是一个字典，而不是 CartPole 那样的 4 个数。',
+  2: '“估算的”速度：真实的质心速度拿不到，只能估。这就是部分可观测。',
+  4: '投影重力反映机身倾斜，是维持平衡最关键的信号之一。',
+  5: '12 个关节，对应 12 维连续动作。',
+  7: '过去 5 帧观测堆叠起来：从连续几帧的位置变化里恢复速度等隐藏信息，这是处理 POMDP 最直接的办法。',
+  10: '策略输出 [-1, 1] 之间的连续向量，通常来自高斯分布的均值（训练时再加探索噪声）。',
+  11: '动作缩放：以站立姿态为基准，按 action_scale（原教程说常设 0.25 左右）换算成目标关节角度。',
+  12: '神经网络不直接输出电机扭矩，而是给出目标角度，由底层控制器跟踪。'
+} });
+S.notes($('#n-embodied'), {
+  c: [
+    ['POMDP', '部分可观测：只有带噪声的观测，策略要靠历史观测估计真实状态。'],
+    ['观测堆叠', '把最近几帧观测拼在一起，恢复速度等隐藏信息；也可以用循环网络。'],
+    ['动作缩放', '策略输出 [-1, 1]，按基准姿态和缩放系数换成目标关节角度。'],
+    ['域随机化', '把摩擦、质量、延迟等仿真参数当成分布随机抽，最大化整族环境上的平均回报。'],
+    ['非对称 Actor-Critic', 'Critic 训练时可看仿真特权信息，Actor 只用部署时拿得到的观测。']
+  ],
+  p: [
+    ['具身改掉了三个假设', '完全可观测、离散动作、训练与测试同一个环境。'],
+    ['最常用的仍是 PPO', '在大规模并行仿真里稳定、好调。'],
+    ['Sim-to-Real 靠随机化', '在一族环境上都好，才不会只适应一个仿真器。']
+  ]
+});
+
+/* ---------- DDPO ---------- */
+S.quiz($('#gnQ'), [
+  { q: '同一条指令生成三张图，奖励是 0.3、0.5、0.7，以平均分 0.5 作基线。训练后哪张图的去噪步骤概率被推高？', o: ['三张都被推高，因为奖励都是正的', '只有 0.7 那张被推高，0.3 那张被压低，0.5 那张几乎不动', '只有 0.3 那张，因为它最需要改进'], a: 1, why: '优势 = 奖励 − 基线，分别是 −0.2、0、+0.2。不减基线的话三张都会被推高、方差很大，这就是第 3 篇讲的基线作用。' },
+  { q: '扩散模型里，DDPO 把什么当成 RL 的“一个动作”？', o: ['生成的整张图', '每一步去噪', '图像里的每个像素'], a: 1, why: '一条轨迹的概率是每步去噪概率的乘积，取对数变成求和，终点的分数就能沿 REINFORCE 传回每一步。' },
+  { q: '奖励只用一个“审美评分器”，训练后图越来越像同一种风格，分数却很高。最可能是什么问题？', o: ['训练步数不够', '模型在讨好评分器：奖励模型本身决定了会学成什么样', '扩散步数太多'], a: 1, why: '这是视觉生成里的奖励黑客。要把偏好、文图对齐、画质分开检查，并且人工看图。' }
+]);
+S.notes($('#n-gen'), {
+  c: [
+    ['去噪即动作', '扩散模型每一步去噪当作一个动作，整条去噪过程是一条轨迹。'],
+    ['DDPO', '用 REINFORCE 把终点分数传回整条去噪轨迹，减基线降方差。'],
+    ['DanceGRPO', '同一条指令生成一组图或视频，在组内比较，GRPO 的形式。'],
+    ['时间一致性', '视频里物体恒常、轨迹连续、接触因果、重力遮挡等“物理感”。']
+  ],
+  p: [
+    ['奖励模型决定学成什么样', '偏好、对齐、画质分开检查，防止讨好评分器。'],
+    ['视频终点一分不够', '说不清哪一帧出了问题，需要专门的物理感评测。'],
+    ['和第 3 篇是同一个梯度', '算法没变，变的是“动作”是什么。']
+  ]
+});
+})();
+</script>
+</body>
+</html>

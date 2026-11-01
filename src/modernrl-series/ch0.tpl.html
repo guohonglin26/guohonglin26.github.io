@@ -1,7 +1,7 @@
 ---
 title: 动手学现代强化学习：学习笔记总览
-desc: 开源教程 Hands-On Modern RL 的十三篇互动学习笔记总览：从 CartPole、DQN、策略梯度、PPO 到 RLHF、DPO、GRPO、推理模型与 Agentic RL；算法演化地图、按问题反查的选型器、算法卡索引、概念速记卡、易混辨析索引与公式速查。
-kicker: <span>技术学习</span><span>系列 · 共 13 篇</span><span>浏览器里真实训练 DQN 与 PPO</span><span>CC BY-NC-SA 4.0</span>
+desc: 开源教程 Hands-On Modern RL 的十四篇互动学习笔记总览：从 CartPole、DQN、策略梯度、PPO 到 RLHF、DPO、GRPO、推理模型与 Agentic RL；算法演化地图、按问题反查的选型器、算法卡索引、概念速记卡、易混辨析索引与公式速查。
+kicker: <span>技术学习</span><span>系列 · 共 14 篇</span><span>浏览器里真实训练 DQN 与 PPO</span><span>CC BY-NC-SA 4.0</span>
 h1: 从一根杆子，<em>到会用工具的模型</em>
 lead: 这是开源课程 Hands-On Modern RL（WalkingLabs）的学习笔记。原教程从 CartPole 的一次试错讲起，经过 DQN、策略梯度、PPO 和连续控制，一路走到 RLHF、DPO、GRPO、推理模型和 Agentic RL——它的主张是：RLHF、DPO、GRPO 不是一组孤立的新名词，而是同一套序贯决策思想在语言模型上的延伸。十二篇笔记沿这条线重新组织，每篇都有能拖、能算、能训练的实验。这一页是复习工具：演化地图、选型器、算法卡、速记卡、易混辨析和公式都汇总在这里。
 nav: why|这套教程;map|演化地图;pick|按问题选算法;algo|算法卡;cards|速记卡;cf|易混辨析;fx|公式速查;back|记下来
@@ -85,7 +85,7 @@ main sub, main sup { font-size: 15px; line-height: 0; }
 <section class="part" id="map">
   <div class="part-head"><h2>算法演化地图</h2><span class="meta">每个箭头是一次“修补”</span></div>
   <div class="sec-lede">
-    <p>把十三篇里出现的主要算法摆在一张图上，会发现几乎每一步都是在修补前一步的某个具体问题：Q 表装不下 → DQN；argmax 处理不了连续动作 → 策略梯度；方差大 → 基线与 Actor-Critic；一步走太远 → TRPO 与 PPO；四个模型太重 → DPO（去掉 RM 与 Critic）和 GRPO（去掉 Critic）；单轮变多轮 → Agentic RL。紫色边框是大模型时代的算法。</p>
+    <p>把十四篇里出现的主要算法摆在一张图上，会发现几乎每一步都是在修补前一步的某个具体问题：Q 表装不下 → DQN；argmax 处理不了连续动作 → 策略梯度；方差大 → 基线与 Actor-Critic；一步走太远 → TRPO 与 PPO；四个模型太重 → DPO（去掉 RM 与 Critic）和 GRPO（去掉 Critic）；单轮变多轮 → Agentic RL。紫色边框是大模型时代的算法。</p>
     <p class="go">点一个节点，看它修补了什么、在哪一篇。</p>
   </div>
   <div class="box evo" id="evo"></div>

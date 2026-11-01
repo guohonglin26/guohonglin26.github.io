@@ -7,7 +7,7 @@ cfg = {}
 exec(open(os.path.join(HERE, 'series.py')).read(), cfg)
 FULL = cfg['FULL']
 chs, cf, fx, algo = [], [], {}, []
-for n in range(1, 14):
+for n in range(1, 15):
     s = open(os.path.join(HERE, 'ch%d.html' % n)).read()
     body = s.split('===BODY===')[1].split('===SCRIPT===')[0]
     ask = re.search(r'<div class="ask3">.*?<ol>(.*?)</ol>', body, re.S).group(1)
