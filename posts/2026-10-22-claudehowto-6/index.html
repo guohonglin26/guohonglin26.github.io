@@ -57,7 +57,7 @@
 </section>
 
 <nav class="secnav" aria-label="本篇小节">
-  <div class="wrap"><a href="#what">它解决什么</a><a href="#add">添加服务器</a><a href="#scope">作用域与 .mcp.json</a><a href="#ctx">上下文开销</a><a href="#auth">认证与排障</a><a href="#more">更多接入点</a><a href="#recap">回扣三问</a></div>
+  <div class="wrap"><a href="#what">它解决什么</a><a href="#add">添加服务器</a><a href="#scope">作用域与 .mcp.json</a><a href="#caps">提示词与资源</a><a href="#ctx">上下文开销</a><a href="#auth">认证与排障</a><a href="#more">更多接入点</a><a href="#recap">回扣三问</a></div>
 </nav>
 <div class="wrap">
 <div class="ask3">
@@ -116,6 +116,17 @@
   </div>
   <div class="lab"><div id="scq"></div></div>
   <div class="notes" id="n-scope"></div>
+</section>
+
+<section class="part" id="caps">
+  <div class="part-head"><h2>MCP 不只有工具：提示词、资源和工作目录</h2><span class="meta">原仓库 05-mcp/README.md（commit 188f468）：MCP Prompts as Slash Commands、MCP Resources via @ Mentions、Session Working Directories、Server Deduplication</span></div>
+  <div class="sec-lede">
+    <p>前面讲的都是 MCP 服务器提供的<strong>工具</strong>，由模型决定何时调用。MCP 协议里服务器还能提供另外两样东西，在 Claude Code 里各有自己的入口。<strong>提示词</strong>（prompts）会变成斜杠命令，命名规则是 <code>/mcp__服务器名__提示词名</code>，比如名为 github 的服务器提供了 review 提示词，就用 <code>/mcp__github__review</code> 调用；它和第 2 篇的自定义命令一样由你主动触发，只是模板来自服务器。<strong>资源</strong>（resources）用 @ 引用，格式是 <code>@服务器名:协议://路径</code>，比如 <code>@database:postgres://mydb/users</code>，Claude 会把资源内容取回来放进对话上下文，相当于把外部系统里的一份数据当文件引用。</p>
+    <p>另外两个细节容易踩坑。<strong>会话工作目录</strong>：服务器可以通过 MCP 的 <code>roots/list</code> 请求知道这次会话在哪些目录里工作（启动目录，加上 <code>--add-dir</code> 或 <code>additionalDirectories</code> 添加的目录），目录集合变化时会收到通知；文件类服务器据此决定能访问的范围。<strong>重复定义</strong>：同一个服务器在本地、项目、用户三个作用域都配置了时，本地配置优先，所以可以用本地配置覆盖团队在 <code>.mcp.json</code> 里的设置，而不必改动提交到仓库的文件。</p>
+    <p class="go">三种用法，判断该用哪一种。</p>
+  </div>
+  <div class="lab"><p class="lab-t">工具、提示词还是资源</p><div id="cpQ"></div></div>
+  <div class="notes" id="n-caps"></div>
 </section>
 
 <section class="part" id="ctx">
@@ -352,6 +363,43 @@ CH.tryNow($('#try'), '6', [
   { t: '把一个写死令牌的 MCP 配置改成 <code>${VAR}</code> 引用', d: '令牌移到 shell 环境变量，配置才能放心提交。' },
   { t: '给团队常用的一个只读服务（如内部 Gitea 或文档站）写一份项目级 <code>.mcp.json</code>', d: '用 <code>--scope project</code> 添加，提交后让同事试一次首次确认流程。' }
 ]);
+
+/* ---------- MCP 三种能力 ---------- */
+S.quiz($('#cpQ'), [
+  { q: '团队的 GitHub MCP 服务器提供了一个标准化的“代码评审”模板，你想在需要时手动触发它。用哪种方式？', o: ['等模型自己决定调用工具', '斜杠命令 /mcp__github__review（MCP 提示词）', '用 @ 引用'], a: 1, why: '提示词由用户主动触发，命名为 /mcp__服务器__提示词，和自定义斜杠命令的用法一样。' },
+  { q: '想让 Claude 参考数据库里 users 表的结构来写查询，又不想让它自己去调查询工具。用哪种方式？', o: ['@database:postgres://mydb/users（MCP 资源）', '再写一个自定义命令', '把表结构手抄进 CLAUDE.md'], a: 0, why: '资源用 @服务器:协议://路径 引用，内容直接进上下文，相当于引用一个外部文件。' },
+  { q: '团队在 .mcp.json 里配了一个服务器，你本机想换成自己的测试地址，但不想改仓库里的文件。怎么办？', o: ['直接改 .mcp.json 再提交', '在本地作用域配置同名服务器，本地优先', '删掉项目作用域的配置'], a: 1, why: '同一个服务器在多个作用域都有定义时，本地配置优先，可以覆盖项目和用户级配置。' }
+]);
+S.notes($('#n-caps'), {
+  "c": [
+    [
+      "MCP 提示词",
+      "服务器提供的提示模板，在 Claude Code 里是斜杠命令 /mcp__服务器__提示词，由用户触发。"
+    ],
+    [
+      "MCP 资源",
+      "服务器提供的数据，用 @服务器:协议://路径 引用，内容进入对话上下文。"
+    ],
+    [
+      "roots/list",
+      "MCP 请求，服务器借此知道会话的工作目录（启动目录 + --add-dir 添加的目录）。"
+    ],
+    [
+      "作用域优先级",
+      "同名服务器在多个作用域定义时，本地 > 项目 > 用户。"
+    ]
+  ],
+  "p": [
+    [
+      "三种能力三个入口",
+      "工具由模型调用；提示词用斜杠命令；资源用 @ 引用。"
+    ],
+    [
+      "本地覆盖不必改仓库",
+      "用本地作用域配置覆盖团队的 .mcp.json。"
+    ]
+  ]
+});
 })();
 </script>
 </body>

@@ -153,6 +153,7 @@
     <p><b>输出风格</b>修改系统提示词，决定每一轮的角色、语气、格式；<b>CLAUDE.md</b> 作为系统提示词之后的一条用户消息加入，告诉 Claude 项目约定；<b>--append-system-prompt</b> 只对这一次调用追加系统提示词，不删除任何东西。</p>
   </div>
   <div class="lab"><div id="uq"></div></div>
+  <div class="xref">补遗（原仓库 09-advanced-features，commit 188f468）：<b>语音输入</b>用 <code>/voice</code> 开启，按住说话代替打字；<b>提示建议</b>根据 git 历史和对话上下文在输入框下方给出灰色的示例命令，按 Tab 接受、Enter 接受并发送；<b>额度用完自动续跑</b>（v2.1.234 起）：会话卡在 claude.ai 用量上限时，额度重置后自动继续，在 <code>/config</code> 里开关。</div>
   <div class="notes" id="n-ui"></div>
 </section>
 
